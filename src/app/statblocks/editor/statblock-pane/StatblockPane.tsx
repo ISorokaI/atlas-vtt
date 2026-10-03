@@ -2,12 +2,16 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
 import { SettingsService } from '../../../services/SettingsService';
 import { StatblockSkeleton } from '../../../react/components/statblock/StatblockSkeleton';
+import { isFantasyStatblocksAvailable } from '../../../services/FantasyStatblocksService';
 import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import type { TemplateId } from '../../model/templateTypes';
-import { TEMPLATE_KEY } from '../../notes/statblockSource';
-import { toFieldValue } from '../../values/fieldValueOf';
+import { frontmatterSource } from '../../notes/statblockSource';
+import { saveStatblockAsTemplate } from '../gallery/galleryActions';
 import { setStatblockPaneSettings, statblockPaneSettings } from '../paneSettings';
+import { templateKeyPatch } from './addFieldFlow';
+import { AddFieldRow } from './AddFieldRow';
 import { ChangeTemplateDialog } from './ChangeTemplateDialog';
+import { noteKeyChoice } from './fieldChoices';
 import { MorePropertiesTray } from './MorePropertiesTray';
 import { PaneCanvas } from './PaneCanvas';
 import { PaneHeader } from './PaneHeader';
@@ -19,6 +23,7 @@ import type { StatblockPaneProps } from './paneTypes';
 import { usePaneCollection } from './usePaneCollection';
 import { usePaneNote } from './usePaneNote';
 import { usePaneTemplate } from './usePaneTemplate';
+import { useAddField } from './useAddField';
 import './statblock-pane.scss';
 
 /**
@@ -49,8 +54,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
 
   const applyTemplate = useCallback((templateId: TemplateId): void => {
     setChoosing(false);
-    const patch = { op: 'set' as const, path: [TEMPLATE_KEY], base: toFieldValue(note.record[TEMPLATE_KEY]), next: templateId };
-    void services.writer.write(notePath, [patch]).then((outcome) => {
+    void services.writer.write(notePath, [templateKeyPatch(note.record, templateId)]).then((outcome) => {
       setWriteProblem(outcome.conflicts.length ? 'the note\'s template changed meanwhile.' : outcome.problem);
     });
   }, [services, notePath, note.record]);
@@ -63,6 +67,12 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
   }, [settings]);
 
   const writable = paired && note.kind === 'atlas' && paneTemplate.status !== 'loading';
+  const adder = useAddField({
+    app, notePath, record: note.record, collectionId, writer: services.writer, announce: setSaid, openTemplate: actions.openTemplateAt,
+    entry: writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null,
+  });
+  // Without Fantasy Statblocks its statblocks show with the auto template, which can become a template of their own (§6.4).
+  const savable = paired && note.kind === 'fantasy' && frontmatterSource(note.record)?.kind === 'fs-frontmatter' && !isFantasyStatblocksAvailable();
   const header = headerTemplate({
     note, paneTemplate, roles: collection.roles, collectionId, actions, app,
     choose: paired ? () => setChoosing(true) : undefined,
@@ -105,6 +115,16 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           writable={writable}
           pendingCommit={props.pendingCommit}
           header={bars}
+          footer={writable && paneTemplate.status === 'ok' && (
+            <AddFieldRow
+              app={app}
+              adder={adder}
+              collectionId={collectionId}
+              template={paneTemplate.template}
+              templateName={paneTemplate.name}
+              record={note.record}
+            />
+          )}
           focusRequest={props.focusRequest}
           onExit={onExit}
           onCommitted={onCommitted}
@@ -116,7 +136,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
               ref={trayRef}
               record={note.record}
               template={paneTemplate.template}
-              onAddToTemplate={actions.addToTemplate && note.templateId ? addTo(actions.addToTemplate, note.templateId) : undefined}
+              onAddToTemplate={actions.openTemplateAt && paneTemplate.status === 'ok' ? (key) => adder.choose(noteKeyChoice(key, note.record), true) : undefined}
             />
           )}
         </PaneCanvas>
@@ -134,6 +154,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
         showProperties={paired && note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
         openInNewWindow={actions.openInNewWindow}
         linkToToken={actions.linkToToken && collectionId ? () => actions.linkToToken?.(notePath, collectionId) : undefined}
+        saveAsTemplate={savable ? () => { void saveStatblockAsTemplate(app, notePath, note.record, collectionId); } : undefined}
       />
       <div className="atlas-sb-pane-body">{body}</div>
       <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
@@ -152,8 +173,4 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
       )}
     </div>
   );
-}
-
-function addTo(add: (templateId: TemplateId, key: string) => void, templateId: TemplateId): (key: string) => void {
-  return (key) => add(templateId, key);
 }

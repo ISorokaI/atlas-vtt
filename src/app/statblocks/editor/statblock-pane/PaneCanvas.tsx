@@ -23,6 +23,8 @@ export interface PaneCanvasProps {
   pendingCommit: PendingCommit;
   /** Shown above the blocks, inside the card. */
   header?: React.ReactNode;
+  /** Shown under the blocks, inside the card: "Add a field…". */
+  footer?: React.ReactNode;
   /** Raised to move focus to the first empty value (a pair just opened); 0 never does. */
   focusRequest: number;
   onExit: (step: 1 | -1) => void;
@@ -40,7 +42,7 @@ export interface PaneCanvasProps {
  * seams, so the card is drawn by the same code the map and the DM screen use.
  */
 export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
-  const { app, notePath, template, templateName, record, header, focusRequest, writable } = props;
+  const { app, notePath, template, templateName, record, header, footer, focusRequest, writable } = props;
   const cardRef = useRef<HTMLDivElement>(null);
   const editor = usePaneEditor({ ...props, cardRef });
   const handledRequest = useRef(0);
@@ -69,6 +71,7 @@ export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
               app={app}
               sourcePath={notePath}
               header={header}
+              footer={footer}
             />
           </ValueEditingContext.Provider>
         </BlockChromeContext.Provider>

@@ -74,11 +74,10 @@ function boundFields(block: TemplateBlock): (FieldKey | undefined)[] {
   }
 }
 
-function patternsOf(block: TemplateBlock): (string | undefined)[] {
-  switch (block.type) {
-    case 'title': case 'line': case 'stat': return [block.pattern, block.fallback];
-    default: return [block.fallback];
-  }
+/** The patterns a block writes its text with: a Title's, Line's or Stat's own, and any block's fallback. */
+export function blockPatterns(block: TemplateBlock): string[] {
+  const own = block.type === 'title' || block.type === 'line' || block.type === 'stat' ? [block.pattern] : [];
+  return [...own, block.fallback].filter((pattern): pattern is string => pattern !== undefined);
 }
 
 /**
@@ -91,8 +90,8 @@ export function fieldsShownBy(block: TemplateBlock, refsOf?: PatternRefs): Field
   const keys = new Set<FieldKey>();
   for (const key of boundFields(block)) if (key) keys.add(key);
   if (refsOf) {
-    for (const pattern of patternsOf(block)) {
-      if (pattern) for (const key of refsOf(pattern)) if (key) keys.add(key);
+    for (const pattern of blockPatterns(block)) {
+      for (const key of refsOf(pattern)) if (key) keys.add(key);
     }
   }
   return [...keys];

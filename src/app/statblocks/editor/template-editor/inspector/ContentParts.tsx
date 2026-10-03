@@ -1,0 +1,154 @@
+/** The Content group's settings that only some blocks have (§7.5, the Inspector column). */
+
+import React, { useMemo, useState } from 'react';
+import { collectionResources } from '../../../../resources/collectionResources';
+import { AssetService } from '../../../../services/AssetService';
+import { AUTHORABLE_BLOCK_TYPES, blockSpec, createBlock, type AuthorableBlockType } from '../../../model/blockCatalogue';
+import { blockIdSource } from '../../../model/templateIds';
+import { refuse } from '../../../model/treeEdit';
+import { insertBlock, removeBlock } from '../../../model/treeOps';
+import { collectBlockIds, findBlock } from '../../../model/treeQueries';
+import type { EntriesBlock, OpaqueBlock, ScriptBlock, SectionBlock, TextBlock, TrackBlock } from '../../../model/templateTypes';
+import { useTemplateEditor } from '../editorContext';
+import { applyTree, chainTree } from '../sessionEdit';
+import { boundFieldOf, editBlock, withBlockChanges } from './blockEdits';
+import { EntryParts } from './EntryParts';
+import { FieldSetting, withOwnField } from './FieldSetting';
+import type { GroupProps } from './groupProps';
+import { ChoiceSetting, SelectSetting, SettingNote, TextSetting } from './InspectorControls';
+
+export { LineFields } from './LineFields';
+
+type PartProps<B> = GroupProps & { block: B };
+
+/** A Section's heading: written in the template, or read from a field of the statblock. */
+export function SectionHeading({ block, session, readOnly }: PartProps<SectionBlock>): React.JSX.Element {
+  const [source, setSource] = useState<'text' | 'field'>(block.headingField ? 'field' : 'text');
+  return (
+    <>
+      <ChoiceSetting
+        label="Heading from"
+        value={source}
+        options={[{ value: 'text', label: 'Text' }, { value: 'field', label: 'Field' }]}
+        disabled={readOnly}
+        onChange={(next) => {
+          setSource(next);
+          if (next === 'text') editBlock(session, block.id, 'section', { headingField: undefined });
+        }}
+      />
+      {source === 'text' ? (
+        <TextSetting label="Heading" value={block.heading ?? ''} session={session} disabled={readOnly}
+          onText={(text) => editBlock(session, block.id, 'section', { heading: text.trim() ? text : undefined })} />
+      ) : (
+        <FieldSetting label="Heading" value={block.headingField ?? null} accepts={['text', 'choice']} newType="text"
+          session={session} disabled={readOnly}
+          onBind={(template, key) => withBlockChanges(template, block.id, 'section', { headingField: key })} />
+      )}
+    </>
+  );
+}
+
+/** A Text block's heading, and whether it shows a field of the statblock or text written in the template. */
+export function TextSource({ block, session, readOnly }: PartProps<TextBlock>): React.JSX.Element {
+  const [source, setSource] = useState<'field' | 'text'>(block.field || !block.text ? 'field' : 'text');
+  return (
+    <>
+      <TextSetting label="Heading" value={block.heading ?? ''} session={session} disabled={readOnly}
+        onText={(text) => editBlock(session, block.id, 'text', { heading: text.trim() ? text : undefined })} />
+      <ChoiceSetting
+        label="Shows"
+        value={source}
+        options={[{ value: 'field', label: 'Field' }, { value: 'text', label: 'Fixed text' }]}
+        disabled={readOnly}
+        onChange={(next) => {
+          setSource(next);
+          if (next === 'text') editBlock(session, block.id, 'text', { field: undefined });
+        }}
+      />
+      {source === 'field' ? (
+        <FieldSetting value={block.field || null} accepts={['markdown']} newType="markdown" session={session} disabled={readOnly}
+          onBind={(template, key) => withOwnField(template, block, key)} />
+      ) : (
+        <TextSetting label="Text" value={block.text ?? ''} session={session} disabled={readOnly} multiline
+          onText={(text) => editBlock(session, block.id, 'text', { text: text || undefined })} />
+      )}
+    </>
+  );
+}
+
+/** An Entries block's intro, its "Add" row and what each entry holds before its text. */
+export function EntriesContent(props: PartProps<EntriesBlock>): React.JSX.Element {
+  const { block, template, session, readOnly } = props;
+  const field = boundFieldOf(template, block);
+  return (
+    <>
+      <FieldSetting label="Intro" value={block.introField ?? null} accepts={['markdown', 'text']} newType="markdown"
+        session={session} disabled={readOnly}
+        onBind={(current, key) => withBlockChanges(current, block.id, 'entries', { introField: key })}
+        onClear={() => editBlock(session, block.id, 'entries', { introField: undefined })} />
+      <TextSetting label="Add button" value={block.addLabel ?? ''} placeholder="Add entry" session={session} disabled={readOnly}
+        onText={(text) => editBlock(session, block.id, 'entries', { addLabel: text.trim() ? text : undefined })} />
+      {field && <EntryParts field={field} session={session} readOnly={readOnly} />}
+    </>
+  );
+}
+
+/** The token resource a Track shows on a token's statblock, from the collection's resources. */
+export function TrackResource({ block, session, readOnly }: PartProps<TrackBlock>): React.JSX.Element {
+  const { app, collectionId } = useTemplateEditor();
+  const resources = useMemo(
+    () => (app && collectionId ? collectionResources(AssetService.getInstance(app).getCollectionSettings(collectionId)) : []),
+    [app, collectionId],
+  );
+  const options = [
+    { value: '', label: 'None' },
+    ...resources.map((resource) => ({ value: resource.key, label: resource.name })),
+    ...(block.resource && !resources.some((resource) => resource.key === block.resource) ? [{ value: block.resource, label: block.resource }] : []),
+  ];
+  return (
+    <SelectSetting label="Resource" value={block.resource ?? ''} options={options} disabled={readOnly}
+      onChange={(resource) => editBlock(session, block.id, 'track', { resource: resource || undefined })} />
+  );
+}
+
+const CHOOSE = '';
+
+/** A preserved Fantasy Statblocks script, or a block of a newer Atlas: what it is, and a block to put in its place. */
+export function ScriptContent({ block, session, readOnly }: PartProps<ScriptBlock | OpaqueBlock>): React.JSX.Element {
+  const { select } = useTemplateEditor();
+  const replace = (type: AuthorableBlockType): void => {
+    const out: { inserted: string | null } = { inserted: null };
+    applyTree(session, (layout) => {
+      const found = findBlock(layout.blocks, block.id);
+      if (!found) return refuse(layout, 'block-not-found');
+      const next = createBlock(type, blockIdSource(collectBlockIds(layout.blocks)));
+      out.inserted = next.id;
+      return chainTree(layout, [
+        (current) => removeBlock(current, block.id),
+        (current) => insertBlock(current, next, { parentId: found.parentId, index: found.index }),
+      ]);
+    });
+    if (out.inserted) select([out.inserted], false);
+  };
+  return (
+    <>
+      <SettingNote>
+        {block.type === 'script'
+          ? `${block.summary || 'A script from Fantasy Statblocks'}. Atlas keeps it for Fantasy Statblocks and shows a placeholder.`
+          : 'This block comes from a newer Atlas. It is kept as it is.'}
+      </SettingNote>
+      {block.type === 'script' && (
+        <SelectSetting<string>
+          label="Replace with"
+          value={CHOOSE}
+          options={[{ value: CHOOSE, label: 'Choose a block' }, ...AUTHORABLE_BLOCK_TYPES.map((type) => ({ value: type, label: blockSpec(type).label }))]}
+          disabled={readOnly}
+          onChange={(type) => {
+            const chosen = AUTHORABLE_BLOCK_TYPES.find((candidate) => candidate === type);
+            if (chosen) replace(chosen);
+          }}
+        />
+      )}
+    </>
+  );
+}

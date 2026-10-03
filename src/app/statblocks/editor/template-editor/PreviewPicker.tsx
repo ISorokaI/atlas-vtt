@@ -4,6 +4,7 @@ import { STANDING_LIST, handledByAnotherControl } from '../../../keyboard/toolti
 import { Button } from '../../../packages/components/primitives/button';
 import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
 import { cn } from '../../../../utils/cn';
+import { noteName } from '../../../utils/pathUtils';
 
 const SAMPLES = 'Sample values';
 /** The list shows this many statblocks; typing finds the others. */
@@ -17,9 +18,6 @@ export interface PreviewPickerProps {
   onChange: (path: string | null) => void;
 }
 
-function noteName(path: string): string {
-  return (path.split('/').pop() ?? path).replace(/\.md$/i, '');
-}
 
 /**
  * "Preview with ▾" above the canvas (§7.4): sample values, or a statblock

@@ -3,6 +3,7 @@ import type { App } from 'obsidian';
 import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import { deleteTemplate } from '../../library/templateActions';
 import type { TemplateId } from '../../model/templateTypes';
+import { TemplateDragAndDrop } from '../dnd/DndProvider';
 import { BlankCard } from './BlankCard';
 import { Canvas } from './Canvas';
 import { DeleteTemplateDialog } from './DeleteTemplateDialog';
@@ -10,6 +11,7 @@ import { TemplateEditorContext, type TemplateEditorContextValue } from './editor
 import { EditorOverlays } from './EditorOverlays';
 import { EditorTop } from './EditorTop';
 import { PreviewPicker } from './PreviewPicker';
+import { PreviewWidthChips, usePreviewWidth } from './PreviewWidths';
 import type { BlockSelection } from './selection';
 import type { EditorSession } from './sessionTypes';
 import { useCollectionFieldKeys } from './useCollectionFieldKeys';
@@ -75,6 +77,7 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
   const preview = usePreviewRecord(app, snapshot.template, props.previewPath);
   const library = useTemplateLibrary(app ?? null);
   const state = useEditorState({ session, snapshot, collectionKeys, stageRef, layer, initialSelection: props.initialSelection });
+  const previewWidth = usePreviewWidth(rootRef);
   const editable = !snapshot.readOnly;
 
   const target: KeyboardTarget = {
@@ -119,50 +122,65 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
           onDelete={() => setDeleting(true)}
           copiedFrom={props.copiedFrom ?? null}
           onCopyQuestionDone={() => props.onCopyQuestionDone?.()}
+          widths={<PreviewWidthChips value={previewWidth.choice} onChange={previewWidth.setChoice} />}
         />
-        <div className="atlas-te-body">
-          {LeftPanel && <aside className="atlas-te-left" data-te-region="left"><LeftPanel /></aside>}
-          <div className="atlas-te-main">
-            {state.hinted && editable && (
-              <p className="atlas-te-hint">{LeftPanel ? 'Add blocks from the left, or press / to add one.' : 'Press / to add a block.'}</p>
-            )}
-            <Canvas
-              stageRef={stageRef}
-              app={app}
-              template={snapshot.template}
-              templateName={snapshot.name}
-              record={preview.record}
-              sourcePath={preview.sourcePath}
-              selection={state.selection}
-              editable={editable}
-              label={state.editing}
-              washId={state.washId}
-              onWashed={state.clearWash}
-              onSelect={(selection) => state.select(selection, false)}
-              onEditLabel={state.editLabel}
-              onInsertAt={state.openInsertAtGap}
-              focusRequest={state.focusRequest}
-              previewBar={(
-                <div className="atlas-te-preview-bar" data-te-region="preview">
-                  <PreviewPicker notes={usage.notes} value={preview.missing ? null : props.previewPath} onChange={props.onPreviewPathChange} />
-                </div>
-              )}
-              empty={<BlankCard onInsert={editable ? (item) => state.insert(item) : undefined} />}
-            />
-          </div>
-          {Inspector && <aside className="atlas-te-inspector" data-te-region="inspector"><Inspector /></aside>}
-        </div>
-        <div ref={setLayer} className="atlas-te-layer" />
-        <EditorOverlays
+        <TemplateDragAndDrop
+          rootRef={rootRef}
+          stageRef={stageRef}
+          session={session}
+          readOnly={snapshot.readOnly}
+          record={preview.record}
           app={app}
-          layer={layer}
-          stage={stageRef.current}
-          snapshot={snapshot}
-          state={state}
-          target={target}
-          menuOpen={menuOpen}
-          onMenuOpenChange={setMenuOpen}
-        />
+          sourcePath={preview.sourcePath}
+          settle={state.settle}
+          select={state.select}
+          announce={state.announce}
+        >
+          <div className="atlas-te-body">
+            {LeftPanel && <aside className="atlas-te-left" data-te-region="left"><LeftPanel /></aside>}
+            <div className="atlas-te-main">
+              {state.hinted && editable && (
+                <p className="atlas-te-hint">{LeftPanel ? 'Add blocks from the left, or press / to add one.' : 'Press / to add a block.'}</p>
+              )}
+              <Canvas
+                stageRef={stageRef}
+                app={app}
+                template={snapshot.template}
+                templateName={snapshot.name}
+                record={preview.record}
+                sourcePath={preview.sourcePath}
+                selection={state.selection}
+                editable={editable}
+                label={state.editing}
+                washId={state.washId}
+                onWashed={state.clearWash}
+                onSelect={(selection) => state.select(selection, false)}
+                onEditLabel={state.editLabel}
+                onInsertAt={state.openInsertAtGap}
+                focusRequest={state.focusRequest}
+                previewBar={(
+                  <div className="atlas-te-preview-bar" data-te-region="preview">
+                    <PreviewPicker notes={usage.notes} value={preview.missing ? null : props.previewPath} onChange={props.onPreviewPathChange} />
+                  </div>
+                )}
+                empty={<BlankCard onInsert={editable ? (item) => state.insert(item) : undefined} />}
+                width={previewWidth.width}
+              />
+            </div>
+            {Inspector && <aside className="atlas-te-inspector" data-te-region="inspector"><Inspector /></aside>}
+          </div>
+          <div ref={setLayer} className="atlas-te-layer" />
+          <EditorOverlays
+            app={app}
+            layer={layer}
+            stage={stageRef.current}
+            snapshot={snapshot}
+            state={state}
+            target={target}
+            menuOpen={menuOpen}
+            onMenuOpenChange={setMenuOpen}
+          />
+        </TemplateDragAndDrop>
         {deleting && rootRef.current && app && (
           <DeleteTemplateDialog
             anchor={rootRef.current}

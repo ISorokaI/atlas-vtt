@@ -73,9 +73,45 @@
 
   .atlas-sb-pane-entry__menu.btn--icon {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1;
     width: $button-height-s;
     height: $button-height-s;
+  }
+
+  // Under the menu: dragging it reorders the entries.
+  .atlas-sb-pane-entry__handle {
+    display: grid;
+    grid-column: 2;
+    grid-row: 2;
+    place-items: center;
+    width: $button-height-s;
+    height: $button-height-s;
+    border-radius: $radius-l;
+    color: var(--text-faint);
+    cursor: grab;
+    touch-action: none;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+
+    &:hover {
+      color: var(--text-muted);
+    }
+  }
+
+  .atlas-sb-pane-entry-slot[data-dragging] {
+    position: relative;
+    z-index: 1;
+    border-radius: $radius-l;
+    background: var(--background-primary);
+    box-shadow: $shadow-elevated;
+    opacity: 0.92;
+
+    .atlas-sb-pane-entry__handle {
+      cursor: grabbing;
+    }
   }
 
   .atlas-sb-pane-entries__add {

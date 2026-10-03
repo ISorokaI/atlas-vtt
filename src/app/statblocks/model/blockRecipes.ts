@@ -24,7 +24,8 @@ export interface BlockRecipe {
 }
 
 const ABILITY_SLOTS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
-const MODIFIER_FORMULA = 'floor((value - 10) / 2)';
+/** The d20 ability modifier a Scores column works out from its slot's score. */
+export const MODIFIER_FORMULA = 'floor((value - 10) / 2)';
 
 /** Makes fields whose keys are free in the template and among each other. */
 function fieldMaker(existingKeys: Iterable<FieldKey>): (label: string, type: FieldType) => TemplateField {

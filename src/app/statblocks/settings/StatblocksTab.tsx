@@ -18,6 +18,7 @@ import {
 } from '../roles/collectionStatblockRoles';
 import { draftRoleId, roleNameProblem, statblockRolesAreValid } from '../roles/roleValidation';
 import { RoleRow } from './RoleRow';
+import { TemplateList } from './TemplateList';
 import { templateState } from './TemplatePicker';
 import './statblocks-tab.scss';
 
@@ -123,6 +124,18 @@ export function StatblocksTab({
           Add role
         </Button>
       </div>
+
+      <TemplateList
+        app={app}
+        roles={roles}
+        systemTemplateIds={systemTemplateIds}
+        library={library}
+        onEditTemplate={onEditTemplate}
+        editBlocked={editBlocked}
+        onUseForRole={(roleId, templateId) => edit(roles.map((role) => (role.id === roleId ? { ...role, templateId } : role)))}
+        // Inherited roles followed their system, which the deletion already moved.
+        onReplaceTemplate={(from, to) => { if (own) edit(roles.map((role) => (role.templateId === from ? { ...role, templateId: to } : role))); }}
+      />
     </>
   );
 }

@@ -51,6 +51,8 @@ export interface EntryRowProps {
   rowId: string;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  /** The drag handle, under the row's menu. */
+  handle?: React.ReactNode;
   onCommit: (part: EntryPart, text: string) => void;
   /** Keys the editor handles for the row: Alt+↑/↓ move it, Mod+Enter in its text adds the next entry, Escape leaves. */
   onRowKey: (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, part: EntryPart, pending: () => { part: EntryPart; text: string } | null) => void;
@@ -114,6 +116,7 @@ export function EntryRow(props: EntryRowProps): React.JSX.Element {
         onKeyDown={(event) => props.onRowKey(event, 'text', pendingOf('text'))}
       />
       <ActionsMenuButton label={`Options for ${name.trim() || noun.toLowerCase()}`} entries={menu} className="atlas-sb-pane-entry__menu" />
+      {props.handle}
     </div>
   );
 }

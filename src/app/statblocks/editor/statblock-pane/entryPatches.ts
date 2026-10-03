@@ -74,11 +74,15 @@ export function insertEntryPatch(list: FieldKey, items: readonly FieldValue[], a
 
 /** Moves the entry at `index` one place up (-1) or down (1); null at either end. */
 export function moveEntryPatch(list: FieldKey, items: readonly FieldValue[], index: number, step: 1 | -1): NotePatch | null {
-  const item = items[index];
-  const target = index + step;
-  if (item === undefined || target < 0 || target >= items.length) return null;
-  // Placed after the item that will precede it: two before when moving up, the next one when moving down.
-  const afterIndex = step === -1 ? index - 2 : index + 1;
+  return moveEntryToPatch(list, items, index, index + step);
+}
+
+/** Moves the entry at `from` so that it stands at `to` (a drag's drop); null where it stays. */
+export function moveEntryToPatch(list: FieldKey, items: readonly FieldValue[], from: number, to: number): NotePatch | null {
+  const item = items[from];
+  if (item === undefined || to === from || to < 0 || to >= items.length) return null;
+  // Placed after the item that will precede it: the one at `to` when moving down, the one before `to` when moving up.
+  const afterIndex = to > from ? to : to - 1;
   const after = afterIndex < 0 ? null : items[afterIndex] ?? null;
   return { op: 'move', list, item, after };
 }

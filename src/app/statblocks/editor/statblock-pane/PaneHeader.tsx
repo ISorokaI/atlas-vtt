@@ -25,6 +25,8 @@ export interface PaneHeaderProps {
   showProperties?: (() => void) | undefined;
   openInNewWindow: () => void;
   linkToToken?: (() => void) | undefined;
+  /** A Fantasy Statblocks statblock read without the plugin becomes a template (§6.4). */
+  saveAsTemplate?: (() => void) | undefined;
 }
 
 function templateEntries(template: HeaderTemplate): ContextMenuEntry[] {
@@ -45,6 +47,7 @@ export const PaneHeader = forwardRef<HTMLButtonElement, PaneHeaderProps>((props,
     ...(props.showProperties ? [{ type: 'item' as const, label: 'Show Properties', icon: 'list', onClick: props.showProperties }] : []),
     { type: 'item', label: 'Open in new window', icon: 'picture-in-picture-2', onClick: props.openInNewWindow },
     ...(props.linkToToken ? [{ type: 'item' as const, label: 'Link to a token…', icon: 'link', onClick: props.linkToToken }] : []),
+    ...(props.saveAsTemplate ? [{ type: 'item' as const, label: 'Save as a template', icon: 'layout-template', onClick: props.saveAsTemplate }] : []),
   ];
   const entries = template ? templateEntries(template) : [];
 

@@ -121,6 +121,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     on: vi.fn(() => ({})),
     offref: vi.fn(),
     getFiles: vi.fn(() => Array.from(files.keys()).filter((path) => !isHiddenPath(path)).map((path) => new TFile(path))),
+    getMarkdownFiles: vi.fn(() => Array.from(files.keys()).filter((path) => path.endsWith('.md') && !isHiddenPath(path)).map((path) => new TFile(path))),
     getAbstractFileByPath: vi.fn((path: string): TAbstractFile | null => {
       if (isHiddenPath(path)) return null;
       if (files.has(path)) return new TFile(path);

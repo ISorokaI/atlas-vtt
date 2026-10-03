@@ -7,6 +7,7 @@ import { useKeepInView } from '../../../packages/components/primitives/useKeepIn
 import { renderEntries } from '../../../react/components/context-menu/AtlasContextMenu';
 import { observeResize } from '../../../utils/observeResize';
 import { cn } from '../../../../utils/cn';
+import { useHandleDrag } from '../dnd/useDragSources';
 import { blockFrame } from './editorChrome';
 import type { ChromeStyle } from './LabelEditor';
 import { placeToolbar, type ToolbarPlacement } from './toolbarPlacement';
@@ -48,6 +49,7 @@ export function BlockToolbar(props: BlockToolbarProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<ToolbarPlacement>(HIDDEN);
   const keepInView = useKeepInView(ref, !placement.hidden, placement.below ? 'bottom' : 'top', `${placement.left},${placement.top}`);
+  const handle = useHandleDrag(stage, blockId, editable);
 
   useLayoutEffect(() => {
     const update = (): void => setPlacement(measure(stage, layer, blockId, ref.current));
@@ -80,9 +82,9 @@ export function BlockToolbar(props: BlockToolbarProps): React.JSX.Element {
       data-hidden={placement.hidden || undefined}
       data-below={placement.below || undefined}
     >
-      {/* Drag and drop takes this handle; until then it only marks where it will be. */}
-      <span className="atlas-te-toolbar__handle" data-te-drag-handle="">
-        <ToolButton icon={GripVertical} label="Drag to move" isActive={false} disabled onClick={() => undefined} />
+      {/* Drags the block; Space or Enter on it picks the block up for the arrow keys. */}
+      <span className="atlas-te-toolbar__handle" data-te-drag-handle="" onPointerDown={handle.onPointerDown} onKeyDown={handle.onKeyDown}>
+        <ToolButton icon={GripVertical} label="Drag to move" isActive={false} disabled={!editable} onClick={() => undefined} />
       </span>
       {button(ArrowUp, 'Move up', 'move-up', shortcutText(['Alt'], '↑'))}
       {button(ArrowDown, 'Move down', 'move-down', shortcutText(['Alt'], '↓'))}

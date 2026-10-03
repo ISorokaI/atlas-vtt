@@ -11,6 +11,7 @@ import type { CollectionSettings } from '../../../types/collectionSettingsTypes'
 import { TemplateLibrary } from '../../library/TemplateLibrary';
 import type { StatblockRole } from '../../model/roleTypes';
 import type { TemplateId } from '../../model/templateTypes';
+import { libraryLoaded } from '../../resolve/readStatblock';
 import { collectionStatblockRoles, roleTemplate } from '../../roles/collectionStatblockRoles';
 import { collectionRoles } from '../collectionContext';
 import { roleChoicesOf, type RoleChoice } from './roleChoices';
@@ -38,19 +39,11 @@ export function chosenRole(app: App, collectionId: string | null, roleId: string
   return role ? { collectionId: id, settings, role } : null;
 }
 
-/** Resolves once the library has read the vault's templates, so a role's own template is never taken for missing. */
-function libraryLoaded(library: TemplateLibrary): Promise<void> {
-  if (!library.isLoading()) return Promise.resolve();
-  return new Promise((resolve) => {
-    const stop = library.subscribe(() => {
-      if (library.isLoading()) return;
-      stop();
-      resolve();
-    });
-  });
-}
-
-/** The template a new statblock of the role starts from: the role's own, or the generic one where the library lacks it. */
+/**
+ * The template a new statblock of the role starts from: the role's own, or the
+ * generic one where the library lacks it once it has read the vault's
+ * templates, so a role's own template is never taken for missing.
+ */
 export async function roleTemplateId(app: App, role: StatblockRole): Promise<TemplateId> {
   const library = TemplateLibrary.forApp(app);
   await libraryLoaded(library);

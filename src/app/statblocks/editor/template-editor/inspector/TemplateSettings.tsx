@@ -1,0 +1,154 @@
+import React, { useEffect, useId, useMemo, useRef } from 'react';
+import { Settings2 } from 'lucide-react';
+import { Slider } from '../../../../packages/components/primitives/slider';
+import { AssetService } from '../../../../services/AssetService';
+import { builtInTemplate } from '../../../library/builtInTemplates';
+import { useTemplateLibrary } from '../../../library/useTemplateLibrary';
+import { isBuiltInTemplateId, type StatblockTemplate, type TemplateLayout } from '../../../model/templateTypes';
+import { useTemplateEditor } from '../editorContext';
+import { useTemplateUsage } from '../useTemplateUsage';
+import { AttributionBlock } from './AttributionBlock';
+import { ChoiceSetting, Setting, SettingNote, TextSetting } from './InspectorControls';
+import './inspector.scss';
+
+const DEFAULT_COLUMN_WIDTH = 22;
+const COLUMN_WIDTHS = { min: 14, max: 40 };
+
+function withMaxColumns(template: StatblockTemplate, maxColumns: TemplateLayout['maxColumns']): StatblockTemplate {
+  return maxColumns === template.layout.maxColumns ? template : { ...template, layout: { ...template.layout, maxColumns } };
+}
+
+/** The default width is stored as no width, as a new template has it. */
+function withColumnWidth(template: StatblockTemplate, width: number): StatblockTemplate {
+  const columnWidth = width === DEFAULT_COLUMN_WIDTH ? undefined : width;
+  if (columnWidth === template.layout.columnWidth) return template;
+  const layout = { ...template.layout };
+  if (columnWidth === undefined) delete layout.columnWidth;
+  else layout.columnWidth = columnWidth;
+  return { ...template, layout };
+}
+
+function withDescription(template: StatblockTemplate, text: string): StatblockTemplate {
+  if (text.trim()) return text === template.description ? template : { ...template, description: text };
+  if (template.description === undefined) return template;
+  const next = { ...template };
+  delete next.description;
+  return next;
+}
+
+function withoutSource(template: StatblockTemplate): StatblockTemplate {
+  const next = { ...template };
+  delete next.source;
+  return next;
+}
+
+/**
+ * The least column width in em, as a slider. A drag is one undo step, from
+ * the press to the release; each arrow key press is one of its own.
+ */
+function ColumnWidth({ template, disabled }: { template: StatblockTemplate; disabled: boolean }): React.JSX.Element {
+  const { session } = useTemplateEditor();
+  const dragging = useRef(false);
+  const labelId = useId();
+  const width = template.layout.columnWidth ?? DEFAULT_COLUMN_WIDTH;
+  const release = (): void => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    session.endGesture();
+  };
+  const latestRelease = useRef(release);
+  latestRelease.current = release;
+  useEffect(() => () => latestRelease.current(), []);
+  return (
+    <>
+      <span id={labelId} className="atlas-te-setting__label">Column width</span>
+      <div className="atlas-te-setting__control">
+        <div className="atlas-te-setting__inline">
+          <Slider
+            aria-labelledby={labelId}
+            className="atlas-te-slider"
+            value={[width]}
+            min={COLUMN_WIDTHS.min}
+            max={COLUMN_WIDTHS.max}
+            step={1}
+            disabled={disabled}
+            getValueText={(value) => `${value} em`}
+            onPointerDown={() => {
+              if (disabled || dragging.current) return;
+              dragging.current = true;
+              session.beginGesture();
+            }}
+            onValueChange={([value]) => {
+              if (value !== undefined) session.apply((current) => withColumnWidth(current, value));
+            }}
+            onValueCommit={release}
+          />
+          <span className="atlas-te-setting__value">{width} em</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** The roles that start from this template, each named with its collection. */
+function useRoleNames(): string[] {
+  const { app, snapshot } = useTemplateEditor();
+  const usage = useTemplateUsage(app, snapshot.id);
+  return useMemo(() => {
+    const collections = app ? new Map(AssetService.getInstance(app).loadedCollections().map((collection) => [collection.id, collection.name])) : new Map<string, string>();
+    return usage.roles.map((role) => `${role.roleName} in ${collections.get(role.collectionId) ?? role.collectionId}`);
+  }, [app, usage.roles]);
+}
+
+/** "Based on 5E (2024 rules) monster", and whether that built-in changed since the copy was made. */
+function useBasedOn(template: StatblockTemplate): string | null {
+  const { app } = useTemplateEditor();
+  const library = useTemplateLibrary(app ?? null);
+  const from = template.derivedFrom;
+  if (!from) return null;
+  const builtIn = isBuiltInTemplateId(from.templateId) ? builtInTemplate(from.templateId) : null;
+  const name = builtIn?.name ?? library?.templates.find((entry) => entry.template.id === from.templateId)?.name;
+  if (!name) return 'Based on a template that is no longer here.';
+  const changed = builtIn && from.revision !== undefined && builtIn.revision > from.revision;
+  return changed ? `Based on ${name}, which has changed since.` : `Based on ${name}.`;
+}
+
+/**
+ * The inspector with nothing selected (§7.4): the template's description,
+ * columns, the roles that start from it, what it was copied from, and the
+ * credit a licensed template carries.
+ */
+export function TemplateSettings({ headerEnd }: { headerEnd?: React.ReactNode }): React.JSX.Element {
+  const { session, snapshot } = useTemplateEditor();
+  const { template, readOnly } = snapshot;
+  const roles = useRoleNames();
+  const basedOn = useBasedOn(template);
+  const titleId = useId();
+  return (
+    <div className="atlas-te-insp__content">
+      <div className="atlas-te-insp__header">
+        <Settings2 className="atlas-te-insp__glyph" aria-hidden="true" />
+        <span id={titleId} className="atlas-te-insp__name">Template</span>
+        {headerEnd}
+      </div>
+      <section className="atlas-te-group" aria-labelledby={titleId}>
+        <TextSetting label="Description" value={template.description ?? ''} placeholder="What it is for" session={session} disabled={readOnly} multiline
+          onText={(text) => session.apply((current) => withDescription(current, text))} />
+        <ChoiceSetting label="Columns" value={String(template.layout.maxColumns) as '1' | '2' | '3'} disabled={readOnly}
+          options={[{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }]}
+          onChange={(count) => session.apply((current) => withMaxColumns(current, Number(count) as 1 | 2 | 3))} />
+        <ColumnWidth template={template} disabled={readOnly} />
+        <Setting label="Roles" wide>
+          {() => (roles.length > 0
+            ? <ul className="atlas-te-setting__roles">{roles.map((role) => <li key={role}>{role}</li>)}</ul>
+            : <span className="atlas-te-setting__hint">No role starts from it.</span>)}
+        </Setting>
+        {basedOn && <SettingNote>{basedOn}</SettingNote>}
+        {template.source && (
+          <AttributionBlock source={template.source} disabled={readOnly}
+            onRemove={() => session.apply(withoutSource)} />
+        )}
+      </section>
+    </div>
+  );
+}

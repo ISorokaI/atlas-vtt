@@ -15,11 +15,8 @@ import { TEMPLATE_KEY } from '../../notes/statblockSource';
 import type { FrontmatterModel } from '../../notes/yamlDocument';
 import type { StatblockPaneActions } from '../statblock-pane/paneTypes';
 import { chosenRole, roleTemplateId } from './collectionRoles';
+import { noteName } from '../../../utils/pathUtils';
 
-/** The note's own name: its file name without the extension. */
-function noteName(path: string): string {
-  return (path.split('/').pop() ?? path).replace(/\.md$/i, '');
-}
 
 /**
  * The patches that make a note a native statblock, against its frontmatter as

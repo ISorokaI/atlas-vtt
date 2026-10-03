@@ -35,7 +35,8 @@ export interface ChromeLayerProps {
   onInsertAt: (gap: CanvasGap, anchor: Box) => void;
 }
 
-function boxStyle(box: Box): ChromeStyle {
+/** A box of the stage as the custom properties chrome is placed by (`--atlas-te-x`, `-y`, `-w`, `-h`). */
+export function boxStyle(box: Box): ChromeStyle {
   return {
     '--atlas-te-x': `${box.left}px`,
     '--atlas-te-y': `${box.top}px`,

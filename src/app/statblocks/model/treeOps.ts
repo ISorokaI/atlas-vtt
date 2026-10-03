@@ -63,7 +63,8 @@ export function moveBlock(layout: TemplateLayout, id: string, target: TreeTarget
   return done(withChildren(without, target.parentId, (children) => spliced(children, index, 0, found.block)), id);
 }
 
-function reKeyed(block: TemplateBlock, nextId: BlockIdSource): TemplateBlock {
+/** A copy of a block and everything inside it, every one with a new id from `nextId`. */
+export function reKeyed(block: TemplateBlock, nextId: BlockIdSource): TemplateBlock {
   const id = nextId();
   if (!isContainerBlock(block)) return { ...block, id };
   return { ...block, id, blocks: block.blocks.map((child) => reKeyed(child, nextId)) };

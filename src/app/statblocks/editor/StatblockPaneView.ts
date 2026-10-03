@@ -8,18 +8,15 @@ import type { PaneServices } from './paneServices';
 import { FOCUS_FIRST_EMPTY, STATBLOCK_PANE_VIEW_TYPE, readPaneState, type StatblockPaneState } from './paneState';
 import { partnerInfo, trackPartner, type PartnerInfo } from './partnerTracking';
 import type { PaneNoteKind, PendingCommit, StatblockPaneActions } from './statblock-pane/paneTypes';
+import { noteName } from '../../utils/pathUtils';
 
 /** What the plugin gives every pane: its note services, and the actions other parts of Atlas wire in. */
 export interface StatblockPaneDeps {
   services: (app: StatblockPaneView['app']) => PaneServices;
-  actions?: Pick<StatblockPaneActions, 'createStatblock' | 'editTemplate' | 'linkToToken' | 'addToTemplate'>;
+  actions?: Pick<StatblockPaneActions, 'createStatblock' | 'editTemplate' | 'linkToToken' | 'openTemplateAt'>;
 }
 
 const NO_PARTNER: PartnerInfo = { leaf: null, path: null };
-
-function basename(path: string): string {
-  return path.split('/').pop()?.replace(/\.md$/i, '') ?? path;
-}
 
 /**
  * The statblock pane (§4.6, §7.1, §7.2): an `ItemView` beside a statblock
@@ -57,7 +54,7 @@ export class StatblockPaneView extends ItemView {
   }
 
   getDisplayText(): string {
-    return this.state ? `${basename(this.state.notePath)} · statblock` : 'Statblock';
+    return this.state ? `${noteName(this.state.notePath)} · statblock` : 'Statblock';
   }
 
   getIcon(): string {
@@ -175,7 +172,7 @@ export class StatblockPaneView extends ItemView {
     const path = this.state?.notePath;
     if (!path) return false;
     const done = this.services.writer[kind](path);
-    const name = basename(path);
+    const name = noteName(path);
     this.announcement = done
       ? `${kind === 'undo' ? 'Undid' : 'Redid'} in ${name}.`
       : `Open ${name} to ${kind} there.`;

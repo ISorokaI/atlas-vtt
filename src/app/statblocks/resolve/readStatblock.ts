@@ -23,7 +23,7 @@ export function libraryTemplates(app: App): TemplateLookup {
 }
 
 /** Resolves once the library has read the templates the vault held when it started. */
-function libraryLoaded(library: TemplateLibrary): Promise<void> {
+export function libraryLoaded(library: TemplateLibrary): Promise<void> {
   if (!library.isLoading()) return Promise.resolve();
   return new Promise((resolve) => {
     const stop = library.subscribe(() => {

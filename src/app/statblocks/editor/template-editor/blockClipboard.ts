@@ -7,8 +7,9 @@
 import { patternRefs } from '../../expressions/patternRefs';
 import { fieldByKey, fieldKeysOf } from '../../model/fieldKeys';
 import type { BlockIdSource } from '../../model/templateIds';
+import { reKeyed } from '../../model/treeOps';
 import { fieldsShownBy, findBlock, flattenReadingOrder } from '../../model/treeQueries';
-import { isContainerBlock, type StatblockTemplate, type TemplateBlock, type TemplateField } from '../../model/templateTypes';
+import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../model/templateTypes';
 import { inSiblingOrder } from './selection';
 
 export interface BlockClip {
@@ -40,11 +41,6 @@ export function copyBlocks(template: StatblockTemplate, ids: readonly string[]):
     .map((key) => fieldByKey(template.fields, key))
     .filter((field): field is TemplateField => field !== undefined);
   return { blocks, fields: [...new Set(fields)] };
-}
-
-function reKeyed(block: TemplateBlock, nextId: BlockIdSource): TemplateBlock {
-  const id = nextId();
-  return isContainerBlock(block) ? { ...block, id, blocks: block.blocks.map((child) => reKeyed(child, nextId)) } : { ...block, id };
 }
 
 /**

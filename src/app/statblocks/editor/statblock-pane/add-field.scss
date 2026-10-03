@@ -1,0 +1,123 @@
+// "Add a field…" at the end of the pane's card (D15, §7.2): a ghost row, and a
+// popover in the context menu's geometry (28 px capsule rows, $spacing-xs
+// inside the border, the corner derived from them so every row is concentric).
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$row-height: 28px;
+$menu-inset: $spacing-xs;
+$menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
+
+.atlas-vtt-plugin {
+  .atlas-sb-add-field {
+    position: relative;
+    margin-top: $spacing-l;
+  }
+
+  .atlas-sb-add-field__button {
+    gap: $spacing-xs;
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  .atlas-sb-add-field__popover {
+    @include atlas-keep-in-view;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    z-index: $z-popover;
+    margin-top: $spacing-xs;
+
+    &[data-above] {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: $spacing-xs;
+    }
+  }
+
+  .atlas-sb-add-field__panel {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($menu-radius);
+    width: 280px;
+    padding: $menu-inset;
+    box-shadow: $shadow-md;
+    transform-origin: top left;
+  }
+
+  .atlas-sb-add-field__popover[data-above] .atlas-sb-add-field__panel {
+    transform-origin: bottom left;
+  }
+
+  .atlas-sb-add-field__picker {
+    @include atlas-flex-col($menu-inset);
+    align-items: stretch;
+  }
+
+  // The search is one more row of the menu: a capsule of a row's height.
+  input.atlas-sb-add-field__search {
+    @include atlas-panel-inset-radius($menu-inset);
+    height: $row-height;
+    padding: 0 $spacing-s;
+    font-size: $font-ui-small;
+  }
+
+  .atlas-sb-add-field__list,
+  .atlas-sb-add-field__group {
+    @include atlas-flex-col(var(--size-2-1));
+    align-items: stretch;
+  }
+
+  .atlas-sb-add-field__list {
+    max-height: 280px;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  .atlas-sb-add-field__group-label {
+    @include atlas-truncate;
+    padding: $spacing-xs $spacing-s 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-sb-add-field__detail {
+    @include atlas-truncate;
+    flex-shrink: 1;
+    min-width: 0;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-sb-add-field__empty {
+    padding: $spacing-s;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  // The question: its text and two answers, rows of the menu like the picker's.
+  .atlas-sb-add-field__question {
+    @include atlas-flex-col($menu-inset);
+    align-items: stretch;
+
+    .btn {
+      @include atlas-panel-inset-radius($menu-inset);
+      height: auto;
+      min-height: $row-height;
+      white-space: normal;
+    }
+  }
+
+  .atlas-sb-add-field__text {
+    margin: 0;
+    padding: $spacing-xs $spacing-s;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+}

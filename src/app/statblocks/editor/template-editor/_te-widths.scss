@@ -1,0 +1,18 @@
+// The header's preview widths (Hover · Feed · Pane, §7.4): a segmented control
+// as tall as the header's other controls, so the bar keeps its height; it
+// never shrinks, the name truncates instead.
+
+@use '../../../../../styles/tokens' as *;
+
+.atlas-vtt-plugin {
+  .atlas-te-header .atlas-segmented.atlas-te-widths {
+    flex-shrink: 0;
+    box-sizing: border-box;
+    height: var(--input-height);
+
+    .atlas-segmented__option {
+      height: 100%;
+      padding-block: 0;
+    }
+  }
+}

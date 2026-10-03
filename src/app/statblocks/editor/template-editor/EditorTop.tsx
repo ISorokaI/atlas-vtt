@@ -24,6 +24,8 @@ export interface EditorTopProps {
   onDelete: () => void;
   copiedFrom: TemplateId | null;
   onCopyQuestionDone: () => void;
+  /** The preview width chips, shown in the header. */
+  widths?: React.ReactNode;
 }
 
 /**
@@ -54,6 +56,7 @@ export function EditorTop(props: EditorTopProps): React.JSX.Element {
         usage={props.usage}
         collection={props.collection}
         onCollectionChange={props.onCollectionChange}
+        widths={props.widths}
         actions={{
           newStatblock: () => { if (app) void newStatblockFromTemplate(app, snapshot.id, collectionId); },
           duplicate: () => copy('tab'),

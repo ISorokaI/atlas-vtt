@@ -9,6 +9,9 @@ import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { cleanupMissingAssets } from './cleanupMissingAssets';
 import { registerStatblockEditorCommands } from '../statblocks/editor/create/statblockCommands';
+import { openTemplateGallery } from '../statblocks/editor/gallery/openTemplateGallery';
+import { experimentalFeatureOn } from '../experimental/experimentalFeatures';
+import { runInBackground } from '../utils/backgroundTask';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -164,6 +167,16 @@ function registerStatblockCommands(plugin: Plugin): void {
   });
 
   registerStatblockEditorCommands(plugin);
+
+  plugin.addCommand({
+    id: 'new-statblock-template',
+    name: 'New statblock template…',
+    checkCallback: (checking) => {
+      if (!experimentalFeatureOn(app, 'statblockEditor')) return false;
+      if (!checking) runInBackground(openTemplateGallery(app), 'Opening the template gallery');
+      return true;
+    },
+  });
 }
 
 export function registerCommands(plugin: Plugin, deps: CommandDependencies): void {

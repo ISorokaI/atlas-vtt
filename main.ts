@@ -13,6 +13,8 @@ import { registerStatblockFence } from './src/app/statblocks/render/statblockFen
 import { StatblockPaneView } from './src/app/statblocks/editor/StatblockPaneView';
 import { STATBLOCK_PANE_VIEW_TYPE } from './src/app/statblocks/editor/paneState';
 import { TemplateEditorView } from './src/app/statblocks/editor/TemplateEditorView';
+import { LeftPanel } from './src/app/statblocks/editor/template-editor/LeftPanel';
+import { Inspector } from './src/app/statblocks/editor/template-editor/inspector/Inspector';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from './src/app/statblocks/editor/templateEditorState';
 import { openTemplateEditor } from './src/app/statblocks/editor/openTemplateEditor';
 import { TEMPLATE_EXTENSION } from './src/app/statblocks/library/templateFiles';
@@ -187,9 +189,12 @@ export default class AtlasVTTPlugin extends Plugin {
         editTemplate: (templateId, collectionId, notePath) => {
           void openTemplateEditor(this.app, { templateId, collectionId, previewPath: notePath });
         },
+        openTemplateAt: ({ templateId, path, blockId, collectionId, notePath }) => {
+          void openTemplateEditor(this.app, { templateId, path, collectionId, previewPath: notePath, select: blockId });
+        },
       },
     }));
-    this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));
+    this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf, { leftPanel: LeftPanel, inspector: Inspector }));
     this.registerExtensions([TEMPLATE_EXTENSION], TEMPLATE_EDITOR_VIEW_TYPE);
   }
 }

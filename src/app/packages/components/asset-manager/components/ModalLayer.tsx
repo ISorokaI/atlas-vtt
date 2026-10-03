@@ -19,6 +19,7 @@ import type { StatblockLinkState } from '../hooks/useStatblockLink';
 import { useUvttImport } from '../hooks/useUvttImport';
 import { tagGroupOfTab } from '../utils/assetTags';
 import { newStatblockOption } from '../../../../statblocks/editor/create/entryPoints';
+import { openTemplateEditor } from '../../../../statblocks/editor/openTemplateEditor';
 
 export interface ModalLayerProps {
   isOpen: boolean;
@@ -233,6 +234,11 @@ export function ModalLayer({
             isOpen={true}
             onClose={() => crud.setSettingsModalCollectionId(null)}
             collectionId={crud.settingsModalCollectionId}
+            // The template opens in a tab, which the asset manager would cover.
+            onEditTemplate={(templateId, collectionId) => {
+              onClose();
+              void openTemplateEditor(data.app, { templateId, collectionId });
+            }}
           />
         )}
       </AnimatePresence>

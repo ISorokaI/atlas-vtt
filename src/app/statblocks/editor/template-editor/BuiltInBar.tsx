@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { copySwitchQuestion, type CopySwitch } from './copySwitch';
 import { EditorBar } from './EditorBar';
+import { noteName } from '../../../utils/pathUtils';
 
-function noteName(path: string): string {
-  return (path.split('/').pop() ?? path).replace(/\.md$/i, '');
-}
 
 export interface BuiltInBarProps {
   /** Why the template takes no edits. */

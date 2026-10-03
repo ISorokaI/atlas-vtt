@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
@@ -47,6 +47,7 @@ export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JS
   const selectId = useId();
   const [replacement, setReplacement] = useState<string>(KEEP);
   const [busy, setBusy] = useState(false);
+  const windowRef = useRef<HTMLDivElement>(null);
   const used = usageText(usage);
   const options: SelectOption<string>[] = [
     { value: KEEP, label: 'Leave them as they are' },
@@ -54,16 +55,8 @@ export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JS
       .map((entry) => ({ value: entry.template.id, label: entry.name, ...(entry.builtIn && { detail: 'Built-in' }) })),
   ];
 
-  useEffect(() => {
-    const doc = anchor.doc;
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape' || handledByAnotherControl(event)) return;
-      event.preventDefault();
-      onClose();
-    };
-    doc.addEventListener('keydown', onKeyDown);
-    return () => doc.removeEventListener('keydown', onKeyDown);
-  }, [anchor, onClose]);
+  // Focus moves in, so Escape reaches the dialog before a dialog it opened over (the collection settings).
+  useEffect(() => windowRef.current?.focus({ preventScroll: true }), []);
 
   const confirm = (): void => {
     setBusy(true);
@@ -75,8 +68,21 @@ export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JS
       {...dialogOverlayMotion}
       className="atlas-vtt-plugin atlas-te-dialog-overlay"
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || handledByAnotherControl(event.nativeEvent)) return;
+        event.preventDefault();
+        onClose();
+      }}
     >
-      <motion.div className="atlas-te-dialog" variants={windowVariants} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <motion.div
+        ref={windowRef}
+        className="atlas-te-dialog"
+        variants={windowVariants}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
         <div className="atlas-te-dialog__header">
           <h2 id={titleId}>Delete {name}?</h2>
           <CloseButton onClick={onClose} />

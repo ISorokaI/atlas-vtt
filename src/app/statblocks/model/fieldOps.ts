@@ -9,7 +9,7 @@ import {
 } from '../expressions/patternRename';
 import { patternRefs } from '../expressions/patternRefs';
 import { fieldKeysOf, keyProblem } from './fieldKeys';
-import { fieldsShownBy, flattenReadingOrder } from './treeQueries';
+import { blockPatterns, fieldsShownBy, flattenReadingOrder } from './treeQueries';
 import {
   isContainerBlock,
   type Condition, type FieldKey, type ScoreColumn, type StatblockTemplate, type TemplateBlock, type TemplateField,
@@ -104,15 +104,10 @@ export function renameKeyProblem(template: StatblockTemplate, from: FieldKey, to
   const problem = keyProblem(to, keysOfOthers(template, from));
   if (problem) return problem;
   const inFormula = flattenReadingOrder(template.layout.blocks).some((block) => columnsRead(block, from)
-    || patternsOf(block).some((pattern) => patternFormulas(pattern).some((formula) => formulaReads(formula, from))));
+    || blockPatterns(block).some((pattern) => patternFormulas(pattern).some((formula) => formulaReads(formula, from))));
   return inFormula && !formulaCanName(to)
     ? `A formula reads “${from}”, and formulas can't name a key with a hyphen. Choose a key without one.`
     : null;
-}
-
-function patternsOf(block: TemplateBlock): string[] {
-  const own = block.type === 'title' || block.type === 'line' || block.type === 'stat' ? [block.pattern] : [];
-  return [...own, block.fallback].filter((pattern): pattern is string => pattern !== undefined);
 }
 
 /** A field reference renamed where it reads `from`; any other reference unchanged. */

@@ -8,6 +8,10 @@
   .atlas-te-dialog {
     @include atlas-modal-window;
     width: 440px;
+
+    &:focus {
+      outline: none;
+    }
   }
 
   .atlas-te-dialog__header {

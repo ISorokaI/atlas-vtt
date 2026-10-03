@@ -6,9 +6,10 @@ import { Button } from '../../../packages/components/primitives/button';
 import type { FieldValue, TemplateField } from '../../model/templateTypes';
 import type { NotePatch } from '../../notes/patchTypes';
 import { entryName, entryText } from '../../values/entryValues';
+import { SortableEntries, SortableEntry } from '../dnd/SortableEntries';
 import {
-  entryList, entryPartPatches, entryWithPart, insertEntryPatch, moveEntryPatch, newEntry, removeEntryPatch, shownEntryIndexes,
-  type EntryPart,
+  entryList, entryPartPatches, entryWithPart, insertEntryPatch, moveEntryPatch, moveEntryToPatch, newEntry, removeEntryPatch,
+  shownEntryIndexes, type EntryPart,
 } from './entryPatches';
 import { EntryRow } from './EntryRow';
 import { removedMessage } from './announcements';
@@ -34,8 +35,8 @@ export function singular(label: string): string {
 
 /**
  * An entries field edited in place (§7.6): each entry's name, then Enter to
- * its text; Mod+Enter adds the next entry; Alt+↑/↓ moves one; each row's menu
- * moves, duplicates and deletes. Every change is one patch by the entry's
+ * its text; Mod+Enter adds the next entry; Alt+↑/↓ or a drag of its handle
+ * moves one; each row's menu moves, duplicates and deletes. Every change is one patch by the entry's
  * identity, so a list that changed in the note meanwhile is never written
  * into the wrong entry.
  */
@@ -107,30 +108,43 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
     }
   };
 
+  const moveTo = (from: number, to: number): void => {
+    const item = items[from];
+    write([moveEntryToPatch(list, items, from, to)]);
+    if (item !== undefined) pane.announce(`Moved ${entryName(item, shape) ?? noun.toLowerCase()} to position ${to + 1} of ${items.length}.`);
+  };
+
   return (
     <div ref={rootRef} className="atlas-sb-pane-entries">
-      {items.map((item, index) => (
-        <React.Fragment key={index}>
-          <EntryRow
-            index={index}
-            rowId={String(index)}
-            name={entryName(item, shape) ?? ''}
-            text={entryText(item, shape) ?? ''}
-            noun={noun}
-            canMoveUp={index > 0}
-            canMoveDown={index < items.length - 1}
-            onCommit={(part, text) => write(entryPartPatches(list, index, item, shape, part, text))}
-            onRowKey={rowKey(index)}
-            onMove={(step) => write([moveEntryPatch(list, items, index, step)])}
-            onDuplicate={() => write([insertEntryPatch(list, items, index, item)])}
-            onDelete={() => {
-              write([removeEntryPatch(list, item)]);
-              pane.announce(removedMessage(entryName(item, shape) ?? noun.toLowerCase()));
-            }}
-          />
-          {adding?.afterIndex === index && <NewEntryRow noun={noun} onDone={commitNew} />}
-        </React.Fragment>
-      ))}
+      <SortableEntries ids={items.map((_, index) => String(index))} onMove={moveTo}>
+        {items.map((item, index) => (
+          <React.Fragment key={index}>
+            <SortableEntry id={String(index)}>
+              {(handle) => (
+                <EntryRow
+                  index={index}
+                  rowId={String(index)}
+                  name={entryName(item, shape) ?? ''}
+                  text={entryText(item, shape) ?? ''}
+                  noun={noun}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < items.length - 1}
+                  handle={handle}
+                  onCommit={(part, text) => write(entryPartPatches(list, index, item, shape, part, text))}
+                  onRowKey={rowKey(index)}
+                  onMove={(step) => write([moveEntryPatch(list, items, index, step)])}
+                  onDuplicate={() => write([insertEntryPatch(list, items, index, item)])}
+                  onDelete={() => {
+                    write([removeEntryPatch(list, item)]);
+                    pane.announce(removedMessage(entryName(item, shape) ?? noun.toLowerCase()));
+                  }}
+                />
+              )}
+            </SortableEntry>
+            {adding?.afterIndex === index && <NewEntryRow noun={noun} onDone={commitNew} />}
+          </React.Fragment>
+        ))}
+      </SortableEntries>
       {adding?.afterIndex === null && <NewEntryRow noun={noun} onDone={commitNew} />}
       <Button
         type="button"

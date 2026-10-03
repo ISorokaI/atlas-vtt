@@ -52,7 +52,8 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
   .atlas-te-name {
     @include atlas-truncate;
     @include atlas-corner-shape;
-    min-width: 0;
+    // Truncates before the controls beside it give way, but always says enough to know the template.
+    min-width: 6em;
     height: var(--input-height);
     padding: 0 $spacing-s;
     border-radius: $radius-l;

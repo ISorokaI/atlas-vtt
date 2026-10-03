@@ -30,7 +30,18 @@ export interface StatblockPaneActions {
   /** Opens the template editor, previewing the note's statblock. */
   editTemplate?: ((templateId: string, collectionId: string, notePath: string) => void) | undefined;
   linkToToken?: ((notePath: string, collectionId: string) => void) | undefined;
-  addToTemplate?: ((templateId: string, key: string) => void) | undefined;
+  /** Opens the template editor on a block just added to the template (the tray's Add to template). */
+  openTemplateAt?: ((target: TemplateBlockTarget) => void) | undefined;
+}
+
+/** A block of a template, to open the template editor on, previewing the note it was added from. */
+export interface TemplateBlockTarget {
+  templateId: string;
+  /** The template's file, which the library may not have read yet (a copy made a moment ago); null for a built-in. */
+  path: string | null;
+  blockId: string;
+  collectionId: string | null;
+  notePath: string;
 }
 
 /** The input being edited registers its commit here, so closing the pane mid-word keeps the word. */

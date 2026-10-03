@@ -5,6 +5,7 @@ import type { StatblockTemplate } from '../../model/templateTypes';
 import { BlockChromeContext, type BlockChrome } from '../../render/blockChrome';
 import { StatblockSheet } from '../../render/StatblockSheet';
 import type { FieldRecord } from '../../values/fieldValues';
+import { useCanvasDrag } from '../dnd/useDragSources';
 import type { CanvasGap } from './canvasGaps';
 import { ChromeLayer, SHEET_SELECTOR, type LabelEditing } from './ChromeLayer';
 import { blockFrame, editorChrome, frameAt } from './editorChrome';
@@ -72,14 +73,15 @@ function playEntrance(frame: HTMLElement): void {
 /**
  * The template editor's canvas (§7.4): the runtime card in the editing mode,
  * with values read-only. A click selects the innermost block, Shift+click
- * adds a sibling, a double click edits its label; links, dice and folds in
- * the card do nothing here.
+ * adds a sibling, a double click edits its label, a drag (or Space) moves
+ * it; links, dice and folds in the card do nothing here.
  */
 export function Canvas(props: CanvasProps): React.JSX.Element {
   const { stageRef, template, selection, onSelect, focusRequest, washId, width } = props;
   const chrome = useMemo(() => editorChrome(selection, template.fields), [selection, template.fields]);
   const isEmpty = template.layout.blocks.length === 0 && props.empty !== undefined;
   const primary = primaryOf(selection);
+  const drag = useCanvasDrag(stageRef, props.editable && !isEmpty);
 
   const focusTarget = (): HTMLElement | null => {
     const stage = stageRef.current;
@@ -159,6 +161,8 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
           onClickCapture={onClickCapture}
           onDoubleClickCapture={onDoubleClickCapture}
           onFocus={onFocus}
+          onPointerDown={drag.onPointerDown}
+          onKeyDown={drag.onKeyDown}
         >
           {isEmpty ? props.empty : (
             <ChromedSheet

@@ -11,6 +11,7 @@ import { PaneMenuButton } from '../statblock-pane/PaneMenuButton';
 import type { EditorSession, SessionSnapshot } from './sessionTypes';
 import { shortcutText } from './shortcutText';
 import { TemplateNameField } from './TemplateNameField';
+import { noteName } from '../../../utils/pathUtils';
 
 /** At most this many statblocks are listed under "Used by"; the count says how many there are. */
 const LISTED_NOTES = 50;
@@ -30,11 +31,10 @@ export interface TemplateHeaderProps {
   collection: CollectionContext | null;
   onCollectionChange: (collectionId: string) => void;
   actions: TemplateHeaderActions;
+  /** The preview width chips (Hover · Feed · Pane). */
+  widths?: React.ReactNode;
 }
 
-function noteName(path: string): string {
-  return (path.split('/').pop() ?? path).replace(/\.md$/i, '');
-}
 
 /** "Saved", "Saving…" or "Couldn't save: <reason>" with Retry; nothing for a template that is not saved here. */
 function SaveStateText({ session, snapshot }: { session: EditorSession; snapshot: SessionSnapshot }): React.JSX.Element | null {
@@ -66,10 +66,10 @@ function UsageButton({ usage, openNote }: { usage: TemplateUsage; openNote: (pat
 
 /**
  * The template editor's header (§7.4): the name, edited in place; what uses
- * the template; the collection the editor works for; undo, redo and a quiet
- * save state; and the "…" menu.
+ * the template; the collection the editor works for; the preview widths;
+ * undo, redo and a quiet save state; and the "…" menu.
  */
-export function TemplateHeader({ session, snapshot, usage, collection, onCollectionChange, actions }: TemplateHeaderProps): React.JSX.Element {
+export function TemplateHeader({ session, snapshot, usage, collection, onCollectionChange, actions, widths }: TemplateHeaderProps): React.JSX.Element {
   const more: ContextMenuEntry[] = [
     { type: 'item', label: 'New statblock from this template', icon: 'file-plus', onClick: actions.newStatblock },
     { type: 'item', label: 'Duplicate', icon: 'copy', onClick: actions.duplicate },
@@ -85,6 +85,7 @@ export function TemplateHeader({ session, snapshot, usage, collection, onCollect
       <TemplateNameField name={snapshot.name} editable={!snapshot.readOnly && snapshot.path !== null} onRename={rename} />
       <UsageButton usage={usage} openNote={actions.openNote} />
       {collection && <CollectionChip context={collection} onChange={onCollectionChange} />}
+      {widths}
       <span className="atlas-te-header__end">
         <ToolButton icon={Undo2} label="Undo" shortcut={shortcutText(['Mod'], 'Z')} isActive={false} disabled={!snapshot.canUndo} onClick={() => session.undo()} />
         <ToolButton icon={Redo2} label="Redo" shortcut={shortcutText(['Mod', 'Shift'], 'Z')} isActive={false} disabled={!snapshot.canRedo} onClick={() => session.redo()} />

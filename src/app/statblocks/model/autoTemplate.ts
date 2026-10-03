@@ -77,7 +77,8 @@ function fieldFor(key: FieldKey, value: unknown, shown: Shown): TemplateField {
   return field;
 }
 
-function blockFor(field: TemplateField, nextId: BlockIdSource): TemplateBlock {
+/** The block the auto template shows a field with: a heading over entries and spells, labelled lines for the rest. */
+export function blockFor(field: TemplateField, nextId: BlockIdSource): TemplateBlock {
   switch (field.type) {
     case 'markdown': return createBlock('text', nextId, field.key);
     case 'scores': return createBlock('scores', nextId, field.key);
