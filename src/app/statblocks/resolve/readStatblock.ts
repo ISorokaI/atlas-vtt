@@ -12,9 +12,14 @@ import type { ResolvedStatblock, TemplateLookup } from '../model/resolvedTypes';
 import { isBuiltInTemplateId } from '../model/templateTypes';
 import { resolveStatblock } from './resolveStatblock';
 
-/** The app's template library as the resolver's lookup; the library is made only once a native note names a template. */
+/**
+ * The app's template library as the resolver's lookup, with the draft of an
+ * open template session in place of the saved template, so what shows a
+ * statblock shows template edits live. The library is made only once a
+ * native note names a template.
+ */
 export function libraryTemplates(app: App): TemplateLookup {
-  return { get: (id) => TemplateLibrary.forApp(app).get(id) };
+  return { get: (id) => TemplateLibrary.forApp(app).current(id) };
 }
 
 /** Resolves once the library has read the templates the vault held when it started. */

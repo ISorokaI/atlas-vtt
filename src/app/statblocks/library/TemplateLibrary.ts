@@ -1,8 +1,9 @@
 import { TAbstractFile, TFile, type App, type EventRef, type Events } from 'obsidian';
 import type { LibraryTemplate, TemplateLookup } from '../model/resolvedTypes';
-import { isBuiltInTemplateId, type BuiltInTemplate, type TemplateId } from '../model/templateTypes';
+import { isBuiltInTemplateId, type BuiltInTemplate, type StatblockTemplate, type TemplateId } from '../model/templateTypes';
 import { workSlices } from '../../utils/workSlices';
 import { allBuiltInTemplates } from './builtInTemplates';
+import { TemplateDrafts } from './templateDrafts';
 import {
   TEMPLATE_EXTENSION,
   builtInEntry,
@@ -40,8 +41,8 @@ const isTemplateFile = (file: unknown): file is TFile => file instanceof TFile &
  * anywhere in the vault (§4.3, §8.7). It reads files in slices, follows
  * creates, edits, deletes and renames, and never writes: a file that claims
  * another's id is reported as a duplicate, not given a new one. `get` answers
- * with the file's template as saved; drafts of open template sessions will be
- * layered over it by the session code, not stored here.
+ * with the file's template as saved, `current` with an open session's draft
+ * where there is one, so what renders a statblock shows template edits live.
  *
  * One per app, shared by every view; released when the plugin unloads.
  */
@@ -66,6 +67,7 @@ export class TemplateLibrary implements TemplateLookup {
   private readonly builtInList: readonly LibraryTemplate[];
   private readonly builtIns: ReadonlyMap<TemplateId, LibraryTemplate>;
   private readonly files = new Map<string, TemplateFile>();
+  private readonly drafts = new TemplateDrafts();
   private index: TemplateIndex = indexTemplateFiles([]);
   private snapshot: TemplateLibrarySnapshot | null = null;
   private readonly queue = new Set<string>();
@@ -89,6 +91,30 @@ export class TemplateLibrary implements TemplateLookup {
   get(id: TemplateId): LibraryTemplate | null {
     if (isBuiltInTemplateId(id)) return this.builtIns.get(id) ?? null;
     return this.index.byId.get(id) ?? null;
+  }
+
+  /** `get`, with the template an open session is editing in place of the saved one. */
+  current(id: TemplateId): LibraryTemplate | null {
+    return this.drafts.layer(id, this.get(id));
+  }
+
+  /** A session's draft, or null once it is saved or the session closed; what `current` hands out changes at once. */
+  setDraft(id: TemplateId, draft: StatblockTemplate | null): void {
+    if (this.drafts.set(id, draft)) this.publish();
+  }
+
+  /**
+   * Text Atlas has just written to a template file, taken in without waiting
+   * for the vault's event. A read under way is dropped and the file is read
+   * once more, so a write by someone else right after is not missed.
+   */
+  recordWrite(path: string, text: string): void {
+    if (this.destroyed || !isTemplatePath(path)) return;
+    this.enqueue(path);
+    // A read may have taken the text in already, without committing it yet.
+    if (this.files.get(path)?.text !== text) this.files.set(path, readTemplateFile(path, text));
+    else if (!this.dirty) return;
+    this.commit();
   }
 
   list(): readonly LibraryTemplate[] {
@@ -131,6 +157,7 @@ export class TemplateLibrary implements TemplateLookup {
     this.detachers.length = 0;
     this.listeners.clear();
     this.queue.clear();
+    this.drafts.clear();
   }
 
   private start(): void {
@@ -247,6 +274,10 @@ export class TemplateLibrary implements TemplateLookup {
   private commit(): void {
     this.dirty = false;
     this.index = indexTemplateFiles(this.files.values());
+    this.publish();
+  }
+
+  private publish(): void {
     this.snapshot = null;
     for (const listener of [...this.listeners]) listener();
   }

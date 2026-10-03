@@ -39,7 +39,7 @@ export function headerTemplate({ app, note, paneTemplate, roles, collectionId, a
     name: entry.name,
     roleName: roleNameFor(roles, templateId),
     locked: entry.builtIn || paneTemplate.status === 'newer',
-    edit: edit && collectionId ? () => edit(templateId, collectionId) : undefined,
+    edit: edit && collectionId ? () => edit(templateId, collectionId, note.snapshot.path) : undefined,
     change: choose,
     openFile: entry.path ? () => openTemplateFile(app, entry.path ?? '') : undefined,
   };

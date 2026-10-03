@@ -12,6 +12,10 @@ import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
 import { StatblockPaneView } from './src/app/statblocks/editor/StatblockPaneView';
 import { STATBLOCK_PANE_VIEW_TYPE } from './src/app/statblocks/editor/paneState';
+import { TemplateEditorView } from './src/app/statblocks/editor/TemplateEditorView';
+import { TEMPLATE_EDITOR_VIEW_TYPE } from './src/app/statblocks/editor/templateEditorState';
+import { openTemplateEditor } from './src/app/statblocks/editor/openTemplateEditor';
+import { TEMPLATE_EXTENSION } from './src/app/statblocks/library/templateFiles';
 import { appPaneServices } from './src/app/statblocks/editor/paneServices';
 import { statblockSettingsSections } from './src/app/settings/statblockSettingsSection';
 import { registerNoteWriterFlush } from './src/app/plugin/noteWriterFlush';
@@ -178,7 +182,14 @@ export default class AtlasVTTPlugin extends Plugin {
     // Always registered, so a saved workspace restores its panes; every way to open one checks the switch.
     this.registerView(STATBLOCK_PANE_VIEW_TYPE, (leaf) => new StatblockPaneView(leaf, {
       services: appPaneServices,
-      actions: paneCreationActions(this.app),
+      actions: {
+        ...paneCreationActions(this.app),
+        editTemplate: (templateId, collectionId, notePath) => {
+          void openTemplateEditor(this.app, { templateId, collectionId, previewPath: notePath });
+        },
+      },
     }));
+    this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));
+    this.registerExtensions([TEMPLATE_EXTENSION], TEMPLATE_EDITOR_VIEW_TYPE);
   }
 }

@@ -75,15 +75,15 @@ function useNoteChanges(app: App, path: string | null, onChange: () => void): vo
   }, [app, path, onChange]);
 }
 
-/** Calls `onChange` when the library's entry for `templateId` changes, or its first load ends. */
+/** Calls `onChange` when the library's entry for `templateId` changes (an open session's draft too), or its first load ends. */
 function useTemplateChanges(app: App, templateId: TemplateId | null, onChange: () => void): void {
   useEffect(() => {
     if (templateId === null) return undefined;
     const library = TemplateLibrary.forApp(app);
-    let entry = library.get(templateId);
+    let entry = library.current(templateId);
     let loading = library.isLoading();
     return library.subscribe(() => {
-      const nextEntry = library.get(templateId);
+      const nextEntry = library.current(templateId);
       const nextLoading = library.isLoading();
       if (nextEntry === entry && nextLoading === loading) return;
       entry = nextEntry;

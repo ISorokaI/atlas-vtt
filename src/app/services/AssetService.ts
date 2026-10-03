@@ -647,6 +647,11 @@ export class AssetService {
     return Object.values(this.metadata!.collections);
   }
 
+  /** The collections of the index as loaded, without waiting for it; none before it has loaded. */
+  loadedCollections(): CollectionMetadata[] {
+    return Object.values(this.metadata?.collections ?? {});
+  }
+
   /** The collection new content goes to when none is chosen; it cannot be deleted. */
   getDefaultCollectionId(): string {
     return defaultCollectionIdOf(this.metadata);

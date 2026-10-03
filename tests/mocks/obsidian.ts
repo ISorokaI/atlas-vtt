@@ -71,11 +71,32 @@ export class ItemView extends View {
 
 export class FileView extends ItemView {
   file: TFile | null;
+  allowNoFile = false;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
     this.file = null;
   }
+
+  /** As Obsidian's: the file it shows. */
+  getState(): Record<string, unknown> {
+    return this.file ? { file: this.file.path } : {};
+  }
+
+  /** As Obsidian's: a state naming another file loads it, unloading the one shown. */
+  async setState(state: unknown, _result: unknown): Promise<void> {
+    const path = (state as { file?: unknown } | null)?.file;
+    if (typeof path !== 'string' || path === this.file?.path) return;
+    const file = this.app?.vault?.getAbstractFileByPath?.(path);
+    if (!(file instanceof TFile)) return;
+    if (this.file) await this.onUnloadFile(this.file);
+    this.file = file;
+    await this.onLoadFile(file);
+  }
+
+  async onLoadFile(_file: TFile): Promise<void> {}
+
+  async onUnloadFile(_file: TFile): Promise<void> {}
 }
 
 /**

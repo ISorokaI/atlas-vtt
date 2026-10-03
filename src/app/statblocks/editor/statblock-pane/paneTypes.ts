@@ -27,7 +27,8 @@ export interface StatblockPaneActions {
   /** What the note is now; the view hides Properties only beside a native statblock. */
   reportKind: (kind: PaneNoteKind) => void;
   createStatblock?: ((notePath: string, roleId: string, collectionId: string) => void) | undefined;
-  editTemplate?: ((templateId: string, collectionId: string) => void) | undefined;
+  /** Opens the template editor, previewing the note's statblock. */
+  editTemplate?: ((templateId: string, collectionId: string, notePath: string) => void) | undefined;
   linkToToken?: ((notePath: string, collectionId: string) => void) | undefined;
   addToTemplate?: ((templateId: string, key: string) => void) | undefined;
 }
