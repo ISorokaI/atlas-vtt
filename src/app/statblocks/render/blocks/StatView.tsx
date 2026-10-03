@@ -9,6 +9,7 @@ import type { SheetState } from '../sheetState';
 import { LabelledLine } from '../values/LabelledLine';
 import { shownField } from '../values/shownText';
 import { DisplayText } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 /**
@@ -34,7 +35,7 @@ export function StatView({ block, display }: BlockViewProps<StatBlock>): React.J
 
   return (
     <LabelledLine label={label} look={block.look} className="atlas-sb-stat" hitPoints={hitPoints}>
-      {dice ? <span {...diceLinkProps(dice)}>{value}</span> : value}
+      <ValueSlot block={block}>{dice ? <span {...diceLinkProps(dice)}>{value}</span> : value}</ValueSlot>
     </LabelledLine>
   );
 }

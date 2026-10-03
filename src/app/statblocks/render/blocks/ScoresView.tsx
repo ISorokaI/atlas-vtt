@@ -5,6 +5,7 @@ import { ProblemMarker } from '../values/ProblemMarker';
 import { scoreGroups, scoreSlots, type ScoreSlot } from '../values/scoreSlots';
 import type { ShownText } from '../values/shownText';
 import { StandIn } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 type GridStyle = React.CSSProperties & Record<`--${string}`, number>;
@@ -69,8 +70,7 @@ function ScoreGroup({ slots, columns }: { slots: readonly ScoreSlot[]; columns: 
   );
 }
 
-/** Ability scores and the like: a row of labelled values, or a table of up to `perLine` groups side by side. */
-export function ScoresView({ block, display }: BlockViewProps<ScoresBlock>): React.JSX.Element {
+function ScoresContent({ block, display }: BlockViewProps<ScoresBlock>): React.JSX.Element {
   const { state } = useSheet();
   if (display.state !== 'value') return <StandIn display={display} />;
 
@@ -85,4 +85,9 @@ export function ScoresView({ block, display }: BlockViewProps<ScoresBlock>): Rea
       {scoreGroups(slots, block.perLine).map((group, index) => <ScoreGroup key={index} slots={group} columns={columns} />)}
     </div>
   );
+}
+
+/** Ability scores and the like: a row of labelled values, or a table of up to `perLine` groups side by side. */
+export function ScoresView(props: BlockViewProps<ScoresBlock>): React.JSX.Element {
+  return <ValueSlot block={props.block}><ScoresContent {...props} /></ValueSlot>;
 }

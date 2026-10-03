@@ -1,0 +1,159 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
+import { SettingsService } from '../../../services/SettingsService';
+import { StatblockSkeleton } from '../../../react/components/statblock/StatblockSkeleton';
+import { useTemplateLibrary } from '../../library/useTemplateLibrary';
+import type { TemplateId } from '../../model/templateTypes';
+import { TEMPLATE_KEY } from '../../notes/statblockSource';
+import { toFieldValue } from '../../values/fieldValueOf';
+import { setStatblockPaneSettings, statblockPaneSettings } from '../paneSettings';
+import { ChangeTemplateDialog } from './ChangeTemplateDialog';
+import { MorePropertiesTray } from './MorePropertiesTray';
+import { PaneCanvas } from './PaneCanvas';
+import { PaneHeader } from './PaneHeader';
+import { headerTemplate } from './paneHeaderTemplate';
+import {
+  FantasyState, NewerTemplateBar, NoStatblockState, NoteDeletedBar, PartnerClosedBar, TemplateMissingBar, UnreadableState, WriteProblemBar,
+} from './PaneStates';
+import type { StatblockPaneProps } from './paneTypes';
+import { usePaneCollection } from './usePaneCollection';
+import { usePaneNote } from './usePaneNote';
+import { usePaneTemplate } from './usePaneTemplate';
+import './statblock-pane.scss';
+
+/**
+ * The statblock pane (§7.2): a header, then the note's statblock as the
+ * runtime card with its values editable in place, the first-visit hint and
+ * the tray of the note's other properties; or, for every other kind of note,
+ * the state the plan's edge-state table names.
+ */
+export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
+  const { app, services, notePath, paired, actions } = props;
+  const note = usePaneNote(app, services, notePath);
+  const collection = usePaneCollection(app, notePath, props.collectionId, actions.changeCollection);
+  const paneTemplate = usePaneTemplate(app, note.templateId, note.record);
+  const library = useTemplateLibrary(app);
+  const settings = useAtlasSettings(SettingsService.forApp(app));
+  const [choosing, setChoosing] = useState(false);
+  const [writeProblem, setWriteProblem] = useState<string | null>(null);
+  // The view's announcements (undo, redo) and the pane's own (a deleted entry), the latest one said.
+  const [said, setSaid] = useState(props.announcement);
+  useEffect(() => setSaid(props.announcement), [props.announcement]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const templateRef = useRef<HTMLButtonElement>(null);
+  const trayRef = useRef<HTMLButtonElement>(null);
+  const collectionId = collection.context?.collectionId ?? props.collectionId;
+
+  useEffect(() => actions.reportKind(note.kind), [actions, note.kind]);
+  useEffect(() => setWriteProblem(null), [notePath]);
+
+  const applyTemplate = useCallback((templateId: TemplateId): void => {
+    setChoosing(false);
+    const patch = { op: 'set' as const, path: [TEMPLATE_KEY], base: toFieldValue(note.record[TEMPLATE_KEY]), next: templateId };
+    void services.writer.write(notePath, [patch]).then((outcome) => {
+      setWriteProblem(outcome.conflicts.length ? 'the note\'s template changed meanwhile.' : outcome.problem);
+    });
+  }, [services, notePath, note.record]);
+
+  const onExit = useCallback((step: 1 | -1): void => {
+    (step === 1 ? trayRef.current : templateRef.current)?.focus();
+  }, []);
+  const onCommitted = useCallback((): void => {
+    if (settings && !statblockPaneSettings(settings).hintDismissed) setStatblockPaneSettings(settings, { hintDismissed: true });
+  }, [settings]);
+
+  const writable = paired && note.kind === 'atlas' && paneTemplate.status !== 'loading';
+  const header = headerTemplate({
+    note, paneTemplate, roles: collection.roles, collectionId, actions, app,
+    choose: paired ? () => setChoosing(true) : undefined,
+  });
+
+  const body = ((): React.ReactNode => {
+    switch (note.kind) {
+      case 'loading': return <StatblockSkeleton className="atlas-sb-pane-card" />;
+      case 'unreadable': return <UnreadableState line={note.snapshot.problem?.line ?? null} onOpenNote={actions.openNote} />;
+      case 'fantasy': return <FantasyState app={app} notePath={notePath} onOpenNote={actions.openNote} />;
+      case 'none': {
+        const create = actions.createStatblock;
+        return <NoStatblockState roles={collection.roles} onCreate={create && collectionId ? (roleId) => create(notePath, roleId, collectionId) : undefined} />;
+      }
+      case 'atlas': case 'deleted': break;
+    }
+    if (paneTemplate.status === 'loading') return <StatblockSkeleton className="atlas-sb-pane-card" />;
+    const bars = (
+      <>
+        {note.kind === 'deleted' && <NoteDeletedBar />}
+        {note.kind === 'atlas' && !paired && <PartnerClosedBar onOpenNote={actions.openNote} />}
+        {paneTemplate.status === 'missing' && note.templateId && <TemplateMissingBar templateId={note.templateId} onChoose={paired ? () => setChoosing(true) : undefined} />}
+        {paneTemplate.status === 'newer' && <NewerTemplateBar />}
+        {writeProblem && <WriteProblemBar problem={writeProblem} />}
+      </>
+    );
+    const hint = writable && settings && !statblockPaneSettings(settings).hintDismissed;
+    return (
+      <>
+        {hint && <p className="atlas-sb-pane-hint-line">Click a value to change it. Tab moves to the next.</p>}
+        <PaneCanvas
+          // One editing session per note: what was typed for a note is written to that note, never the next one.
+          key={notePath}
+          app={app}
+          services={services}
+          notePath={notePath}
+          template={paneTemplate.template}
+          templateName={paneTemplate.name}
+          record={note.record}
+          writable={writable}
+          pendingCommit={props.pendingCommit}
+          header={bars}
+          focusRequest={props.focusRequest}
+          onExit={onExit}
+          onCommitted={onCommitted}
+          onWriteProblem={setWriteProblem}
+          announce={setSaid}
+        >
+          {writable && (
+            <MorePropertiesTray
+              ref={trayRef}
+              record={note.record}
+              template={paneTemplate.template}
+              onAddToTemplate={actions.addToTemplate && note.templateId ? addTo(actions.addToTemplate, note.templateId) : undefined}
+            />
+          )}
+        </PaneCanvas>
+      </>
+    );
+  })();
+
+  return (
+    <div ref={rootRef} className="atlas-sb-pane">
+      <PaneHeader
+        ref={templateRef}
+        collection={collection.context}
+        onCollectionChange={actions.changeCollection}
+        template={header}
+        showProperties={paired && note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
+        openInNewWindow={actions.openInNewWindow}
+        linkToToken={actions.linkToToken && collectionId ? () => actions.linkToToken?.(notePath, collectionId) : undefined}
+      />
+      <div className="atlas-sb-pane-body">{body}</div>
+      <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
+      {choosing && rootRef.current && library && (
+        <ChangeTemplateDialog
+          app={app}
+          anchor={rootRef.current}
+          notePath={notePath}
+          record={note.record}
+          currentId={note.templateId}
+          templates={library.templates}
+          roles={collection.roles}
+          onApply={applyTemplate}
+          onClose={() => setChoosing(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function addTo(add: (templateId: TemplateId, key: string) => void, templateId: TemplateId): (key: string) => void {
+  return (key) => add(templateId, key);
+}

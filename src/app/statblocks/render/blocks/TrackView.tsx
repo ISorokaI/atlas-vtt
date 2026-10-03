@@ -7,6 +7,7 @@ import { useSheet } from '../sheetContext';
 import type { SheetState } from '../sheetState';
 import { LabelledLine } from '../values/LabelledLine';
 import { StandIn } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 /** Above this many, a box track would fill the card: it shows as a gauge instead. */
@@ -75,11 +76,13 @@ export function TrackView({ block, display }: BlockViewProps<TrackBlock>): React
   const boxes = block.look === 'boxes' && (track?.value.max ?? 0) <= MAX_TRACK_BOXES;
   return (
     <LabelledLine label={label} className="atlas-sb-track" labelId={labelId}>
-      {track ? (
-        <span className="atlas-sb-track-value" style={style}>
-          {boxes ? <Boxes value={track.value} labelId={labelId} /> : <Gauge value={track.value} labelId={labelId} />}
-        </span>
-      ) : display.state !== 'value' && <StandIn display={display} />}
+      <ValueSlot block={block}>
+        {track ? (
+          <span className="atlas-sb-track-value" style={style}>
+            {boxes ? <Boxes value={track.value} labelId={labelId} /> : <Gauge value={track.value} labelId={labelId} />}
+          </span>
+        ) : display.state !== 'value' && <StandIn display={display} />}
+      </ValueSlot>
     </LabelledLine>
   );
 }

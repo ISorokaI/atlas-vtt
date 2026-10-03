@@ -9,6 +9,7 @@ import { TokenEntity } from '../../types';
 import { App, TFile, Component, WorkspaceLeaf } from 'obsidian';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../../utils/embeddedLeafFocus';
 import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
+import { StatblockFeedMenu } from '../../statblocks/editor/create/StatblockFeedMenu';
 import LinkedNotePicker from './LinkedNotePicker';
 import { StatblockFeeds } from './dm-screen/StatblockFeeds';
 import { Button } from '../../packages/components/primitives/button';
@@ -465,24 +466,25 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
                 {statblocks.size > 0 && (
                   <StatblockFeeds>
                     {Array.from(statblocks.entries(), ([path, statblock]) => (
-                      <LinkedStatblock
-                        key={path}
-                        app={app}
-                        path={path}
-                        variant="feed"
-                        tokens={statblock.tokens.map(toTokenVitals)}
-                        tokenActions={{
-                          definitions,
-                          onUpdateToken: (id, updates) => updateToken(id, updates),
-                          onHoverToken: (id) => addTokenHighlight(view, id, { highlightDuration: 800 }),
-                          onLocateToken: (id) => {
-                            const token = tokens[id];
-                            if (!token) return;
-                            zoomToTokenWithHighlight(view, id, { x: token.x, y: token.y });
-                            handleClose();
-                          },
-                        }}
-                      />
+                      <StatblockFeedMenu key={path} app={app} path={path} onOpened={handleClose}>
+                        <LinkedStatblock
+                          app={app}
+                          path={path}
+                          variant="feed"
+                          tokens={statblock.tokens.map(toTokenVitals)}
+                          tokenActions={{
+                            definitions,
+                            onUpdateToken: (id, updates) => updateToken(id, updates),
+                            onHoverToken: (id) => addTokenHighlight(view, id, { highlightDuration: 800 }),
+                            onLocateToken: (id) => {
+                              const token = tokens[id];
+                              if (!token) return;
+                              zoomToTokenWithHighlight(view, id, { x: token.x, y: token.y });
+                              handleClose();
+                            },
+                          }}
+                        />
+                      </StatblockFeedMenu>
                     ))}
                   </StatblockFeeds>
                 )}

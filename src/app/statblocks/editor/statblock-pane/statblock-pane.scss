@@ -1,0 +1,172 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The statblock pane (§7.2, §7.10)
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported by StatblockPane.tsx, so not inside the `.atlas-vtt-plugin` scope of
+// styles/main.scss: the rules take that scope themselves. The pane's view
+// element carries `.atlas-vtt-plugin` and `.atlas-statblock-pane-view`.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+@use 'pane-inputs';
+@use 'pane-lists';
+@use 'pane-tray';
+@use 'change-template';
+
+// The header's end controls are capsules: the bar is shorter than 48 px.
+$header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));
+
+.atlas-vtt-plugin.atlas-statblock-pane-view {
+  padding: 0;
+  overflow-y: auto;
+  background: var(--background-primary);
+  @include atlas-scrollbar;
+}
+
+.atlas-vtt-plugin {
+  // Padding equals the gap between the header, the hint, the card and the tray.
+  .atlas-sb-pane {
+    @include atlas-flex-col($spacing-l);
+    align-items: stretch;
+    padding: $spacing-l;
+    min-height: 100%;
+  }
+
+  .atlas-sb-pane-body {
+    @include atlas-flex-col($spacing-l);
+  }
+
+  // ── Header: a capsule bar ───────────────────────────────────────────────
+  .atlas-sb-pane-header {
+    @include atlas-flex-row($spacing-s);
+    @include atlas-panel-radius($radius-2xl, $border-width-s);
+    padding: $spacing-s;
+    background: var(--background-secondary);
+    border: $border-width-s solid var(--background-modifier-border);
+
+    > :first-child,
+    > :first-child .btn {
+      border-start-start-radius: $header-control-radius;
+      border-end-start-radius: $header-control-radius;
+    }
+
+    > :last-child .btn {
+      border-start-end-radius: $header-control-radius;
+      border-end-end-radius: $header-control-radius;
+    }
+  }
+
+  .atlas-sb-pane-header__end {
+    display: flex;
+    margin-inline-start: auto;
+  }
+
+  .atlas-sb-pane-header__more.btn--icon {
+    width: var(--input-height);
+    height: var(--input-height);
+    @include atlas-corner-shape;
+  }
+
+  .atlas-sb-pane-menu-button {
+    @include atlas-flex-row($spacing-xs);
+    @include atlas-corner-shape;
+    min-width: 0;
+    max-width: 100%;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+  }
+
+  .atlas-sb-pane-menu-button__text {
+    @include atlas-flex-row($spacing-xs);
+    @include atlas-truncate;
+    min-width: 0;
+  }
+
+  .atlas-sb-pane-template__lock {
+    color: var(--text-faint);
+  }
+
+  // ── Card ────────────────────────────────────────────────────────────────
+  // Centred; a one-column template keeps the DM screen's widest feed.
+  .atlas-sb-pane-card {
+    width: 100%;
+    margin-inline: auto;
+
+    &[data-columns='1'] {
+      max-width: $statblock-feed-max-width;
+    }
+  }
+
+  .atlas-sb-pane-hint-line {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+
+  // A line about the statblock above its blocks: one step down the radius scale.
+  .atlas-sb-pane-bar {
+    @include atlas-flex-row($spacing-s);
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 0 0 $spacing-l;
+    padding: $spacing-s;
+    border-radius: $radius-l;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+
+    code {
+      font-size: inherit;
+    }
+  }
+
+  .atlas-sb-pane-bar__text {
+    min-width: 0;
+    text-wrap: pretty;
+  }
+
+  // ── States ──────────────────────────────────────────────────────────────
+  .atlas-sb-pane-state {
+    @include atlas-flex-col($spacing-l);
+  }
+
+  // The card a note without a statblock would have: dashed, with blanks.
+  .atlas-sb-pane-ghost {
+    @include atlas-flex-col($spacing-m);
+    align-items: center;
+    padding: $spacing-l;
+    border: $border-width-s dashed var(--background-modifier-border);
+    border-radius: $radius-xl;
+  }
+
+  .atlas-sb-pane-ghost__line {
+    align-self: stretch;
+    height: $spacing-s;
+    border-radius: $radius-full;
+    background: var(--background-modifier-hover);
+
+    &--title {
+      height: $spacing-m;
+      width: 60%;
+    }
+
+    &--short {
+      width: 40%;
+    }
+  }
+
+  .atlas-sb-pane-ghost__text {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+
+  .atlas-sb-pane-live {
+    @include atlas-visually-hidden;
+  }
+}

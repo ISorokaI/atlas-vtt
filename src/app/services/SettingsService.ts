@@ -54,6 +54,10 @@ export interface AtlasSettings {
   systemPresets: unknown[];
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
+  /** New statblock notes get an `atlas-statblock` fence that shows the statblock in the note (D14). */
+  showStatblocksInNotes: boolean;
+  /** The statblock pane: opening pairs from the map in a popout, and whether its first-visit hint was dismissed. */
+  statblockPane: { openFromMapInNewWindow: boolean; hintDismissed: boolean };
   localPlayerView: {
     // UI element visibility toggles
     showToolbar: boolean;
@@ -83,6 +87,8 @@ const DEFAULT_SETTINGS: AtlasSettings = {
   diceFont: DEFAULT_DICE_LOOK.font,
   systemPresets: [],
   experimental: {},
+  showStatblocksInNotes: true,
+  statblockPane: { openFromMapInNewWindow: false, hintDismissed: false },
   localPlayerView: {
     // UI element visibility defaults
     showToolbar: false, // Hide toolbar by default in player view

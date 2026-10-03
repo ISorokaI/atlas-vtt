@@ -6,6 +6,7 @@ import { EntryLine } from '../shared/EntryLine';
 import { useSheet } from '../sheetContext';
 import { SheetHeading } from '../values/SheetHeading';
 import { StandIn, ValueText } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 /** An entry's labelled parts before its text: "Range 30 ft. Cost 2". */
@@ -38,19 +39,21 @@ export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): R
           <ValueText shown={{ text: intro, problems: [] }} />
         </div>
       )}
-      {display.state !== 'value' && <StandIn display={display} />}
-      {entries.map((entry, index) => (
-        <EntryLine
-          key={`${entryName(entry, shape) ?? 'entry'}-${index}`}
-          name={entryName(entry, shape)}
-          text={entryText(entry, shape) ?? ''}
-          app={app}
-          sourcePath={sourcePath}
-          nameStyle={block.nameStyle ?? 'run-in'}
-        >
-          <EntryExtras entry={entry} shape={shape} />
-        </EntryLine>
-      ))}
+      <ValueSlot block={block}>
+        {display.state !== 'value' && <StandIn display={display} />}
+        {entries.map((entry, index) => (
+          <EntryLine
+            key={`${entryName(entry, shape) ?? 'entry'}-${index}`}
+            name={entryName(entry, shape)}
+            text={entryText(entry, shape) ?? ''}
+            app={app}
+            sourcePath={sourcePath}
+            nameStyle={block.nameStyle ?? 'run-in'}
+          >
+            <EntryExtras entry={entry} shape={shape} />
+          </EntryLine>
+        ))}
+      </ValueSlot>
     </div>
   );
 }

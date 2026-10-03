@@ -7,7 +7,10 @@ vi.mock('../../../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWit
 vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../../../src/app/react/components/LinkedNotePicker', () => ({ default: () => null }));
 vi.mock('../../../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
-vi.mock('../../../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app, view: {} }) }));
+vi.mock('../../../../src/app/react/root/AtlasUIContext', async () => ({
+  useAtlasUI: () => ({ app, view: {} }),
+  AtlasUIContext: (await import('react')).createContext(null),
+}));
 vi.mock('../../../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (value: typeof state) => unknown) => selector(state),
 }));

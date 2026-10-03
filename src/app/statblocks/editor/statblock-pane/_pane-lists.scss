@@ -1,0 +1,90 @@
+// Lists edited in place (§7.6): chips for a list field, and an entries
+// field's rows, name over text, with a menu each.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+.atlas-vtt-plugin {
+  // ── Chips ───────────────────────────────────────────────────────────────
+  .atlas-sb-pane-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  .atlas-sb-pane-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    height: 20px;
+    padding: 0 0 0 $spacing-s;
+    border-radius: $radius-full;
+    background: var(--background-modifier-hover);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-sb-pane-chip__remove {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: $radius-full;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    cursor: pointer;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+
+    &:hover {
+      background: var(--background-modifier-active-hover);
+      color: var(--text-normal);
+    }
+  }
+
+  // ── Entries ─────────────────────────────────────────────────────────────
+  .atlas-sb-pane-entries {
+    @include atlas-flex-col($spacing-s);
+  }
+
+  .atlas-sb-pane-entry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: $spacing-s;
+    align-items: start;
+  }
+
+  input.atlas-sb-pane-input.atlas-sb-pane-entry__name {
+    grid-column: 1;
+    font-weight: $font-weight-semibold;
+    font-style: italic;
+  }
+
+  .atlas-sb-pane-entry__text {
+    grid-column: 1;
+  }
+
+  .atlas-sb-pane-entry__menu.btn--icon {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: $button-height-s;
+    height: $button-height-s;
+  }
+
+  .atlas-sb-pane-entries__add {
+    align-self: flex-start;
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+}

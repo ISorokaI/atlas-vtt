@@ -14,11 +14,7 @@ import { syncStatblockVitals, type TokenVitals } from '../../services/statblockV
 import { StatblockRenderer } from './statblock/StatblockRenderer';
 import { useStatblockDiceRolling } from '../../statblocks/render/shared/useStatblockDiceRolling';
 import { useTokenPortrait } from '../../statblocks/render/shared/tokenPortrait';
-import { TokenPickerModal } from '../../packages/components/token-picker/TokenPickerModal';
-import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import { StatblockTokenResources, type StatblockTokenActions } from './statblock/StatblockTokenResources';
-import type { StatblockEditApi } from '../../statblocks/render/shared/statblockEditContext';
-import { isEditableNote, writeStatblockValue } from '../../services/statblockEditing';
 import { useBestiaryRevision } from '../hooks/useBestiaryRevision';
 import { StatblockSkeleton } from './statblock/StatblockSkeleton';
 
@@ -31,8 +27,6 @@ interface FantasyStatblockProps {
   app: App;
   /** Tokens whose resources drive the statblock's vitals — one block per token */
   tokens?: TokenVitals[];
-  /** Allows values to be edited in place, writing back to the note's frontmatter */
-  editable?: boolean;
   className?: string;
   tokenActions?: StatblockTokenActions;
 }
@@ -50,7 +44,6 @@ export function FantasyStatblock({
   noteContent,
   app,
   tokens = [],
-  editable = false,
   className,
   tokenActions,
 }: FantasyStatblockProps): React.JSX.Element {
@@ -133,37 +126,6 @@ export function FantasyStatblock({
     [creature, tokens.length, portrait],
   );
 
-  const commit = useCallback(
-    (path: Array<string | number>, value: string): void => {
-      void writeStatblockValue(app, notePath, path, value);
-    },
-    [app, notePath],
-  );
-
-  const edit = useMemo(
-    (): StatblockEditApi => ({
-      // Edits write to the note's frontmatter, so they only apply to creatures
-      // parsed from it. Fence-defined creatures live in the code block instead.
-      editable: editable && Boolean(bestiaryCreature) && isEditableNote(app, notePath),
-      commit,
-    }),
-    [editable, bestiaryCreature, app, notePath, commit],
-  );
-
-  /**
-   * Assigning a token also becomes the statblock's image: the link service
-   * writes the chosen token's art into the note's `image` frontmatter, so the
-   * pair stays in lockstep.
-   */
-  const assignToken = useCallback((): void => {
-    const file = app.vault.getAbstractFileByPath(notePath);
-    if (!(file instanceof TFile)) return;
-
-    new TokenPickerModal(app, file, (tokenPath: string) => {
-      void TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(tokenPath, notePath);
-    }).open();
-  }, [app, notePath]);
-
   // Click-to-roll dice, applied to whatever the renderer produced.
   const diceRef = useStatblockDiceRolling({
     app,
@@ -217,13 +179,11 @@ export function FantasyStatblock({
         resolveLayout={(id) => resolveLayout(app, id)}
         app={app}
         sourcePath={notePath}
-        edit={edit}
         portrait={portrait}
         replaceVitals={Boolean(tokenActions)}
         footer={tokenActions && tokens.length > 0 ? (
           <StatblockTokenResources monster={monster} layout={layout} tokens={tokens} {...tokenActions} />
         ) : undefined}
-        {...(editable ? { onAssignToken: assignToken } : {})}
       />
     </div>
   );

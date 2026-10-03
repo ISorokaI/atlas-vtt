@@ -42,12 +42,22 @@ export class View {
   leaf: WorkspaceLeaf;
   app: any;
   containerEl: HTMLElement;
+  scope: Scope | null = null;
+  navigation = false;
 
   constructor(leaf: WorkspaceLeaf) {
     this.leaf = leaf;
     this.app = (leaf as any)?.app ?? (leaf as any)?.view?.app ?? {};
     this.containerEl = document.createElement('div');
   }
+
+  getState(): Record<string, unknown> {
+    return {};
+  }
+
+  async setState(_state: unknown, _result: unknown): Promise<void> {}
+
+  setEphemeralState(_state: unknown): void {}
 }
 
 export class ItemView extends View {

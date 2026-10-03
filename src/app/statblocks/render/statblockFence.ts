@@ -1,10 +1,13 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MarkdownRenderChild, type App, type MarkdownPostProcessorContext, type Plugin } from 'obsidian';
-import { LinkedStatblock } from './LinkedStatblock';
+import { STATBLOCK_FENCE_LANGUAGE } from '../notes/statblockSource';
+import { FenceStatblock } from './FenceStatblock';
 
-/** The language of the fence that shows a native note's own statblock inside the note (D14). */
-export const STATBLOCK_FENCE_LANGUAGE = 'atlas-statblock';
+export { STATBLOCK_FENCE_LANGUAGE };
+
+/** Opens the statblock editor for a note; the plugin hands it in, so the fence never loads the editor itself. */
+export type FenceEditAction = (path: string) => void;
 
 /**
  * The statblock of the note a fence stands in, drawn while the fence is on
@@ -14,7 +17,12 @@ export const STATBLOCK_FENCE_LANGUAGE = 'atlas-statblock';
 export class StatblockFenceChild extends MarkdownRenderChild {
   private root: Root | null = null;
 
-  constructor(containerEl: HTMLElement, private readonly app: App, private notePath: string) {
+  constructor(
+    containerEl: HTMLElement,
+    private readonly app: App,
+    private notePath: string,
+    private readonly onEdit?: FenceEditAction,
+  ) {
     super(containerEl);
   }
 
@@ -32,7 +40,7 @@ export class StatblockFenceChild extends MarkdownRenderChild {
   }
 
   private draw(): void {
-    this.root?.render(React.createElement(LinkedStatblock, { app: this.app, path: this.notePath, variant: 'full' }));
+    this.root?.render(React.createElement(FenceStatblock, { app: this.app, path: this.notePath, onEdit: this.onEdit }));
   }
 
   onunload(): void {
@@ -43,14 +51,14 @@ export class StatblockFenceChild extends MarkdownRenderChild {
   }
 }
 
-/** Renders an `atlas-statblock` fence: the statblock of the note it is in, read-only. */
-export function statblockFenceProcessor(app: App): (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void {
+/** Renders an `atlas-statblock` fence: the statblock of the note it is in, read-only, with Edit statblock where `onEdit` is given. */
+export function statblockFenceProcessor(app: App, onEdit?: FenceEditAction): (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void {
   return (_source, el, ctx) => {
-    ctx.addChild(new StatblockFenceChild(el, app, ctx.sourcePath));
+    ctx.addChild(new StatblockFenceChild(el, app, ctx.sourcePath, onEdit));
   };
 }
 
 /** Registers the note fence; Obsidian removes the processor when the plugin unloads. */
-export function registerStatblockFence(plugin: Pick<Plugin, 'app' | 'registerMarkdownCodeBlockProcessor'>): void {
-  plugin.registerMarkdownCodeBlockProcessor(STATBLOCK_FENCE_LANGUAGE, statblockFenceProcessor(plugin.app));
+export function registerStatblockFence(plugin: Pick<Plugin, 'app' | 'registerMarkdownCodeBlockProcessor'>, onEdit?: FenceEditAction): void {
+  plugin.registerMarkdownCodeBlockProcessor(STATBLOCK_FENCE_LANGUAGE, statblockFenceProcessor(plugin.app, onEdit));
 }

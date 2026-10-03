@@ -10,6 +10,14 @@ import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
 import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
+import { StatblockPaneView } from './src/app/statblocks/editor/StatblockPaneView';
+import { STATBLOCK_PANE_VIEW_TYPE } from './src/app/statblocks/editor/paneState';
+import { appPaneServices } from './src/app/statblocks/editor/paneServices';
+import { statblockSettingsSections } from './src/app/settings/statblockSettingsSection';
+import { registerNoteWriterFlush } from './src/app/plugin/noteWriterFlush';
+import { editInStatblockPane } from './src/app/statblocks/editor/create/entryPoints';
+import { paneCreationActions } from './src/app/statblocks/editor/create/paneCreation';
+import { registerStatblockFileMenu } from './src/app/statblocks/editor/create/statblockCommands';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
 import { GlobalAssetManagerService } from './src/app/services/GlobalAssetManagerService';
@@ -84,7 +92,9 @@ export default class AtlasVTTPlugin extends Plugin {
     // before the slower startup path finishes.
     this.registerAtlasViews();
     // Before the first await, so notes restored at startup draw their statblock fence.
-    registerStatblockFence(this);
+    registerStatblockFence(this, (path) => { editInStatblockPane(this.app, path, { collectionId: null, from: 'note' }); });
+    // Statblock edits reach their notes before a window closes or Obsidian quits.
+    registerNoteWriterFlush(this);
 
     await storageReady;
     await this.settingsService.initialize();
@@ -103,6 +113,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      ...statblockSettingsSections(this.settingsService),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version),
@@ -116,6 +127,7 @@ export default class AtlasVTTPlugin extends Plugin {
       imageDisplay: this.imageDisplayService,
       assetManager: this.globalAssetManager,
     });
+    registerStatblockFileMenu(this);
 
     this.app.workspace.onLayoutReady(() => {
       registerColorSwatchIcons();
@@ -163,5 +175,10 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(PLAYER_VIEW_TYPE, (leaf) => new PlayerView(leaf, this));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     registerLootQueryView(this);
+    // Always registered, so a saved workspace restores its panes; every way to open one checks the switch.
+    this.registerView(STATBLOCK_PANE_VIEW_TYPE, (leaf) => new StatblockPaneView(leaf, {
+      services: appPaneServices,
+      actions: paneCreationActions(this.app),
+    }));
   }
 }

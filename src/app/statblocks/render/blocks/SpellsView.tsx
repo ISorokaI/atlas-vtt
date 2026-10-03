@@ -7,6 +7,7 @@ import { StatblockMarkdown } from '../shared/StatblockMarkdown';
 import { useSheet } from '../sheetContext';
 import { SheetHeading } from '../values/SheetHeading';
 import { StandIn } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 /** A spells value as Fantasy Statblocks writes it: a list, or a record of level lines, or one line. */
@@ -28,22 +29,24 @@ export function SpellsView({ block, display }: BlockViewProps<SpellsBlock>): Rea
   return (
     <div className="atlas-sb-spells-block">
       {block.heading?.trim() && <SheetHeading>{block.heading}</SheetHeading>}
-      {display.state !== 'value' && <StandIn display={display} />}
-      {groups.map((group, groupIndex) => (
-        <div key={`${group.header}-${groupIndex}`} className="atlas-sb-spell-group">
-          <div className="atlas-sb-spell-header">
-            <StatblockMarkdown text={group.header} app={app} sourcePath={sourcePath} />
+      <ValueSlot block={block}>
+        {display.state !== 'value' && <StandIn display={display} />}
+        {groups.map((group, groupIndex) => (
+          <div key={`${group.header}-${groupIndex}`} className="atlas-sb-spell-group">
+            <div className="atlas-sb-spell-header">
+              <StatblockMarkdown text={group.header} app={app} sourcePath={sourcePath} />
+            </div>
+            <ul className="atlas-sb-spell-list">
+              {group.spells.map((spell, index) => (
+                <li key={`${spell.level ?? ''}-${index}`}>
+                  {spell.level && <span className="atlas-sb-spell-level">{spell.level}: </span>}
+                  <StatblockMarkdown text={spell.spells} app={app} sourcePath={sourcePath} />
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="atlas-sb-spell-list">
-            {group.spells.map((spell, index) => (
-              <li key={`${spell.level ?? ''}-${index}`}>
-                {spell.level && <span className="atlas-sb-spell-level">{spell.level}: </span>}
-                <StatblockMarkdown text={spell.spells} app={app} sourcePath={sourcePath} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        ))}
+      </ValueSlot>
     </div>
   );
 }

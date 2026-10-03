@@ -12,6 +12,8 @@ import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMean
 import { readStatblock } from '../statblocks/resolve/readStatblock';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
+import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
+import type { NotePatch } from '../statblocks/notes/patchTypes';
 import type { BaseToken, Character } from '../types';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 
@@ -295,7 +297,8 @@ export class TokenStatblockLinkService extends EventEmitter {
   }
 
   /**
-   * Writes the token image into the statblock's frontmatter.
+   * Writes the token image into the statblock's frontmatter, through the note's
+   * open editor when it has one, so unsaved typing there is kept.
    *
    * Fantasy Statblocks renders the `image` field, so that is the source of
    * truth. The legacy `token-image` field (from the removed in-house statblock
@@ -305,23 +308,21 @@ export class TokenStatblockLinkService extends EventEmitter {
    * names the token being unlinked.
    */
   private async updateStatblockImage(statblockPath: string, tokenImagePath: string, linked = true): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(statblockPath);
-    if (!(file instanceof TFile)) return;
-
-    try {
-      await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
-        if (linked) {
-          frontmatter.image = tokenImagePath;
-        } else {
-          delete frontmatter.image;
-          delete frontmatter['token-image'];
-          if (typeof frontmatter.token === 'string' && this.arePathsEquivalent(frontmatter.token, tokenImagePath)) delete frontmatter.token;
-        }
+    if (!this.app.vault.getFileByPath(statblockPath)) return;
+    const outcome = await NoteFieldWriter.forApp(this.app).patchNow(statblockPath, (frontmatter): NotePatch[] => {
+      if (linked) return [{ op: 'set', path: ['image'], base: frontmatter?.image, next: tokenImagePath }];
+      const cleared = (['image', 'token-image'] as const).flatMap((key): NotePatch[] => {
+        const value = frontmatter?.[key];
+        return value === undefined ? [] : [{ op: 'delete', path: [key], base: value }];
       });
-    } catch (error) {
-      console.error('[TokenStatblockLinkService] Failed to write statblock image:', error);
-    }
+      const token = frontmatter?.token;
+      return typeof token === 'string' && this.arePathsEquivalent(token, tokenImagePath)
+        ? [...cleared, { op: 'delete', path: ['token'], base: token }]
+        : cleared;
+    });
+    if (outcome.problem) console.error(`[TokenStatblockLinkService] Could not write the image of ${statblockPath}: ${outcome.problem}`);
   }
+
   /**
    * Updates all spawned tokens on all maps that use the given image.
    */

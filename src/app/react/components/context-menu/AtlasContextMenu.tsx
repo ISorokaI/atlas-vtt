@@ -23,6 +23,8 @@ export type ContextMenuEntry =
     keepOpen?: boolean;
     /** − value + controls after the label, also driven by the + and - keys while the item is highlighted. */
     stepper?: MenuStepper;
+    /** Muted text at the row's end, e.g. the template a statblock role starts from. */
+    hint?: string;
   }
   | {
     type: 'submenu';
@@ -126,8 +128,9 @@ function ItemContent({ entry }: { entry: ContextMenuItemEntry }): React.ReactEle
           <span className="atlas-ctx-item__label">{entry.label}</span>
         </span>
       ) : entry.label}
-      {(entry.stepper || entry.checked !== undefined) && (
+      {(entry.hint || entry.stepper || entry.checked !== undefined) && (
         <span className="atlas-ctx-item__trailing">
+          {entry.hint && <span className="atlas-ctx-item__hint">{entry.hint}</span>}
           {entry.stepper && <Stepper stepper={entry.stepper} />}
           {entry.checked !== undefined && (
             <DropdownMenu.ItemIndicator forceMount className="atlas-ctx-item__check">

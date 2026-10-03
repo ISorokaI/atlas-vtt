@@ -1,0 +1,36 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The note leaf of a statblock pair (D7, D14)
+// ═══════════════════════════════════════════════════════════════════════════
+// While a note shows beside its statblock pane, `pairProperties.ts` marks the
+// note's leaf with `data-atlas-statblock-pair`; the pane's tray edits what the
+// Properties would show. Not scoped under `.atlas-vtt-plugin`: the leaf is the
+// user's note, and this attribute is the only mark Atlas sets on it.
+//
+// Properties hide through Obsidian's own variables: its rules
+// (`.markdown-source-view.is-live-preview.show-properties .metadata-container`
+// and the reading view's) out-rank a plain `display: none`, and keep showing
+// the "invalid properties" message (`.mod-error`) of a note whose YAML is
+// broken. If Obsidian renames the variables, Properties simply show again.
+
+@use '../../../../styles/tokens' as *;
+
+.workspace-leaf[data-atlas-statblock-pair] {
+  --metadata-display-editing: none;
+  --metadata-display-reading: none;
+}
+
+// The note's `atlas-statblock` fence would draw the statblock a second time
+// beside the pane: it shrinks to one line. Obsidian styles the fence's element
+// only through `.block-language-*`, below this rule's specificity.
+.workspace-leaf[data-atlas-statblock-pair] .atlas-statblock-fence {
+  > * {
+    display: none;
+  }
+
+  &::before {
+    content: 'Shown beside';
+    display: block;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+}

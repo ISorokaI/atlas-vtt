@@ -4,6 +4,7 @@ import { valueText } from '../../values/valueText';
 import { useSheet } from '../sheetContext';
 import { SheetHeading } from '../values/SheetHeading';
 import { StandIn, ValueText } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 /** Paragraphs of Markdown with dice links: a field's, or the template's own text. */
@@ -15,7 +16,7 @@ export function TextView({ block, display }: BlockViewProps<TextBlock>): React.J
     <>
       {block.heading?.trim() && <SheetHeading>{block.heading}</SheetHeading>}
       <div className="atlas-sb-prose">
-        {display.state === 'value' ? <ValueText shown={{ text, problems: [] }} /> : <StandIn display={display} />}
+        <ValueSlot block={block}>{display.state === 'value' ? <ValueText shown={{ text, problems: [] }} /> : <StandIn display={display} />}</ValueSlot>
       </div>
     </>
   );

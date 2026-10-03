@@ -7,6 +7,7 @@ import { StatblockMarkdown } from '../shared/StatblockMarkdown';
 import { useSheet } from '../sheetContext';
 import { LabelledLine } from '../values/LabelledLine';
 import { StandIn, ValueText } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 /** A list field's items; a list written as one line of text is split at its commas. */
@@ -40,13 +41,15 @@ export function TagsView({ block, display }: BlockViewProps<TagsBlock>): React.J
   if (block.look === 'chips') {
     return (
       <LabelledLine label={block.label ?? ''} look="stacked" className="atlas-sb-tags">
-        {display.state === 'value' ? <Chips items={items} /> : <StandIn display={display} />}
+        <ValueSlot block={block}>{display.state === 'value' ? <Chips items={items} /> : <StandIn display={display} />}</ValueSlot>
       </LabelledLine>
     );
   }
   return (
     <LabelledLine label={label} className="atlas-sb-tags">
-      {display.state === 'value' ? <ValueText shown={{ text: items.join(', '), problems: [] }} /> : <StandIn display={display} />}
+      <ValueSlot block={block}>
+        {display.state === 'value' ? <ValueText shown={{ text: items.join(', '), problems: [] }} /> : <StandIn display={display} />}
+      </ValueSlot>
     </LabelledLine>
   );
 }

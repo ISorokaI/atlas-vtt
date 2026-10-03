@@ -8,6 +8,7 @@ import { presentActiveTabInPlayerWindow } from '../services/PlayerWindowPresente
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { cleanupMissingAssets } from './cleanupMissingAssets';
+import { registerStatblockEditorCommands } from '../statblocks/editor/create/statblockCommands';
 
 export interface CommandDependencies {
   imageDisplay: ImageDisplayService;
@@ -161,6 +162,8 @@ function registerStatblockCommands(plugin: Plugin): void {
       return true;
     },
   });
+
+  registerStatblockEditorCommands(plugin);
 }
 
 export function registerCommands(plugin: Plugin, deps: CommandDependencies): void {

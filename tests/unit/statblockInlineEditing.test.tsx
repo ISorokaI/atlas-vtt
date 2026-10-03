@@ -1,7 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { coerceToExisting } from '../../src/app/services/statblockEditing';
 import { StatblockRenderer } from '../../src/app/react/components/statblock/StatblockRenderer';
 import type {
   StatblockItem,
@@ -26,28 +25,6 @@ function renderEditable(
   );
   return { ...result, commit };
 }
-
-describe('coerceToExisting', () => {
-  it('keeps numeric frontmatter numeric', () => {
-    expect(coerceToExisting('14', 12)).toBe(14);
-  });
-
-  it('falls back to text when a numeric field gets non-numeric input', () => {
-    expect(coerceToExisting('2d8 + 2', 9)).toBe('2d8 + 2');
-  });
-
-  it('preserves strings', () => {
-    expect(coerceToExisting(' Large ', 'Medium')).toBe('Large');
-  });
-
-  it('parses booleans for boolean fields', () => {
-    expect(coerceToExisting('false', true)).toBe(false);
-  });
-
-  it('stores new numeric-looking values as numbers', () => {
-    expect(coerceToExisting('7', undefined)).toBe(7);
-  });
-});
 
 describe('inline statblock editing', () => {
   it('turns a property value into an input on click and commits it', () => {

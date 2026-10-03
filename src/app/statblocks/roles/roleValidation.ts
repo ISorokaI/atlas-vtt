@@ -78,10 +78,18 @@ export function savedStatblockRoles(roles: readonly StatblockRole[]): StatblockR
   });
 }
 
-/** Folders as they are saved: trimmed, a blank one left out (Obsidian's location); undefined when none is left. */
-export function savedRoleFolders(folders: StatblockRoleFolders): StatblockRoleFolders | undefined {
-  const entries = Object.entries(folders).flatMap(([roleId, folder]): Array<[string, string]> =>
-    (folder.trim() ? [[roleId, folder.trim()]] : []));
+/**
+ * Folders as they are saved: trimmed, a blank one left out (Obsidian's location); undefined when
+ * none is left. A folder chosen for a role added in the dialog goes with it to the id the role
+ * is saved with (`savedStatblockRoles` of `roles`), and is left out once that role is gone.
+ */
+export function savedRoleFolders(folders: StatblockRoleFolders, roles: readonly StatblockRole[] = []): StatblockRoleFolders | undefined {
+  const saved = savedStatblockRoles(roles);
+  const finalIds = new Map(roles.map((role, i) => [role.id, saved[i]!.id]));
+  const entries = Object.entries(folders).flatMap(([roleId, folder]): Array<[string, string]> => {
+    const id = isDraftResourceKey(roleId) ? finalIds.get(roleId) : roleId;
+    return id && folder.trim() ? [[id, folder.trim()]] : [];
+  });
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 

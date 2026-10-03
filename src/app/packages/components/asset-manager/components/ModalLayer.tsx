@@ -18,6 +18,7 @@ import type { TagsAndCollectionsState } from '../hooks/useTagsAndCollections';
 import type { StatblockLinkState } from '../hooks/useStatblockLink';
 import { useUvttImport } from '../hooks/useUvttImport';
 import { tagGroupOfTab } from '../utils/assetTags';
+import { newStatblockOption } from '../../../../statblocks/editor/create/entryPoints';
 
 export interface ModalLayerProps {
   isOpen: boolean;
@@ -174,6 +175,16 @@ export function ModalLayer({
             asset={statblock.linkingStatblockAsset}
             onLink={(statblockPath) => { void statblock.handleLinkStatblock(statblockPath); }}
             app={data.app}
+            newStatblock={newStatblockOption(data.app, {
+              collectionId: selectedCollection,
+              from: 'asset-manager',
+              token: {
+                imagePath: statblock.linkingStatblockAsset.imagePath ?? statblock.linkingStatblockAsset.imageUrl,
+                name: statblock.linkingStatblockAsset.name,
+              },
+              // The pair opens in the workspace this window covers.
+              onStart: onClose,
+            })}
           />
         )}
       </AnimatePresence>

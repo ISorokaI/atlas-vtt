@@ -6,6 +6,7 @@ import { valueText } from '../../values/valueText';
 import { useSheet } from '../sheetContext';
 import { LabelledLine } from '../values/LabelledLine';
 import { StandIn, ValueText } from '../values/ValueText';
+import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
 const FIRST_LETTER = /^\p{Ll}/u;
@@ -35,7 +36,7 @@ export function PairsView({ block, display }: BlockViewProps<PairsBlock>): React
 
   return (
     <LabelledLine label={label} className="atlas-sb-pairs">
-      {display.state === 'value' ? <ValueText shown={{ text, problems: [] }} /> : <StandIn display={display} />}
+      <ValueSlot block={block}>{display.state === 'value' ? <ValueText shown={{ text, problems: [] }} /> : <StandIn display={display} />}</ValueSlot>
     </LabelledLine>
   );
 }

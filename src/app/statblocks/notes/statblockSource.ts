@@ -21,7 +21,10 @@ export type FrontmatterRecord = Readonly<Record<string, unknown>>;
 
 /** A ```statblock fence, capturing its body. */
 const STATBLOCK_FENCE = /^[ \t]*(?:```+|~~~+)\s*statblock\s*$([\s\S]*?)^[ \t]*(?:```+|~~~+)\s*$/m;
-const TEMPLATE_KEY = 'atlas-template';
+/** The frontmatter key naming a native statblock's template. */
+export const TEMPLATE_KEY = 'atlas-template';
+/** The language of the fence that shows a native note's own statblock inside the note (D14). */
+export const STATBLOCK_FENCE_LANGUAGE = 'atlas-statblock';
 
 /** The params of the first ```statblock fence, or null when the text has none. */
 export function parseStatblockFence(content: string): Record<string, unknown> | null {

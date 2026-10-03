@@ -129,6 +129,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     }),
     getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? new TFile(path) : null)),
     getFolderByPath: vi.fn((path: string): TFolder | null => (folders.has(path) && !isHiddenPath(path) ? folderAt(path) : null)),
+    getAllFolders: vi.fn((includeRoot = false): TFolder[] => [
+      ...(includeRoot ? [new TFolder('/')] : []),
+      ...[...folders].filter((path) => !isHiddenPath(path)).map(folderAt),
+    ]),
     rename: vi.fn(moveFile),
     createFolder: vi.fn(async (path: string) => {
       assertFree(path);
@@ -172,6 +176,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     layoutReady: true,
     onLayoutReady: vi.fn((callback: () => void) => callback()),
     getLeavesOfType: vi.fn(() => []),
+    iterateAllLeaves: vi.fn(),
     on: vi.fn(() => ({})),
     offref: vi.fn(),
     trigger: vi.fn(),

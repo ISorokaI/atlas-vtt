@@ -184,7 +184,7 @@ export function useCollectionSettingsDraft(
       lootBases,
       lootCurrency: lootCurrency.trim() || undefined,
       statblockRoles: statblockRoles?.length ? savedStatblockRoles(statblockRoles) : undefined,
-      statblockRoleFolders: savedRoleFolders(statblockRoleFolders),
+      statblockRoleFolders: savedRoleFolders(statblockRoleFolders, statblockRoles),
     };
   };
 

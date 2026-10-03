@@ -1,6 +1,6 @@
 import { mapResources } from '../resources/collectionResources';
 import type { ResourceDefinition, ResourceDefsProvider } from '../resources/resourceTypes';
-import { fillMissingResources, syncedResources } from '../resources/statblockResourceSync';
+import { fillMissingResources } from '../resources/statblockResourceSync';
 import { runUntracked } from '../stores/history';
 import { fitTokenArtwork, syncTokenArtwork } from './token-renderer/tokenArtwork';
 import type { AtlasSettings } from '../services/SettingsService';
@@ -14,7 +14,7 @@ import type { TokenEntity } from "../types";
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import type { GridSystem } from "../grid/GridSystem";
 import { getDrawingBounds } from "./drawingGeometry";
-import type { TokenUpdates, ViewAtlasStore } from '../storeFactory';
+import type { ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
 import { StatblockDialogService } from '../services/StatblockDialogService';
 import { AssetService } from '../services/AssetService';
@@ -37,7 +37,8 @@ import { requestRender } from './RenderScheduler';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { prefersReducedMotion } from '../utils/motion';
 import { destroyTree } from './utils/destroyTree';
-import { buildStatblockLinkUpdates, readStatblockVitals, STATBLOCK_UNLINK_UPDATES } from './token-renderer/statblockFrontmatter';
+import { buildStatblockLinkUpdates, STATBLOCK_UNLINK_UPDATES } from './token-renderer/statblockFrontmatter';
+import { syncLinkedTokens } from './token-renderer/statblockTokenSync';
 import type { TokenGroupContainer } from './token-renderer/types';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import { setCanvasCursor } from './utils/canvasCursor';
@@ -505,29 +506,11 @@ export class TokenRenderer {
           }
         }
         
-        // Update tokens on the current map that are linked to this statblock with new data
-        const vitals = readStatblockVitals(metadata.frontmatter);
-        const tokens = this.store.getState().objects.tokens;
-        for (const [tokenId, token] of Object.entries(tokens)) {
-          if (token.kind !== 'character' || token.statblockPath !== statblockPath) continue;
-
-          // Refresh statblock-derived data but keep live values such as the current HP
-          const updates: TokenUpdates = { name: vitals.name || token.name };
-
-          const resources = syncedResources(token, metadata.frontmatter, this.resourceDefsProvider());
-          if (JSON.stringify(resources) !== JSON.stringify(token.resources ?? {})) {
-            updates.resources = resources;
-          }
-
-          if (vitals.difficulty !== undefined) {
-            updates.difficulty = vitals.difficulty;
-          }
-
-          if (newTokenImage && token.imagePath !== newTokenImage) {
-            updates.imagePath = newTokenImage;
-          }
-
-          this.store.getState().updateToken(tokenId, updates);
+        // Linked tokens follow the statblock as the resolver reads it (renamed keys, meanings),
+        // untracked: a statblock edit must not become an undo step of this map.
+        const statblock = await this.tokenStatblockLinkService.readStatblockRecord(statblockPath);
+        if (statblock && !this.isDestroyed) {
+          syncLinkedTokens(this.store, statblockPath, statblock, this.resourceDefsProvider(), newTokenImage);
         }
       }
     });
