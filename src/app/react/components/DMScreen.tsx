@@ -8,7 +8,7 @@ import { useAtlasUI } from '../root/AtlasUIContext';
 import { TokenEntity } from '../../types';
 import { App, TFile, Component, WorkspaceLeaf } from 'obsidian';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../../utils/embeddedLeafFocus';
-import FantasyStatblock from './FantasyStatblock';
+import { LinkedStatblock } from '../../statblocks/render/LinkedStatblock';
 import LinkedNotePicker from './LinkedNotePicker';
 import { StatblockFeeds } from './dm-screen/StatblockFeeds';
 import { Button } from '../../packages/components/primitives/button';
@@ -16,8 +16,7 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { addTokenHighlight, zoomToTokenWithHighlight } from '../../pixi/utils/tokenHighlight';
 import { toTokenVitals } from '../../services/statblockVitalsSync';
 import { useMapResources } from '../../resources/useMapResources';
-import { findCreatureForNotePath } from '../../services/FantasyStatblocksService';
-import { resolveStatblockNote } from '../../services/statblockNoteSource';
+import { isStatblockNote } from '../../statblocks/resolve/statblockNote';
 import { runInBackground } from '../../utils/backgroundTask';
 
 interface DMScreenProps {
@@ -297,14 +296,10 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
         tokensByStatblock.set(path, existing);
       });
 
-      // Old Atlas notes can still be linked to tokens, but are not Fantasy
-      // Statblocks creatures. Only allocate cards for supported note sources.
+      // Old Atlas notes can still be linked to tokens, but define no statblock. Only allocate cards for statblock notes.
       for (const [path, pathTokens] of tokensByStatblock.entries()) {
         const file = app.vault.getAbstractFileByPath(path);
-        if (
-          file instanceof TFile &&
-          (findCreatureForNotePath(path) || await resolveStatblockNote(app, file))
-        ) {
+        if (file instanceof TFile && await isStatblockNote(app, file)) {
           uniqueStatblocks.set(path, {
             path,
             tokens: pathTokens
@@ -470,10 +465,11 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps) {
                 {statblocks.size > 0 && (
                   <StatblockFeeds>
                     {Array.from(statblocks.entries(), ([path, statblock]) => (
-                      <FantasyStatblock
+                      <LinkedStatblock
                         key={path}
-                        notePath={path}
                         app={app}
+                        path={path}
+                        variant="feed"
                         tokens={statblock.tokens.map(toTokenVitals)}
                         tokenActions={{
                           definitions,

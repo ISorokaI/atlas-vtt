@@ -8,6 +8,8 @@ import { PlayerView, PLAYER_VIEW_TYPE } from './src/app/player-view';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
+import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
+import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
 import { GlobalAssetManagerService } from './src/app/services/GlobalAssetManagerService';
@@ -81,6 +83,8 @@ export default class AtlasVTTPlugin extends Plugin {
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
     this.registerAtlasViews();
+    // Before the first await, so notes restored at startup draw their statblock fence.
+    registerStatblockFence(this);
 
     await storageReady;
     await this.settingsService.initialize();
@@ -148,6 +152,7 @@ export default class AtlasVTTPlugin extends Plugin {
     PlayerWindowService.getInstance()?.destroy(false);
     this.globalAssetManager?.close();
     CreatureIndex.release(this.app);
+    TemplateLibrary.release(this.app);
     disposeImageProcessing();
   }
 

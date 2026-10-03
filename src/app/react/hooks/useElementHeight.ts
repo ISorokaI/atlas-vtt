@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { observeResize } from '../../../utils/observeResize';
+import { observeResize } from '../../utils/observeResize';
 
 /**
  * The laid-out height of an element, kept up to date: what a clip around it

@@ -8,15 +8,16 @@ import {
   resolveLayout,
   type FantasyStatblocksCreature,
 } from '../../services/FantasyStatblocksService';
-import { resolveStatblockNote, statblockSourceFromText } from '../../services/statblockNoteSource';
+import { frontmatterOfText, statblockSourceFromText, statblockSourceOf } from '../../statblocks/notes/statblockSource';
+import { frontmatterCreature } from '../../creatures/linkedCreature';
 import { syncStatblockVitals, type TokenVitals } from '../../services/statblockVitalsSync';
-import { attachDiceRolling } from '../../services/statblockDiceLinks';
-import { rollHitPoints } from '../../services/statblockHitPoints';
-import { StatblockRenderer, type StatblockPortrait } from './statblock/StatblockRenderer';
+import { StatblockRenderer } from './statblock/StatblockRenderer';
+import { useStatblockDiceRolling } from '../../statblocks/render/shared/useStatblockDiceRolling';
+import { useTokenPortrait } from '../../statblocks/render/shared/tokenPortrait';
 import { TokenPickerModal } from '../../packages/components/token-picker/TokenPickerModal';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import { StatblockTokenResources, type StatblockTokenActions } from './statblock/StatblockTokenResources';
-import type { StatblockEditApi } from './statblock/statblockEditContext';
+import type { StatblockEditApi } from '../../statblocks/render/shared/statblockEditContext';
 import { isEditableNote, writeStatblockValue } from '../../services/statblockEditing';
 import { useBestiaryRevision } from '../hooks/useBestiaryRevision';
 import { StatblockSkeleton } from './statblock/StatblockSkeleton';
@@ -85,10 +86,9 @@ export function FantasyStatblock({
     const readNoteCreature = async (): Promise<void> => {
       if (noteContent !== undefined) {
         const source = statblockSourceFromText(noteContent);
-        const basename = notePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
-        const resolved = source?.kind === 'frontmatter'
-          ? { name: basename, ...source.frontmatter } as FantasyStatblocksCreature
-          : source ? await resolveCreatureFromFence(app, source.params, notePath) : null;
+        const resolved = source?.kind === 'fs-fence'
+          ? await resolveCreatureFromFence(app, source.params, notePath)
+          : source ? frontmatterCreature(frontmatterOfText(noteContent) ?? {}, notePath) : null;
         if (!cancelled) setNoteCreature(resolved);
         return;
       }
@@ -96,8 +96,8 @@ export function FantasyStatblock({
       const file = app.vault.getAbstractFileByPath(notePath);
       if (!(file instanceof TFile)) return;
 
-      const source = await resolveStatblockNote(app, file);
-      if (cancelled || source?.kind !== 'codeblock') return;
+      const source = await statblockSourceOf(app, file);
+      if (cancelled || source?.kind !== 'fs-fence') return;
 
       const resolved = await resolveCreatureFromFence(app, source.params, notePath);
       if (!cancelled) setNoteCreature(resolved);
@@ -117,16 +117,7 @@ export function FantasyStatblock({
     [app, creature],
   );
 
-  const portraitToken = tokens.find((token) => token.imagePath);
-  const portraitPath = portraitToken?.imagePath;
-  const portraitRingColor = portraitToken?.ringColor;
-  const portraitShowRing = portraitToken?.showRing;
-  const portrait = useMemo((): StatblockPortrait | undefined => {
-    if (!portraitPath) return undefined;
-    const file = app.vault.getAbstractFileByPath(portraitPath);
-    if (!(file instanceof TFile)) return undefined;
-    return { src: app.vault.getResourcePath(file), ringColor: portraitRingColor, showRing: portraitShowRing };
-  }, [app, portraitPath, portraitRingColor, portraitShowRing]);
+  const portrait = useTokenPortrait(app, tokens);
 
   // One block per token, matching the vitals sync. The token portrait replaces
   // the layout's own image block, so the artwork never shows twice.
@@ -174,25 +165,16 @@ export function FantasyStatblock({
   }, [app, notePath]);
 
   // Click-to-roll dice, applied to whatever the renderer produced.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !monster) return;
-
-    return attachDiceRolling(
-      el,
-      app,
-      () => {
-        const [token] = tokensRef.current;
-        return {
-          tokenId: token?.id,
-          statblockPath: notePath,
-          tokenName: token?.name ?? (monster.name),
-          tokenImagePath: token?.imagePath,
-        };
-      },
-      (formula, abilityName) => rollHitPoints(app, formula, notePath, tokensRef.current, abilityName),
-    );
-  }, [app, monster, notePath]);
+  const diceRef = useStatblockDiceRolling({
+    app,
+    notePath,
+    tokens,
+    name: typeof monster?.name === 'string' ? monster.name : undefined,
+  });
+  const containerRef = useCallback((el: HTMLDivElement | null): (() => void) | undefined => {
+    ref.current = el;
+    return diceRef(el);
+  }, [diceRef]);
 
   // Mirror the tokens' resources into any vitals track the layout renders.
   useEffect(() => {
@@ -228,7 +210,7 @@ export function FantasyStatblock({
   }
 
   return (
-    <div ref={ref} className={`atlas-fantasy-statblock ${className ?? ''}`}>
+    <div ref={containerRef} className={`atlas-fantasy-statblock ${className ?? ''}`}>
       <StatblockRenderer
         monster={monster}
         layout={layout}

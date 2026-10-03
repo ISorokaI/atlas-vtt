@@ -95,10 +95,10 @@ export function toRollFormula(text: string): string {
 /** Nearest heading-ish label above the roll, used to title the dice toast. */
 function abilityNameFor(node: Node): string | undefined {
   const el = node.parentElement?.closest<HTMLElement>(
-    '.atlas-sb-trait, .atlas-sb-property, li, p, tr',
+    '.atlas-sb-trait, .atlas-sb-property, .atlas-sb-labelled, li, p, tr',
   );
   const name = el?.querySelector<HTMLElement>(
-    '.atlas-sb-trait-name, .atlas-sb-property-name, strong, em, b, i',
+    '.atlas-sb-trait-name, .atlas-sb-property-name, .atlas-sb-label, strong, em, b, i',
   )?.textContent;
   return name?.trim().replace(/[:.]$/, '') || undefined;
 }

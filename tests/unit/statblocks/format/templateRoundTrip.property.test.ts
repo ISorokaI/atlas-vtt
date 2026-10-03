@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { parseTemplate } from '../../../../src/app/statblocks/format/parseTemplate';
 import { serializeTemplate } from '../../../../src/app/statblocks/format/templateFormat';
+import { BUILT_IN_TEMPLATES } from '../../../../src/app/statblocks/presets';
 import { EVERY_BLOCK_JSON, FIVE_E_2024_JSON, MARSH_CREATURE_JSON } from '../../../fixtures/statblockTemplateFixtures';
 import { expectSound, fileOf, mulberry32, mutated, pick } from './templateMutations';
 
-const FILES = [MARSH_CREATURE_JSON, FIVE_E_2024_JSON, EVERY_BLOCK_JSON].map(fileOf);
+const FILES = [
+  MARSH_CREATURE_JSON, FIVE_E_2024_JSON, EVERY_BLOCK_JSON,
+  ...BUILT_IN_TEMPLATES.map((builtIn) => serializeTemplate(builtIn.template)),
+].map(fileOf);
 const RUNS = 600;
 
 describe('serialize ∘ parse on mutated templates', () => {
@@ -26,7 +30,7 @@ describe('serialize ∘ parse on mutated templates', () => {
       written += 1;
     }
     expect(written).toBeGreaterThan(RUNS / 2);
-  });
+  }, 60_000);
 
   it('reads the same from the text and from the value', () => {
     const random = mulberry32(0xface);

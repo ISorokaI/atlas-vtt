@@ -15,6 +15,40 @@
 - Interface icons are [Lucide](https://lucide.dev) (ISC), provided by Obsidian and the bundled lucide-react package.
 - The token ring and the timer sound are original works by the Atlas VTT author and are covered by this repository's [GNU Affero General Public License v3.0](LICENSE).
 
+## Game system templates
+
+The built-in statblock templates hold the fields, labels and layout of a statblock, written by the Atlas VTT author; they hold no rules text and no creatures. The generic ones (Creature, NPC, Hazard, d20 creature, B/X-style creature, Percentile creature and Narrative NPC) are covered by this repository's [GNU Affero General Public License v3.0](LICENSE). The templates for the systems below use material under the licences named with them. Atlas VTT arranged the stat block structure as an editable template.
+
+### 5E (2014 rules)
+
+This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+The template is in `src/app/statblocks/presets/fiveE2014.ts` (`AGPL-3.0-only AND CC-BY-4.0`).
+
+### 5E (2024 rules)
+
+This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+The template is in `src/app/statblocks/presets/fiveE2024.ts` (`AGPL-3.0-only AND CC-BY-4.0`).
+
+### Cairn
+
+The Cairn template is based on Cairn by Yochai Gal (https://cairnrpg.com), licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Atlas VTT adapted the creature format into an editable template; this template is available under CC BY-SA 4.0 or GPL-3.0.
+
+The template is in `src/app/statblocks/presets/cairn.ts` (`CC-BY-SA-4.0 OR GPL-3.0-only`).
+
+### Draw Steel
+
+The Draw Steel statblock template and system preset in Atlas VTT are an independent product published under the DRAW STEEL Creator License and are not affiliated with MCDM Productions, LLC. DRAW STEEL © 2026 MCDM Productions, LLC.
+
+The licence is at https://www.mcdmproductions.com/draw-steel-creator-license. The template is in `src/app/statblocks/presets/drawSteel.ts`.
+
+### Fate
+
+This work is based on Fate Core System and Fate Accelerated Edition (found at https://www.faterpg.com/), products of Evil Hat Productions, LLC, developed, authored, and edited by Leonard Balsera, Brian Engard, Jeremy Keller, Ryan Macklin, Mike Olson, Clark Valentine, Amanda Valentine, Fred Hicks, and Rob Donoghue, and licensed for our use under the Creative Commons Attribution 3.0 Unported license (https://creativecommons.org/licenses/by/3.0/).
+
+The template is in `src/app/statblocks/presets/fate.ts` (`AGPL-3.0-only AND CC-BY-3.0`).
+
 ## Bundled packages
 
 Atlas VTT bundles the following open-source packages in `main.js`.

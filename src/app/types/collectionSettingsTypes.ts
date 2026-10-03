@@ -12,6 +12,7 @@ import type { InitiativeRules } from './initiativeRulesTypes';
 import type { LightPresetDefinition } from './lightPresetTypes';
 import type { TokenVisionDefaults } from './lightingTypes';
 import type { SenseDefinition } from './senseTypes';
+import type { StatblockRole, StatblockRoleFolders } from '../statblocks/model/roleTypes';
 import type { AnyWidget } from './widgetTypes';
 import type { WidgetIcon } from './widgetIcons';
 
@@ -103,6 +104,16 @@ export interface CollectionSettings {
   customCreatureFilters?: CreatureFilterDefinition[];
   /** Ids of Atlas' own creature filters (`CATALOG_CREATURE_FILTERS`) switched off for the collection. */
   hiddenCreatureFilters?: string[];
+  /**
+   * The kinds of statblock the collection makes, stored only once the collection has its own.
+   * Unset while it takes those of its preset; read with `collectionStatblockRoles`.
+   */
+  statblockRoles?: readonly StatblockRole[] | undefined;
+  /**
+   * Folder for new statblocks per role id; the collection's own, never a preset's, so choosing
+   * one leaves the roles inherited. Unset: Obsidian's location for new notes. Read with `roleFolder`.
+   */
+  statblockRoleFolders?: StatblockRoleFolders | undefined;
   /** Vault paths of the `.base` files whose views the loot roller rolls on. */
   lootBases?: string[];
   /** Named after plain-number item prices, e.g. "gold" or "thorns". */

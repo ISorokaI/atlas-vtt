@@ -2,11 +2,14 @@ import { StatblockTokenImportService } from './StatblockTokenImportService';
 import { App, TFile, Notice, Modal } from 'obsidian';
 import { EventEmitter } from 'events';
 import { AssetService, type TokenAsset } from './AssetService';
-import { resolveLinkedCreature } from '../creatures/linkedCreature';
+import { difficultyLabel } from '../creatures/statblockRating';
 import { mapResources } from '../resources/collectionResources';
 import { tokenFromFile, tokenToFile } from '../resources/resourceFileFormat';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import { startingResources } from '../resources/statblockResourceValues';
+import type { StatblockFields } from '../resources/statblockResourceSync';
+import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
+import { readStatblock } from '../statblocks/resolve/readStatblock';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
 import type { BaseToken, Character } from '../types';
@@ -345,7 +348,7 @@ export class TokenStatblockLinkService extends EventEmitter {
           if (statblockData) {
             token.name = statblockData.name;
             // As on an open map: what the statblock supplies starts anew, the rest stays
-            setOrDelete(token, 'resources', nonEmpty({ ...token.resources, ...startingResources(statblockData.record, definitions) }));
+            setOrDelete(token, 'resources', nonEmpty({ ...token.resources, ...startingResources(statblockData.record, definitions, statblockData.meanings) }));
             setOrDelete(token, 'difficulty', statblockData.difficulty);
             delete token.overriddenMax;
           }
@@ -377,9 +380,10 @@ export class TokenStatblockLinkService extends EventEmitter {
     }
   }
   
-  /** The fields of a statblock note, as resources read them; null when the note is no statblock. */
-  async readStatblockRecord(statblockPath: string): Promise<Record<string, unknown> | null> {
-    return (await this.extractStatblockData(statblockPath))?.record ?? null;
+  /** The fields of a statblock note with its template's meanings, as resources read them; null when the note is no statblock. */
+  async readStatblockRecord(statblockPath: string): Promise<StatblockFields | null> {
+    const data = await this.extractStatblockData(statblockPath);
+    return data && { fields: data.record, meanings: data.meanings };
   }
 
   /**
@@ -388,23 +392,25 @@ export class TokenStatblockLinkService extends EventEmitter {
   private async extractStatblockData(statblockPath: string): Promise<{
     name: string;
     difficulty?: string;
-    /** The statblock's fields: the Fantasy Statblocks creature, with the note's frontmatter laid over it. */
+    /** The statblock's fields as the resolver gives them, with the note's frontmatter laid over them. */
     record: Record<string, unknown>;
+    /** What the fields of the statblock's template mean (hit points, rating under other keys). */
+    meanings: FieldMeanings;
   } | null> {
     const file = this.app.vault.getAbstractFileByPath(statblockPath);
     if (!(file instanceof TFile)) return null;
 
     const frontmatter: Record<string, unknown> | undefined = this.app.metadataCache.getFileCache(file)?.frontmatter;
-    const creature: Record<string, unknown> | null = await resolveLinkedCreature(this.app, statblockPath);
-    if (!frontmatter && !creature) return null;
-    const record = { ...creature, ...frontmatter };
-    const tier = frontmatterLabel(record.tier);
-    const difficulty = frontmatterLabel(record.cr) !== undefined ? `CR ${frontmatterLabel(record.cr)}`
-      : tier !== undefined ? `T${tier}` : frontmatterLabel(record.difficulty);
+    const statblock = await readStatblock(this.app, statblockPath);
+    if (!frontmatter && !statblock) return null;
+    const record = { ...statblock?.fields, ...frontmatter };
+    const meanings = statblock?.meanings ?? NO_MEANINGS;
+    const difficulty = difficultyLabel(record, meanings);
     return {
       name: frontmatterLabel(record.name) ?? 'Unknown',
       ...(difficulty !== undefined && { difficulty }),
       record,
+      meanings,
     };
   }
   

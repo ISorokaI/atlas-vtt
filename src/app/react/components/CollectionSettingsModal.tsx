@@ -29,7 +29,7 @@ import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import { DefaultWidgetsTab } from './collection-settings/DefaultWidgetsTab';
 import { ConditionsTab } from './collection-settings/ConditionsTab';
 import { ResourcesTab } from './collection-settings/ResourcesTab';
-import { discoverResourceFields } from '../../resources/resourceFields';
+import { resourceFieldSuggestions } from '../../resources/resourceFieldSuggestions';
 import { LootTab } from './collection-settings/LootTab';
 import { SystemTab } from './collection-settings/SystemTab';
 import { DiceTab } from './collection-settings/DiceTab';
@@ -38,8 +38,11 @@ import { collectionInitiativeRules, isValidInitiativeRules } from '../../gameSys
 import { collectionLightPresets } from '../../gameSystems/lightPresetRules';
 import { editedSenses, sensesAreValid } from '../../gameSystems/senseEditing';
 import { collectionSenses } from '../../gameSystems/senseRules';
+import { collectionStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
+import { statblockRolesAreValid } from '../../statblocks/roles/roleValidation';
 import { CreatureFiltersTab } from './collection-settings/CreatureFiltersTab';
 import { useCollectionCreatures } from './collection-settings/useCollectionCreatures';
+import { useRoleTemplates } from './collection-settings/useRoleTemplates';
 import { isCompleteCreatureFilter } from '../../creatures/creatureFilterDefinitions';
 import { areRangeBandsValid } from '../../grid/measurementFormat';
 
@@ -103,7 +106,9 @@ export function CollectionSettingsModal({
   // Local draft of settings — only persisted on Save
   const draft = useCollectionSettingsDraft(assetService, collectionId, isOpen);
   const { gridDefaults, conditions } = draft;
-  const collectionCreatures = useCollectionCreatures(app ?? null, assetService, collectionId, isOpen && (activeTab === 'creatureFilters' || activeTab === 'resources'));
+  const offersFields = isOpen && (activeTab === 'creatureFilters' || activeTab === 'resources');
+  const collectionCreatures = useCollectionCreatures(app ?? null, assetService, collectionId, offersFields);
+  const roleTemplates = useRoleTemplates(app ?? null, collectionStatblockRoles(draft, systemPresets.presets), offersFields);
 
   // Resolve the collection name for the header
   useEffect(() => {
@@ -144,6 +149,7 @@ export function CollectionSettingsModal({
     && isValidInitiativeRules(initiative)
     && sensesAreValid(senses)
     && draft.customCreatureFilters.every(isCompleteCreatureFilter)
+    && statblockRolesAreValid(draft.statblockRoles ?? [])
     // A resource without a name or a statblock field could never show
     && draft.resources.every((resource) => resource.name.trim() !== '' && resource.field.trim() !== '');
 
@@ -228,6 +234,7 @@ export function CollectionSettingsModal({
                   ...(draft.defaultTokenVision && { defaultTokenVision: draft.defaultTokenVision }),
                   senses,
                   lightPresets: collectionLightPresets(draft, systemPresets.presets),
+                  statblockRoles: collectionStatblockRoles(draft, systemPresets.presets),
                 }}
                 presetId={draft.systemPresetId}
                 onApplyPreset={draft.applyPreset}
@@ -273,7 +280,7 @@ export function CollectionSettingsModal({
               <ResourcesTab
                 resources={draft.resources}
                 onChange={draft.setResources}
-                fieldSuggestions={discoverResourceFields(collectionCreatures.creatures.map((creature) => creature.fields))}
+                fieldSuggestions={resourceFieldSuggestions(roleTemplates, collectionCreatures.creatures.map((creature) => creature.fields))}
               />
             )}
             {activeTab === 'creatureFilters' && (
@@ -284,6 +291,7 @@ export function CollectionSettingsModal({
                 onCustomChange={draft.setCustomCreatureFilters}
                 creatures={collectionCreatures.creatures}
                 pending={collectionCreatures.pending}
+                templates={roleTemplates}
               />
             )}
             {activeTab === 'loot' && app && (

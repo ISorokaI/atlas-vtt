@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { parseTemplate, type TemplateParseResult } from '../../../../src/app/statblocks/format/parseTemplate';
 import { serializeTemplate } from '../../../../src/app/statblocks/format/templateFormat';
+import { BUILT_IN_TEMPLATES } from '../../../../src/app/statblocks/presets';
 import { EVERY_BLOCK_JSON, FIVE_E_2024_JSON, MARSH_CREATURE_JSON } from '../../../fixtures/statblockTemplateFixtures';
 import { expectSound, fileOf, int, mulberry32, mutated, pick, type Random } from './templateMutations';
 
-const TEXTS = [MARSH_CREATURE_JSON, FIVE_E_2024_JSON, EVERY_BLOCK_JSON];
+const TEXTS = [
+  MARSH_CREATURE_JSON, FIVE_E_2024_JSON, EVERY_BLOCK_JSON,
+  ...BUILT_IN_TEMPLATES.map((builtIn) => serializeTemplate(builtIn.template)),
+];
 const FILES = TEXTS.map(fileOf);
 const STATUSES = ['ok', 'invalid', 'newer', 'reserved'];
 const RUNS = 2000;
@@ -41,14 +45,15 @@ describe('parseTemplate fuzzing', () => {
       check(parseTemplate(file, { allowBuiltIn }), run);
       check(parseTemplate(JSON.stringify(file), { allowBuiltIn }), run);
     }
-  });
+    // About 1.5 s alone; the full suite runs files side by side and once took it past the 5 s default.
+  }, 60_000);
 
   it('never throws on damaged text', () => {
     const random = mulberry32(0xd00d);
     for (let run = 0; run < 400; run += 1) {
       check(parseTemplate(damaged(random, pick(random, TEXTS)), { allowBuiltIn: true }), run);
     }
-  });
+  }, 60_000);
 
   it('reads JSON nested 100,000 deep without overflowing the stack', () => {
     const deep = `${'['.repeat(100_000)}${']'.repeat(100_000)}`;

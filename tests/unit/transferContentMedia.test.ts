@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bundleMedia } from '../../src/app/packages/components/asset-manager/collection-transfer/contentMedia';
-import { statblockSourceFromText } from '../../src/app/services/statblockNoteSource';
+import { statblockSourceFromText } from '../../src/app/statblocks/notes/statblockSource';
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -29,10 +29,8 @@ describe('bundle media', () => {
 
 describe('statblocks from note text', () => {
   it('reads a frontmatter statblock, a statblock fence, or nothing', () => {
-    expect(statblockSourceFromText('---\nstatblock: true\nname: Goblin\nhp: 7\n---\nA goblin.')).toEqual({
-      kind: 'frontmatter', frontmatter: { statblock: true, name: 'Goblin', hp: 7 },
-    });
-    expect(statblockSourceFromText('---\ntags: [lore]\n---\n```statblock\ncreature: Goblin\n```')).toEqual({ kind: 'codeblock', params: { creature: 'Goblin' } });
+    expect(statblockSourceFromText('---\nstatblock: true\nname: Goblin\nhp: 7\n---\nA goblin.')).toEqual({ kind: 'fs-frontmatter' });
+    expect(statblockSourceFromText('---\ntags: [lore]\n---\n```statblock\ncreature: Goblin\n```')).toEqual({ kind: 'fs-fence', params: { creature: 'Goblin' } });
     expect(statblockSourceFromText('# Just a note')).toBeNull();
   });
 });

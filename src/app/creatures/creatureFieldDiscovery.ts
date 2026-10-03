@@ -6,6 +6,8 @@ import { IGNORED_FIELDS } from './ignoredFields';
 /** A statblock field worth filtering by, as found in a collection's statblocks. */
 export interface DiscoveredField {
   field: string;
+  /** The name a role template gives the field; unset for a field found only in statblocks. */
+  label?: string;
   /** Statblocks with a value for it. */
   count: number;
   /** A scale when nearly every value is a number, otherwise categories. */
