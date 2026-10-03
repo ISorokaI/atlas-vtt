@@ -64,7 +64,7 @@ export default defineConfig([
   {
     files: [
       "src/app/statblocks/{model,format,expressions,values}/**/*.{ts,tsx}",
-      "src/app/statblocks/notes/{frontmatterPatch,frontmatterBounds,yamlSplice,listIdentity,patchTypes}.ts",
+      "src/app/statblocks/notes/{frontmatterPatch,frontmatterBounds,frontmatterModel,yamlSplice,yamlDocument,yamlValueText,listIdentity,patchTypes}.ts",
     ],
     rules: {
       "no-restricted-imports": ["error", {
