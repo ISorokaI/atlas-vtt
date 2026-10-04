@@ -2,7 +2,8 @@ import type { AssetMetadata, TokenAsset } from '../AssetService';
 import { GLOBAL_ASSETS_DIR } from '../assetPaths';
 import { defaultCollectionIdOf } from '../collectionRecords';
 import { groupTokenRefs, ownedPaths, primaryPath } from './assetFiles';
-import { isRecoveredId, recoveredId, recoveredTokenName } from './recoveredIds';
+import { isRecoveredId, recoveredId, recoveredTokenName, stemOf } from './recoveredIds';
+import { prettifyIdentifier } from '../collectionRecords';
 import { isReservedCollectionPath } from './reservedPaths';
 
 const COLLECTION_TOKEN = /^atlas-vtt\/collections\/([^/]+)\/(?:.+\/)?tokens\/.+$/i;
@@ -23,8 +24,8 @@ function groupArtwork(metadata: AssetMetadata): Map<string, string> {
 
 /**
  * Removes records earlier recoveries made from images that are no token
- * (encounter thumbnails, stray global images) and names recovered tokens after
- * their file without Atlas's suffix. Returns whether anything changed.
+ * (encounter thumbnails, stray global images) and names recovered tokens nobody
+ * renamed after their file without Atlas's suffix. Returns whether anything changed.
  */
 export function tidyRecoveredTokens(metadata: AssetMetadata, now: number): boolean {
   const groupArt = groupArtwork(metadata);
@@ -38,7 +39,10 @@ export function tidyRecoveredTokens(metadata: AssetMetadata, now: number): boole
       changed = true;
       continue;
     }
-    const name = recovered ? recoveredTokenName(asset.imagePath) : asset.name;
+    // Only a name an earlier recovery took from the file name, suffix and all; a name the user chose stays.
+    const stem = stemOf(asset.imagePath);
+    const fromFileName = asset.name === stem || asset.name === prettifyIdentifier(stem);
+    const name = recovered && fromFileName ? recoveredTokenName(asset.imagePath) : asset.name;
     if (name && name !== asset.name) {
       asset.name = name;
       asset.modifiedAt = now;

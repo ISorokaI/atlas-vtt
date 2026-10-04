@@ -88,9 +88,14 @@ export async function migrateLegacySnapshots(app: App, assets: AssetService): Pr
     }
   }
 
-  if (result.leftovers.length > 0) {
-    console.warn('[Atlas] These snapshot folders belong to no scene of a collection and stay where they are:', result.leftovers);
+  // A map inside a collection gets its scene from the vault check, maybe after this ran: those folders wait for the next start.
+  // A map outside every collection keeps its snapshots beside it, where they stay.
+  const mapOf = (legacy: string): string => `${parentPath(parentPath(legacy))}/${baseName(legacy)}.atlasmap`;
+  const waiting = result.leftovers.filter((legacy) => legacy.startsWith(`${COLLECTIONS_DIR}/`) && app.vault.getFileByPath(mapOf(legacy)) !== null);
+  if (waiting.length > 0) {
+    console.warn('[Atlas] These snapshot folders wait for their scene and are carried over at a later start:', waiting);
+  } else {
+    app.saveLocalStorage(SNAPSHOT_MIGRATION_KEY, DONE);
   }
-  app.saveLocalStorage(SNAPSHOT_MIGRATION_KEY, DONE);
   return result;
 }

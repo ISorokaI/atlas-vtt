@@ -111,7 +111,7 @@ export class LootHistoryStore {
   }
 
   clear(collectionId: string): void {
-    void this.edit(collectionId, () => clearedHistory(Date.now()));
+    void this.edit(collectionId, (_own, others) => clearedHistory(others));
   }
 
   private ownPath(collectionId: string): string {

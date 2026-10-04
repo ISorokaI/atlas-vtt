@@ -11,8 +11,6 @@ import { SNAPSHOT_THUMBNAIL_SIZE } from '../../../services/MapThumbnailService';
 export interface SceneSnapshotsController {
   entries: SceneSnapshotEntry[];
   isLoading: boolean;
-  /** False when the open map belongs to no scene of a collection, which is where snapshots are kept. */
-  hasScene: boolean;
   /** True while a snapshot is being written or restored. */
   isBusy: boolean;
   /** Image URL of the entry's thumbnail, or null when it has none. */
@@ -136,5 +134,5 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
 
   const thumbnailUrl = useCallback((entry: SceneSnapshotEntry): string | null => service.thumbnailUrl(entry), [service]);
 
-  return { entries, isLoading, hasScene: folder !== null, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove };
+  return { entries, isLoading, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove };
 }

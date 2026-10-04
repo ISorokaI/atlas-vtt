@@ -221,9 +221,9 @@ describe('snapshots of a scene record', () => {
     expect(folder).toBe(sceneSnapshotFolder('c', sceneId));
   });
 
-  it('offers none for a map that belongs to no scene', async () => {
+  it('keeps those of a map that belongs to no scene beside it, as every map did before', async () => {
     const { assets } = await sceneVault();
-    expect(await snapshotFolderForMap(assets, 'Elsewhere/Loose.atlasmap')).toBeNull();
+    expect(await snapshotFolderForMap(assets, 'Elsewhere/Loose.atlasmap')).toBe('Elsewhere/.snapshots/Loose');
   });
 
   it('keeps them in place when the map is renamed or moved within its collection', async () => {
@@ -253,5 +253,29 @@ describe('snapshots of a scene record', () => {
     const [entry] = await snapshots.list(folder);
     expect(entry?.snapshot.name).toBe('Ambush');
     expect(entry?.snapshot.state.objects?.tokens?.goblin?.imagePath).toBe('atlas-vtt/assets/goblin-boss.webp');
+  });
+});
+
+describe('snapshots of a map outside every collection', () => {
+  it('are saved, listed and removed in the hidden folder beside it, and follow it when it is renamed', async () => {
+    const { createInMemoryApp: inMemory } = await import('../mocks/inMemoryVault');
+    const { SceneSnapshotService: Service } = await import('../../src/app/snapshots/SceneSnapshotService');
+    const { followLegacySnapshots } = await import('../../src/app/snapshots/sceneSnapshotFolders');
+    const map = JSON.stringify({ version: 4, state: { objects: { tokens: {}, pins: {} } } });
+    const vault = inMemory({ files: { 'Elsewhere/Loose.atlasmap': map } });
+    const service = new Service(vault.app);
+    const folder = 'Elsewhere/.snapshots/Loose';
+
+    const snapshot = await service.create(folder, vault.app.vault.getFileByPath('Elsewhere/Loose.atlasmap'), 'Before the fight', null);
+    expect(vault.files.has(`${folder}/${snapshot.id}.json`)).toBe(true);
+    expect((await service.list(folder)).map((entry) => entry.snapshot.name)).toEqual(['Before the fight']);
+
+    await vault.app.vault.adapter.rename('Elsewhere/Loose.atlasmap', 'Elsewhere/Keep.atlasmap');
+    await followLegacySnapshots(vault.app, 'Elsewhere/Loose.atlasmap', 'Elsewhere/Keep.atlasmap');
+    const [entry] = await service.list('Elsewhere/.snapshots/Keep');
+    expect(entry?.snapshot.name).toBe('Before the fight');
+
+    await service.delete(entry!);
+    expect([...vault.files.keys()].some((path) => path.includes('.snapshots'))).toBe(false);
   });
 });

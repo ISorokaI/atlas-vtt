@@ -64,8 +64,7 @@ describe('carrying snapshots over from their hidden folders', () => {
     expect([...vault.files.keys()].some((path) => path.includes('.snapshots'))).toBe(false);
   });
 
-  it('leaves the folders of maps that belong to no scene where they are, and says so', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('leaves the folders of maps that belong to no scene where they are, which is where those maps keep them', async () => {
     const { vault, assets } = await legacyVault({ 'Elsewhere/Loose.atlasmap': MAP });
     await vault.app.vault.adapter.write('Elsewhere/.snapshots/Loose/s9.json', '{}');
     await vault.app.vault.adapter.write('atlas-vtt/collections/c/scenes/.snapshots/Gone/s8.json', '{}');
@@ -75,7 +74,19 @@ describe('carrying snapshots over from their hidden folders', () => {
     expect(result?.leftovers.sort()).toEqual(['Elsewhere/.snapshots/Loose', 'atlas-vtt/collections/c/scenes/.snapshots/Gone']);
     expect(vault.files.get('Elsewhere/.snapshots/Loose/s9.json')).toBe('{}');
     expect(vault.files.get('atlas-vtt/collections/c/scenes/.snapshots/Gone/s8.json')).toBe('{}');
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('snapshot folders'), result?.leftovers);
     expect(result?.moved).toBe(2);
+    // The map of the folder inside a collection is gone, so nothing waits for a later start.
+    expect(await migrateLegacySnapshots(vault.app, assets)).toBeNull();
+  });
+
+  it('carries over at a later start a folder whose map has no scene yet', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { vault, assets } = await legacyVault({ 'atlas-vtt/collections/c/scenes/Later.atlasmap': MAP });
+    await vault.app.vault.adapter.write('atlas-vtt/collections/c/scenes/.snapshots/Later/s7.json', '{}');
+    vi.spyOn(assets, 'getAssets').mockResolvedValueOnce([]);
+
+    await migrateLegacySnapshots(vault.app, assets);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('wait for their scene'), expect.arrayContaining(['atlas-vtt/collections/c/scenes/.snapshots/Later']));
+    expect(await migrateLegacySnapshots(vault.app, assets)).not.toBeNull();
   });
 });

@@ -1,10 +1,8 @@
-import { TFile, type App } from 'obsidian';
-import { ensureFolder } from '../plugin/vaultFolders';
+import type { App, TFile } from 'obsidian';
 import { isPersistedMapEnvelope, type PersistedMapEnvelope } from '../services/MapPersistence';
-import { trashVaultItem } from '../utils/trashVaultItem';
 import { createSnapshot, isSceneSnapshot, restoreSnapshot, type SceneSnapshot } from './sceneSnapshotFormat';
 import { parentFolderOf, snapshotFilePath, snapshotThumbnailPath } from './snapshotPaths';
-import { trashEmptySnapshotFolder } from './sceneSnapshotFolders';
+import { snapshotStorageFor } from './snapshotStorage';
 
 export interface SceneSnapshotEntry {
   snapshot: SceneSnapshot;
@@ -34,33 +32,33 @@ function parseJson(data: string): unknown {
 
 /**
  * Reads and writes the snapshots of a scene: one JSON file per snapshot plus
- * a JPEG thumbnail, in the scene's snapshot folder (`sceneSnapshotFolder`).
- * They are ordinary vault files, so sync tools carry them. Works on files
- * only; the open map view flushes and reloads around it.
+ * a JPEG thumbnail, in the scene's snapshot folder (`sceneSnapshotFolder`),
+ * ordinary vault files that sync tools carry; a map that belongs to no scene
+ * keeps them in the hidden folder beside it (`snapshotStorageFor`). Works on
+ * files only; the open map view flushes and reloads around it.
  */
 export class SceneSnapshotService {
   constructor(private readonly app: App) {}
 
   /** The snapshots in `folder`, newest first. Files that cannot be read are skipped. */
   async list(folder: string): Promise<SceneSnapshotEntry[]> {
-    const children = this.app.vault.getFolderByPath(folder)?.children ?? [];
-    const paths = new Set(children.map((child) => child.path));
+    const storage = snapshotStorageFor(this.app, folder);
+    const paths = new Set(await storage.list(folder));
     const entries: SceneSnapshotEntry[] = [];
-    for (const child of children) {
-      if (!(child instanceof TFile) || child.extension !== 'json') continue;
-      const snapshot = await this.read(child);
+    for (const path of paths) {
+      if (!path.endsWith('.json')) continue;
+      const snapshot = this.parse(await storage.read(path));
       if (!snapshot) continue;
       const thumbnailPath = snapshotThumbnailPath(folder, snapshot.id);
-      entries.push({ snapshot, path: child.path, thumbnailPath: paths.has(thumbnailPath) ? thumbnailPath : null });
+      entries.push({ snapshot, path, thumbnailPath: paths.has(thumbnailPath) ? thumbnailPath : null });
     }
     return entries.sort((a, b) => b.snapshot.createdAt - a.snapshot.createdAt);
   }
 
   /** An image URL for the entry's thumbnail that changes whenever the snapshot is overwritten. */
   thumbnailUrl(entry: SceneSnapshotEntry): string | null {
-    const file = entry.thumbnailPath ? this.app.vault.getFileByPath(entry.thumbnailPath) : null;
-    if (!file) return null;
-    const url = this.app.vault.getResourcePath(file);
+    const url = entry.thumbnailPath ? snapshotStorageFor(this.app, entry.thumbnailPath).resourceUrl(entry.thumbnailPath) : null;
+    if (!url) return null;
     const version = entry.snapshot.updatedAt ?? entry.snapshot.createdAt;
     return `${url}${url.includes('?') ? '&' : '?'}v=${version}`;
   }
@@ -70,9 +68,9 @@ export class SceneSnapshotService {
     const envelope = await this.readMap(mapFile);
     const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const snapshot = createSnapshot(envelope, id, name, Date.now());
-    await ensureFolder(this.app, folder);
-    await this.app.vault.create(snapshotFilePath(folder, id), JSON.stringify(snapshot));
-    if (thumbnail) await this.writeThumbnail(snapshotThumbnailPath(folder, id), thumbnail);
+    const storage = snapshotStorageFor(this.app, folder);
+    await storage.create(snapshotFilePath(folder, id), JSON.stringify(snapshot));
+    if (thumbnail) await storage.writeBinary(snapshotThumbnailPath(folder, id), thumbnail);
     return snapshot;
   }
 
@@ -83,13 +81,14 @@ export class SceneSnapshotService {
   async overwrite(entry: SceneSnapshotEntry, mapFile: TFile, thumbnail: ArrayBuffer | null): Promise<SceneSnapshot> {
     const { id, name, createdAt } = entry.snapshot;
     const snapshot: SceneSnapshot = { ...createSnapshot(await this.readMap(mapFile), id, name, createdAt), updatedAt: Date.now() };
-    await this.writeJson(entry.path, () => JSON.stringify(snapshot));
-    if (thumbnail) await this.writeThumbnail(snapshotThumbnailPath(parentFolderOf(entry.path), id), thumbnail);
+    const storage = snapshotStorageFor(this.app, entry.path);
+    await storage.update(entry.path, () => JSON.stringify(snapshot));
+    if (thumbnail) await storage.writeBinary(snapshotThumbnailPath(parentFolderOf(entry.path), id), thumbnail);
     return snapshot;
   }
 
   async rename(entry: SceneSnapshotEntry, name: string): Promise<void> {
-    await this.writeJson(entry.path, (data) => {
+    await snapshotStorageFor(this.app, entry.path).update(entry.path, (data) => {
       const snapshot = parseJson(data);
       return isSceneSnapshot(snapshot) ? JSON.stringify({ ...snapshot, name }) : data;
     });
@@ -97,11 +96,9 @@ export class SceneSnapshotService {
 
   /** Moves the snapshot and its thumbnail to the trash, and the scene's folder too once it is empty. */
   async delete(entry: SceneSnapshotEntry): Promise<void> {
-    for (const path of [entry.path, entry.thumbnailPath]) {
-      const file = path ? this.app.vault.getFileByPath(path) : null;
-      if (file) await trashVaultItem(this.app, file);
-    }
-    await trashEmptySnapshotFolder(this.app, parentFolderOf(entry.path));
+    const storage = snapshotStorageFor(this.app, entry.path);
+    for (const path of [entry.path, entry.thumbnailPath]) if (path) await storage.remove(path);
+    await storage.removeFolderIfEmpty(parentFolderOf(entry.path));
   }
 
   /** Writes the snapshot's state into the map file. The open view must reload the map afterwards. */
@@ -121,29 +118,18 @@ export class SceneSnapshotService {
   async rewriteFiles(paths: Iterable<string>, rewrite: (content: string) => string | null): Promise<boolean> {
     let changed = false;
     for (const path of paths) {
-      const file = this.app.vault.getFileByPath(path);
-      if (!file) continue;
+      const storage = snapshotStorageFor(this.app, path);
+      const content = await storage.read(path);
+      if (content === null) continue;
       try {
-        if (rewrite(await this.app.vault.read(file)) === null) continue;
-        await this.app.vault.process(file, (latest) => rewrite(latest) ?? latest);
+        if (rewrite(content) === null) continue;
+        await storage.update(path, (latest) => rewrite(latest) ?? latest);
         changed = true;
       } catch (error) {
         console.error(`[Atlas] Could not update the snapshot ${path}:`, error);
       }
     }
     return changed;
-  }
-
-  private async writeJson(path: string, change: (data: string) => string): Promise<void> {
-    const file = this.app.vault.getFileByPath(path);
-    if (!file) throw new Error(`Snapshot file not found: ${path}`);
-    await this.app.vault.process(file, change);
-  }
-
-  private async writeThumbnail(path: string, data: ArrayBuffer): Promise<void> {
-    const existing = this.app.vault.getFileByPath(path);
-    if (existing) await this.app.vault.modifyBinary(existing, data);
-    else await this.app.vault.createBinary(path, data);
   }
 
   private async readMap(mapFile: TFile): Promise<PersistedMapEnvelope> {
@@ -154,8 +140,8 @@ export class SceneSnapshotService {
     return envelope;
   }
 
-  private async read(file: TFile): Promise<SceneSnapshot | null> {
-    const parsed = parseJson(await this.app.vault.read(file));
+  private parse(content: string | null): SceneSnapshot | null {
+    const parsed = content === null ? null : parseJson(content);
     return isSceneSnapshot(parsed) ? parsed : null;
   }
 }

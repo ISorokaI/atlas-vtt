@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 import { LOOT_HISTORY_LIMIT, readLootHistory, type LootRoll } from '../../src/app/loot/lootHistory';
 import { LootHistoryStore } from '../../src/app/loot/LootHistoryStore';
-import { mergeLootHistories, readDeviceLootHistory, withoutRoll } from '../../src/app/loot/deviceLootHistory';
+import { mergeLootHistories, readDeviceLootHistory, withoutRoll, clearedHistory } from '../../src/app/loot/deviceLootHistory';
 import { deviceLootHistoryPath, legacyLootHistoryPath, lootHistoryCollectionOf } from '../../src/app/loot/lootHistoryPaths';
 import { deviceId } from '../../src/app/plugin/deviceId';
 import { isAdoptableJson } from '../../src/app/services/vault-sync/assetAdoption';
@@ -52,10 +52,17 @@ describe('device id', () => {
 });
 
 describe('merging the devices\' histories', () => {
-  it('shows every roll once, newest first, without those removed or cleared anywhere', () => {
-    const mine = readDeviceLootHistory({ rolls: [roll('a', 'X', 5), roll('shared', 'X', 3)], removed: ['b'] });
-    const theirs = readDeviceLootHistory({ rolls: [roll('b', 'Y', 6), roll('shared', 'Y', 3), roll('c', 'Y', 1)], clearedAt: 2 });
+  it('shows every roll once, newest first, without those removed anywhere', () => {
+    const mine = readDeviceLootHistory({ rolls: [roll('a', 'X', 5), roll('shared', 'X', 3)], removed: ['b', 'c'] });
+    const theirs = readDeviceLootHistory({ rolls: [roll('b', 'Y', 6), roll('shared', 'Y', 3), roll('c', 'Y', 1)] });
     expect(ids(mergeLootHistories([mine, theirs]))).toEqual(['a', 'shared']);
+  });
+
+  it('clears by naming the rolls there are, so a roll another device makes afterwards stays whatever its clock says', () => {
+    const theirs = readDeviceLootHistory({ rolls: [roll('b', 'Y', 6)] });
+    const mine = clearedHistory([theirs]);
+    const later = readDeviceLootHistory({ rolls: [roll('late', 'Y', 1), roll('b', 'Y', 6)] });
+    expect(ids(mergeLootHistories([mine, later]))).toEqual(['late']);
   });
 
   it('marks another device\'s roll as removed and drops its own', () => {

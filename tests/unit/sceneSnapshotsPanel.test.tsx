@@ -178,11 +178,10 @@ describe('scene snapshots page', () => {
     expect(screen.getByRole('group', { name: 'Snapshot 1' })).toBeTruthy();
   });
 
-  it('explains that a map outside every collection keeps no snapshots, and offers none', async () => {
+  it('offers snapshots for a map outside every collection too, kept beside it', async () => {
     await renderPanel('Elsewhere/Loose.atlasmap');
-    expect(await screen.findByText(/kept with the scenes of a collection/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /New snapshot/ }).hasAttribute('disabled')).toBe(true);
-    expect(screen.queryByText(/No snapshots yet/)).toBeNull();
+    expect(await screen.findByText(/No snapshots yet/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /New snapshot/ }).hasAttribute('disabled')).toBe(false);
   });
 
   it('deletes a snapshot from the context menu after confirmation', async () => {

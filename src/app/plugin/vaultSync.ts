@@ -4,7 +4,7 @@ import { FileReferenceService } from '../services/FileReferenceService';
 import { MapThumbnailService } from '../services/MapThumbnailService';
 import type { PathMove } from '../services/renamedPaths';
 import { stemOf } from '../services/vault-sync/recoveredIds';
-import { followSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
+import { followLegacySnapshots, followSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { runInBackground } from '../utils/backgroundTask';
 import { isLibraryFile } from '../services/library/libraryPaths';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
@@ -89,6 +89,7 @@ export function registerVaultSync(plugin: Plugin): void {
         // Obsidian reports every file of a renamed folder in the same task; one pass handles them all.
         if (pendingMoves.length === 0) queueMicrotask(flushMoves);
         pendingMoves.push({ from: oldPath, to: file.path });
+        if (isScenePath(oldPath) && isScenePath(file.path)) runInBackground(followLegacySnapshots(app, oldPath, file.path), 'Moving the snapshots of a renamed map');
       }
       scheduleCheck();
     })

@@ -265,3 +265,17 @@ describe('Atlas\' own folders at a collection\'s root', () => {
     expect(after.filter((asset) => !before.has(asset.id)).map((asset) => [asset.type, asset.name])).toEqual([['scene', 'Cave']]);
   });
 });
+
+describe('recovered tokens', () => {
+  it('keep a name the user gave them', async () => {
+    const vault = await setup();
+    await vault.app.vault.create(`${camp}/tokens/orc_1790000000000_abcdef.webp`, 'IMG');
+    await vault.service.reconcileWithVault();
+    const recovered = (await vault.service.getAssets('Winter Camp', 'token')).find((token) => token.id.includes('-recovered-'))!;
+    expect(recovered.name).toBe('Orc');
+
+    await vault.service.updateAsset(recovered.id, { name: 'Orc chieftain' });
+    await vault.service.reconcileWithVault();
+    expect((await vault.service.getAssetById(recovered.id))?.name).toBe('Orc chieftain');
+  });
+});

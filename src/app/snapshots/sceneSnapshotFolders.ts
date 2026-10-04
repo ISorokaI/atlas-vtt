@@ -2,9 +2,10 @@ import { TFile, TFolder, type App } from 'obsidian';
 import type { AssetService, SceneAsset } from '../services/AssetService';
 import { trashVaultItem } from '../utils/trashVaultItem';
 import { SceneSnapshotService } from './SceneSnapshotService';
-import { collectionSnapshotsFolder, isSnapshotJsonPath, parentFolderOf, sceneSnapshotFolder } from './snapshotPaths';
+import { collectionSnapshotsFolder, isSnapshotJsonPath, legacySnapshotFolderFor, parentFolderOf, sceneSnapshotFolder } from './snapshotPaths';
+import { removeEmptyHiddenFolders } from '../utils/hiddenVaultFiles';
 import { COLLECTIONS_DIR } from '../services/assetPaths';
-import { ensureFolder } from '../plugin/vaultFolders';
+import { ensureAdapterFolder, ensureFolder } from '../plugin/vaultFolders';
 
 type SceneKey = Pick<SceneAsset, 'id' | 'collection'>;
 
@@ -17,13 +18,24 @@ export async function sceneOfMap(assets: AssetService, mapPath: string): Promise
 }
 
 /**
- * The snapshot folder of the scene whose map is `mapPath`. A map that belongs
- * to no scene (an `.atlasmap` placed outside every collection by hand) has
- * none: snapshots belong to a scene record and are keyed by its id.
+ * The snapshot folder of the map at `mapPath`: its scene's folder in its
+ * collection, keyed by the scene's id. A map that belongs to no scene (an
+ * `.atlasmap` placed outside every collection) keeps its snapshots where every
+ * map kept them before, in the hidden folder beside it, on this device only.
  */
-export async function snapshotFolderForMap(assets: AssetService, mapPath: string): Promise<string | null> {
+export async function snapshotFolderForMap(assets: AssetService, mapPath: string): Promise<string> {
   const scene = await sceneOfMap(assets, mapPath);
-  return scene ? snapshotFolderOf(scene) : null;
+  return scene ? snapshotFolderOf(scene) : legacySnapshotFolderFor(mapPath);
+}
+
+/** A map that belongs to no scene keeps its snapshots beside it; they follow it when it is renamed or moved. */
+export async function followLegacySnapshots(app: App, from: string, to: string): Promise<void> {
+  const { adapter } = app.vault;
+  const [source, target] = [legacySnapshotFolderFor(from), legacySnapshotFolderFor(to)];
+  if (source === target || !(await adapter.exists(source)) || await adapter.exists(target)) return;
+  await ensureAdapterFolder(app, parentFolderOf(target));
+  await adapter.rename(source, target);
+  await removeEmptyHiddenFolders(app, parentFolderOf(source), parentFolderOf(parentFolderOf(source)));
 }
 
 /** Moves a deleted scene's snapshots to the trash. */
