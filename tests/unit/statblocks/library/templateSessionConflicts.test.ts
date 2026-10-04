@@ -49,6 +49,21 @@ describe('TemplateSession: changes made elsewhere', () => {
     expect(vault.files.get(MARSH_PATH)).toBe(theirs);
   });
 
+  it('raises a conflict for a change written during a gesture that has changed nothing yet (a block held mid-drag)', async () => {
+    const session = await open();
+    session.beginGesture();
+    const theirs = marshText({ description: 'Theirs' });
+    vault.writeExternally(MARSH_PATH, theirs);
+    await vault.settled();
+    expect(session.getSnapshot()).toMatchObject({ conflict: 'changed' });
+    session.apply(described('Dropped'));
+    session.endGesture();
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS * 3);
+    expect(session.getSnapshot()).toMatchObject({ saveState: 'conflict', canUndo: true });
+    expect(session.getSnapshot().template.description).toBe('Dropped');
+    expect(vault.files.get(MARSH_PATH)).toBe(theirs);
+  });
+
   it('refuses a write when the disk changed before the vault said so', async () => {
     const session = await open();
     const theirs = marshText({ description: 'Theirs' });

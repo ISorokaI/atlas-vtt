@@ -85,7 +85,7 @@ export function insertCatalogueBlock(session: EditorSession, type: AuthorableBlo
 export function insertRecipe(session: EditorSession, id: RecipeId, place: InsertPlace): EditOutcome & { inserted?: string } {
   const recipe = recipeById(id);
   if (!recipe) return {};
-  return insertParts(session, place, (template, nextId) => recipe.create(nextId, fieldKeysOf(template.fields)), recipe.label);
+  return insertParts(session, place, (template, nextId) => recipe.create(nextId, template.fields), recipe.label);
 }
 
 /** Pastes copied blocks after the selection, with new ids and the fields the template lacks. */

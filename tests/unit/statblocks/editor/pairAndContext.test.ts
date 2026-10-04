@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkspaceLeaf } from 'obsidian';
 import { chooseCollection, linkingCollectionIds, roleNameFor } from '../../../../src/app/statblocks/editor/collectionContext';
-import { PAIR_ATTRIBUTE, PairPropertiesMark, isLeafMarked, markPairedLeaf } from '../../../../src/app/statblocks/editor/pairProperties';
+import { BESIDE_ATTRIBUTE, PAIR_ATTRIBUTE, PairPropertiesMark, isLeafMarked, markPairedLeaf } from '../../../../src/app/statblocks/editor/pairProperties';
 import { newPairId, readPaneState } from '../../../../src/app/statblocks/editor/paneState';
 import { choiceOptions } from '../../../../src/app/statblocks/editor/statblock-pane/ChoiceValueInput';
 import { singular } from '../../../../src/app/statblocks/editor/statblock-pane/EntriesEditor';
@@ -27,15 +27,31 @@ describe('the pair attribute', () => {
     const first = leaf();
     const second = leaf();
     const mark = new PairPropertiesMark('pair-a');
-    mark.update(first, true);
-    mark.update(second, true);
+    const both = { hideProperties: true, shownBeside: true };
+    mark.update(first, both);
+    mark.update(second, both);
     expect(isLeafMarked(first, 'pair-a')).toBe(false);
+    expect(first.containerEl.hasAttribute(BESIDE_ATTRIBUTE)).toBe(false);
     expect(isLeafMarked(second, 'pair-a')).toBe(true);
-    mark.update(second, false);
+    mark.update(second, { hideProperties: false, shownBeside: false });
     expect(isLeafMarked(second, 'pair-a')).toBe(false);
-    mark.update(first, true);
+    mark.update(first, both);
     mark.release();
     expect(isLeafMarked(first, 'pair-a')).toBe(false);
+    expect(first.containerEl.hasAttribute(BESIDE_ATTRIBUTE)).toBe(false);
+  });
+
+  it('shrinks the note\'s fence beside any statblock the pane draws, and hides Properties only where asked', () => {
+    const note = leaf();
+    const mark = new PairPropertiesMark('pair-a');
+    mark.update(note, { hideProperties: false, shownBeside: true });
+    expect(note.containerEl.getAttribute(BESIDE_ATTRIBUTE)).toBe('pair-a');
+    expect(note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
+    mark.update(note, { hideProperties: true, shownBeside: true });
+    expect(note.containerEl.getAttribute(PAIR_ATTRIBUTE)).toBe('pair-a');
+    mark.update(note, { hideProperties: false, shownBeside: true });
+    expect(note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
+    expect(note.containerEl.getAttribute(BESIDE_ATTRIBUTE)).toBe('pair-a');
   });
 });
 

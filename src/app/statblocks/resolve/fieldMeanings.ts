@@ -33,3 +33,21 @@ export function withFormerKeysAliased(record: FieldRecord, fields: readonly Temp
   }
   return aliased ?? record;
 }
+
+/**
+ * The record without the former keys `withFormerKeysAliased` leaves beside a
+ * renamed field's current key, so what lists a statblock's fields one by one
+ * (the DM screen's quantities) names each field once. A former key that is
+ * another field's current key stays.
+ */
+export function withoutFormerKeys(record: FieldRecord, fields: readonly TemplateField[]): FieldRecord {
+  const current = new Set(fields.map((field) => field.key));
+  const former = new Set<string>();
+  for (const field of fields) {
+    if (!Object.hasOwn(record, field.key) || record[field.key] === undefined) continue;
+    for (const key of field.formerKeys ?? []) {
+      if (!current.has(key) && Object.hasOwn(record, key)) former.add(key);
+    }
+  }
+  return former.size === 0 ? record : Object.fromEntries(Object.entries(record).filter(([key]) => !former.has(key)));
+}

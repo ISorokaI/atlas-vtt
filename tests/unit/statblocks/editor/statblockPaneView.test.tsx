@@ -2,9 +2,11 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App, WorkspaceLeaf } from 'obsidian';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
-import { PAIR_ATTRIBUTE } from '../../../../src/app/statblocks/editor/pairProperties';
+import { BESIDE_ATTRIBUTE, PAIR_ATTRIBUTE } from '../../../../src/app/statblocks/editor/pairProperties';
 import { StatblockPaneView } from '../../../../src/app/statblocks/editor/StatblockPaneView';
+import { SettingsService } from '../../../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
+import { withStatblockEditor } from '../../../mocks/experimentalFeatures';
 import { FakeSource, FakeWriter } from './paneKit';
 import { FakeLeaf, fakeWorkspace, noteLeaf, type FakeWorkspace } from './workspaceKit';
 
@@ -40,9 +42,10 @@ interface Harness {
   writer: FakeWriter;
 }
 
-function setup(): Harness {
+function setup(switchedOn = true): Harness {
   const { app } = createInMemoryApp({ files: { [NOTE]: '---\nstatblock: true\n---\n' } });
   apps.push(app);
+  if (switchedOn) withStatblockEditor(app);
   const note = noteLeaf(NOTE);
   const paneLeaf = new FakeLeaf({ type: 'atlas-statblock-editor' }, app);
   const fake = fakeWorkspace([note, paneLeaf], note);
@@ -99,6 +102,16 @@ describe('StatblockPaneView', () => {
     expect(harness.note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
   });
 
+  it('shrinks the note\'s fence beside a Fantasy Statblocks note too, whose Properties stay', async () => {
+    const harness = setup();
+    harness.source.set(NOTE, { statblock: true, name: 'Marsh Warden', hp: 14 });
+    pair(harness);
+    await harness.view.setState({ notePath: NOTE, pairId: PAIR, collectionId: 'campaign' }, { history: false });
+    await open(harness);
+    await waitFor(() => expect(harness.note.containerEl.getAttribute(BESIDE_ATTRIBUTE)).toBe(PAIR));
+    expect(harness.note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
+  });
+
   it('ends the pair when the partner closes: Properties show again and the pane turns read-only', async () => {
     const harness = setup();
     pair(harness);
@@ -111,6 +124,7 @@ describe('StatblockPaneView', () => {
       harness.fake.trigger('layout-change');
     });
     expect(harness.note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
+    expect(harness.note.containerEl.hasAttribute(BESIDE_ATTRIBUTE)).toBe(false);
     expect(screen.getByText('Open the note to edit')).toBeTruthy();
   });
 
@@ -159,5 +173,50 @@ describe('StatblockPaneView', () => {
     await act(async () => { await harness.view.onClose(); });
     expect(harness.writer.patches()).toEqual([{ op: 'set', path: ['hp'], base: 14, next: 31 }]);
     expect(harness.writer.flush).toHaveBeenCalledWith(NOTE);
+  });
+
+  it('hands the input being typed in to the writer\'s last flush, as quitting closes no pane', async () => {
+    const harness = setup();
+    pair(harness);
+    await harness.view.setState({ notePath: NOTE, pairId: PAIR, collectionId: 'campaign' }, { history: false });
+    await open(harness);
+    expect(harness.writer.pending.size).toBe(1);
+    fireEvent.click(harness.view.contentEl.querySelector('[data-block-id="gchp0000"]')!);
+    const input = within(harness.view.contentEl).getByRole('textbox', { name: 'Hit Points' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '45' } });
+
+    await act(async () => { for (const commit of harness.writer.pending) await commit(); });
+    expect(harness.writer.patches()).toEqual([{ op: 'set', path: ['hp'], base: 14, next: 45 }]);
+
+    opened.splice(opened.indexOf(harness.view), 1);
+    await act(async () => { await harness.view.onClose(); });
+    expect(harness.writer.pending.size).toBe(0);
+    expect(harness.writer.patches()).toHaveLength(1);
+  });
+
+  it('only shows the note while the statblock editor is switched off, and follows the switch', async () => {
+    const harness = setup(false);
+    const settings = new SettingsService(harness.app);
+    pair(harness);
+    await harness.view.setState({ notePath: NOTE, pairId: PAIR, collectionId: 'campaign' }, { history: false });
+    await open(harness);
+    const { contentEl } = harness.view;
+    const hp = (): HTMLElement => contentEl.querySelector<HTMLElement>('[data-block-id="gchp0000"]')!;
+    expect(within(contentEl).getByText('Turn on the statblock editor under Experimental features to edit statblocks.')).toBeTruthy();
+    fireEvent.click(hp());
+    expect(within(contentEl).queryByRole('textbox', { name: 'Hit Points' })).toBeNull();
+    expect(harness.note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
+
+    await act(async () => { settings.setExperimental('statblockEditor', true); });
+    await waitFor(() => expect(harness.note.containerEl.getAttribute(PAIR_ATTRIBUTE)).toBe(PAIR));
+    fireEvent.click(hp());
+    expect(within(contentEl).getByRole('textbox', { name: 'Hit Points' })).toBeTruthy();
+
+    await act(async () => { settings.setExperimental('statblockEditor', false); });
+    expect(harness.note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
+    expect(within(contentEl).queryByRole('textbox', { name: 'Hit Points' })).toBeNull();
+    expect(harness.writer.writes).toEqual([]);
+    await settings.saveSettingsNow();
   });
 });

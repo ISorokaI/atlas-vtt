@@ -64,6 +64,11 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
     cardRef.current?.querySelector<HTMLElement>(`[data-block-id="${blockId}"]`)?.focus();
   });
 
+  // A pane that can no longer write (the pair ended, the statblock editor was switched off) leaves no input open.
+  useEffect(() => {
+    if (!writable) setEditing(null);
+  }, [writable]);
+
   const read = useCallback((field: TemplateField) => readField(latest.current.record, field), []);
 
   const setConflict = useCallback((key: FieldKey, conflict: FieldConflict | null): void => {

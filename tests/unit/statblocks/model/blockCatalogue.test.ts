@@ -8,7 +8,7 @@ import {
 import { BLOCK_RECIPES, recipeById } from '../../../../src/app/statblocks/model/blockRecipes';
 import { isLegalSubtree } from '../../../../src/app/statblocks/model/treeEdit';
 import { fieldsShownBy, flattenReadingOrder } from '../../../../src/app/statblocks/model/treeQueries';
-import { FIELD_TYPES, type BlockType, type TemplateBlock } from '../../../../src/app/statblocks/model/templateTypes';
+import { FIELD_TYPES, type BlockType, type TemplateBlock, type TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { idsFrom } from './treeFixtures';
 
 const ALL_TYPES: BlockType[] = [
@@ -108,7 +108,7 @@ describe('recipes', () => {
 
   it('insert legal blocks with unique ids that show every new field', () => {
     for (const recipe of BLOCK_RECIPES) {
-      const { blocks, fields } = recipe.create(nextId, ['name']);
+      const { blocks, fields } = recipe.create(nextId, [{ key: 'name', label: 'Name', type: 'text' }]);
       const all = blocksOf(blocks);
       expect(new Set(all.map((block) => block.id)).size).toBe(all.length);
       expect(blocks.every(isLegalSubtree)).toBe(true);
@@ -132,9 +132,28 @@ describe('recipes', () => {
     ] }]);
   });
 
-  it('gives new fields keys the template does not use yet', () => {
-    const { fields } = recipeById('stat-strip')?.create(nextId, ['ac', 'HP']) ?? { fields: [] };
-    expect(fields.map((field) => field.key)).toEqual(['ac_2', 'hp_2', 'speed']);
+  it('shows the template\'s own fields where it has the recipe\'s keys, and adds only the others', () => {
+    const existing: TemplateField[] = [
+      { key: 'ac', label: 'AC', type: 'number' },
+      { key: 'hit_points', label: 'HP', type: 'text', formerKeys: ['hp'] },
+      { key: 'actions', label: 'Actions', type: 'entries' },
+    ];
+    const strip = recipeById('stat-strip')?.create(idsFrom('row00000', 's1', 's2', 's3'), existing);
+    expect(strip?.fields).toEqual([{ key: 'speed', label: 'Speed', type: 'text' }]);
+    const row = strip?.blocks[0];
+    expect(row && 'blocks' in row ? row.blocks.map((block) => 'field' in block && block.field) : []).toEqual(['ac', 'hit_points', 'speed']);
+    expect(recipeById('actions')?.create(idsFrom('a'), existing)).toStrictEqual({
+      blocks: [{ id: 'a', type: 'entries', field: 'actions', heading: 'Actions', addLabel: 'Add action' }],
+      fields: [],
+    });
+  });
+
+  it('gives a new field a free key where the template\'s field of that key is one the block cannot show', () => {
+    const existing: TemplateField[] = [{ key: 'ac', label: 'AC', type: 'entries' }, { key: 'stats', label: 'Stats', type: 'text' }];
+    const { fields } = recipeById('stat-strip')?.create(nextId, existing) ?? { fields: [] };
+    expect(fields.map((field) => field.key)).toEqual(['ac_2', 'hp', 'speed']);
+    const scores = recipeById('ability-scores')?.create(nextId, existing);
+    expect(scores?.fields).toEqual([{ key: 'stats_2', label: 'Abilities', type: 'scores', slots: ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] }]);
   });
 
   it('builds ability scores with six slots and a signed modifier column', () => {

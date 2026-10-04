@@ -5,45 +5,22 @@
  * the collection's settings. Behind the `statblockEditor` switch.
  */
 
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { AnimatePresence } from 'framer-motion';
+import React from 'react';
 import type { App } from 'obsidian';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import { AssetService } from '../../../services/AssetService';
 import { systemPresetsOf } from '../../../services/mapCollectionRules';
 import { collectionStatblockRoles } from '../../roles/collectionStatblockRoles';
+import { showHostedDialog } from '../hostedDialog';
 import { openCreatedTemplate } from './galleryActions';
 import { systemTemplateIds } from './gallerySources';
 import { TemplateGallery, type TemplateGalleryProps } from './TemplateGallery';
 
 type HostedGallery = Omit<TemplateGalleryProps, 'onClose'>;
 
-/** The gallery and its way out: it leaves with its exit motion, then the host goes. */
-function GalleryHost({ gallery, onGone }: { gallery: HostedGallery; onGone: () => void }): React.JSX.Element {
-  const [open, setOpen] = useState(true);
-  return (
-    <AnimatePresence onExitComplete={onGone}>
-      {open && <TemplateGallery key="gallery" {...gallery} onClose={() => setOpen(false)} />}
-    </AnimatePresence>
-  );
-}
-
 /** Shows the gallery in `gallery.doc`; focus goes back where it was once it closes. */
 export function showTemplateGallery(gallery: HostedGallery): void {
-  const { doc } = gallery;
-  const previous = doc.activeElement;
-  const container = doc.body.createDiv({ cls: 'atlas-te-gallery-host' });
-  const root = createRoot(container);
-  const onGone = (): void => {
-    // Never inside React's own commit.
-    queueMicrotask(() => {
-      root.unmount();
-      container.remove();
-      if (previous?.instanceOf(HTMLElement) && previous.isConnected) previous.focus({ preventScroll: true });
-    });
-  };
-  root.render(<GalleryHost gallery={gallery} onGone={onGone} />);
+  showHostedDialog(gallery.doc, 'atlas-te-gallery-host', (close) => <TemplateGallery key="gallery" {...gallery} onClose={close} />);
 }
 
 /** "New statblock template…": the gallery for a collection, whose new template opens in the template editor. */

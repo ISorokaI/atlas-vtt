@@ -51,6 +51,13 @@ export class FakeWriter implements PaneServices['writer'] {
   readonly flush = vi.fn(async (): Promise<void> => undefined);
   readonly undo = vi.fn((): boolean => true);
   readonly redo = vi.fn((): boolean => true);
+  /** The commits registered for the writer's last flush. */
+  readonly pending = new Set<() => Promise<void>>();
+
+  registerPending(commit: () => Promise<void>): () => void {
+    this.pending.add(commit);
+    return () => { this.pending.delete(commit); };
+  }
 
   write(path: string, patches: readonly NotePatch[]): Promise<WriteOutcome> {
     this.writes.push({ path, patches });
@@ -99,6 +106,7 @@ export async function renderPane(options: PaneOptions = {}): Promise<PaneHarness
     notePath: NOTE_PATH,
     collectionId: 'campaign',
     paired: true,
+    editorOn: true,
     propertiesShown: false,
     announcement: '',
     focusRequest: 0,

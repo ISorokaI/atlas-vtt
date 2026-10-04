@@ -41,20 +41,33 @@ function viewTypeOf(leaf: WorkspaceLeaf): string {
   return leaf.getViewState().type;
 }
 
+/** Panes of every window, each with its state. */
+function panes(app: App): Array<{ leaf: WorkspaceLeaf; state: StatblockPaneState }> {
+  return allLeaves(app).flatMap((leaf) => {
+    const state = viewTypeOf(leaf) === STATBLOCK_PANE_VIEW_TYPE ? readPaneState(leaf.getViewState().state) : null;
+    return state ? [{ leaf, state }] : [];
+  });
+}
+
+/** Whether the leaf is a pair's note leaf, which belongs to its pane. */
+function isPairedNoteLeaf(app: App, leaf: WorkspaceLeaf): boolean {
+  return panes(app).some((pane) => findPartner(app, pane.state.pairId, pane.leaf) === leaf);
+}
+
 /** A pane already paired with a leaf that shows the note. */
 function openPaneFor(app: App, notePath: string): WorkspaceLeaf | null {
-  return allLeaves(app).find((leaf) => {
-    if (viewTypeOf(leaf) !== STATBLOCK_PANE_VIEW_TYPE) return false;
-    const state = readPaneState(leaf.getViewState().state);
-    const partner = state ? findPartner(app, state.pairId, leaf) : null;
-    return state?.notePath === notePath && partner !== null && leafNotePath(partner) === notePath;
-  }) ?? null;
+  return panes(app).find(({ leaf, state }) => {
+    const partner = findPartner(app, state.pairId, leaf);
+    return state.notePath === notePath && partner !== null && leafNotePath(partner) === notePath;
+  })?.leaf ?? null;
 }
 
 /**
  * Where the note opens: the leaf already showing it, else the current leaf
  * when it shows a note or nothing, else a new tab. A map is never replaced:
  * from the map, or with a map as the current leaf, the note splits to its right.
+ * Nor is another pair's note leaf, which would leave that pair's pane without
+ * its note.
  */
 function noteLeafFor(app: App, notePath: string, from: StatblockEditorEntry | undefined): WorkspaceLeaf {
   const leaves = allLeaves(app);
@@ -65,7 +78,7 @@ function noteLeafFor(app: App, notePath: string, from: StatblockEditorEntry | un
     ? current
     : from === 'map' ? leaves.find((leaf) => viewTypeOf(leaf) === MAP_VIEW_TYPE) : undefined;
   if (map) return app.workspace.createLeafBySplit(map, 'vertical');
-  if (current && REPLACEABLE_VIEW_TYPES.has(viewTypeOf(current))) return current;
+  if (current && REPLACEABLE_VIEW_TYPES.has(viewTypeOf(current)) && !isPairedNoteLeaf(app, current)) return current;
   return app.workspace.getLeaf('tab');
 }
 

@@ -50,6 +50,22 @@ describe('flushing statblock edits on the way out', () => {
     expect(harness.files.get(NOTE)).toContain('hp: 15');
   });
 
+  it('commits the text of an input still being typed in before the quit flush, which neither blurs nor closes it', async () => {
+    const writer = NoteFieldWriter.forApp(harness.app);
+    const typed = vi.fn(async (): Promise<void> => { await pendingWrite(); });
+    const gone = vi.fn(async (): Promise<void> => undefined);
+    writer.registerPending(typed);
+    writer.registerPending(gone)();
+    const tasks: Array<() => Promise<unknown>> = [];
+
+    harness.workspace.trigger('quit', { add: (task: () => Promise<unknown>) => tasks.push(task), addPromise: vi.fn() });
+    await tasks[0]!();
+
+    expect(harness.files.get(NOTE)).toContain('hp: 15');
+    expect(typed).toHaveBeenCalledTimes(1);
+    expect(gone).not.toHaveBeenCalled();
+  });
+
   it('flushes when a window closes, and saves the editors written to', async () => {
     const view = harness.open(NOTE);
     void pendingWrite();

@@ -56,7 +56,8 @@ export function BlockToolbar(props: BlockToolbarProps): React.JSX.Element {
     update();
     const scroller = stage.closest('.atlas-te-canvas__scroller');
     scroller?.addEventListener('scroll', update, { passive: true });
-    const stop = observeResize([stage, layer], update);
+    // The scroller too: a bar opening above the canvas (a conflict) moves the block without resizing the stage or the layer.
+    const stop = observeResize(scroller ? [stage, layer, scroller] : [stage, layer], update);
     return () => {
       scroller?.removeEventListener('scroll', update);
       stop();

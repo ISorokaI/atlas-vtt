@@ -10,6 +10,7 @@ import { useCallback, useRef } from 'react';
 import { Platform } from 'obsidian';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { isContainerBlock } from '../../model/templateTypes';
+import { DRAGGING_ATTRIBUTE } from '../dnd/dndConfig';
 import { findBlock } from '../../model/treeQueries';
 import { clipOf, copyBlocks, rememberClip } from './blockClipboard';
 import {
@@ -134,6 +135,8 @@ export function handleTemplateKey(target: KeyboardTarget, event: KeyboardEvent, 
   const root = target.rootRef.current;
   const active = root?.doc.activeElement ?? null;
   if (!root || typesText(active)) return false;
+  // A held block's keys are the drag's: Escape cancels it (dnd-kit listens on the document), and no command moves what it holds.
+  if (root.hasAttribute(DRAGGING_ATTRIBUTE)) return false;
   const command = keyCommand(event, mac);
   if (command === null) return false;
   const inside = active?.instanceOf(HTMLElement) === true && root.contains(active);

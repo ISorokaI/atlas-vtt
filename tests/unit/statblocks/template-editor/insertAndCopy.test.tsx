@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CopySwitchBar } from '../../../../src/app/statblocks/editor/template-editor/BuiltInBar';
 import { copySwitchQuestion, type CopySwitch } from '../../../../src/app/statblocks/editor/template-editor/copySwitch';
-import { findItems, groupItems, insertItems, previewTemplate } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
+import { bestMatch, findItems, groupItems, insertItems, previewTemplate } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
+import { InsertMenu } from '../../../../src/app/statblocks/editor/template-editor/InsertMenu';
 import { handleTemplateKey, type KeyboardTarget } from '../../../../src/app/statblocks/editor/template-editor/useTemplateKeyboard';
 import { turnIntoTypes } from '../../../../src/app/statblocks/editor/template-editor/toolbarMenu';
 import { FakeSession, sampleTemplate } from './editorKit';
@@ -21,6 +22,28 @@ describe('the insert menu\'s items', () => {
   it('finds items by every word typed', () => {
     expect(findItems(insertItems(), 'ab sc').map((item) => item.label)).toEqual(['Ability scores']);
     expect(findItems(insertItems(), 'zzz')).toEqual([]);
+  });
+
+  it('starts the keys on the item named exactly what was typed, else on one whose name starts with it', () => {
+    const found = (query: string): string[] => findItems(insertItems(), query).map((item) => item.label);
+    expect(found('stat').slice(0, 2)).toEqual(['Stat strip', 'Stat']);
+    expect(found('stat')[bestMatch(findItems(insertItems(), 'stat'), 'stat')]).toBe('Stat');
+    expect(found('ab')[bestMatch(findItems(insertItems(), 'ab'), 'ab')]).toBe('Ability scores');
+    expect(bestMatch(findItems(insertItems(), 'core'), 'core')).toBe(0);
+    expect(bestMatch(insertItems(), '')).toBe(0);
+  });
+
+  it('inserts the exact match on Enter in the insert menu, not the recipe listed above it', () => {
+    const onInsert = vi.fn();
+    const layer = document.body.createDiv();
+    // jsdom draws nothing, so it has no scrolling into view.
+    Element.prototype.scrollIntoView = vi.fn();
+    render(<InsertMenu layer={layer} anchor={{ left: 0, top: 0, right: 10, bottom: 10 }} onInsert={onInsert} onClose={vi.fn()} />);
+    const search = screen.getByRole('combobox');
+    fireEvent.change(search, { target: { value: 'stat' } });
+    fireEvent.keyDown(search, { key: 'Enter' });
+    expect(onInsert).toHaveBeenCalledWith(expect.objectContaining({ kind: 'block', type: 'stat' }));
+    layer.remove();
   });
 
   it('previews each item with a template of its own', () => {

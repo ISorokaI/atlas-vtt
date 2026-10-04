@@ -8,6 +8,7 @@ import { AssetService } from '../../../../src/app/services/AssetService';
 import { openTemplateEditor } from '../../../../src/app/statblocks/editor/openTemplateEditor';
 import { openCreatedTemplate, saveStatblockAsTemplate } from '../../../../src/app/statblocks/editor/gallery/galleryActions';
 import { openTemplateGallery } from '../../../../src/app/statblocks/editor/gallery/openTemplateGallery';
+import { registerHostedDialogRelease } from '../../../../src/app/statblocks/editor/hostedDialog';
 import type { StatblockTemplate } from '../../../../src/app/statblocks/model/templateTypes';
 import type { CollectionSettings } from '../../../../src/app/types/collectionSettingsTypes';
 import { withStatblockEditor } from '../../../mocks/experimentalFeatures';
@@ -118,6 +119,27 @@ describe('New statblock template…', () => {
     expect(screen.getByRole('combobox', { name: 'Use for' }).textContent).toBe('Monster');
     act(() => { screen.getByRole('button', { name: 'Cancel' }).click(); });
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New template' })).toBeNull());
+    expect(document.querySelector('.atlas-te-gallery-host')).toBeNull();
+  });
+
+  it('goes with its window when that closes, and with Atlas when it unloads', async () => {
+    withStatblockEditor(vault.app);
+    const unloads: Array<() => void> = [];
+    const plugin = { app: vault.app, registerEvent: vi.fn(), register: (unload: () => void) => unloads.push(unload) };
+    registerHostedDialogRelease(plugin as unknown as Plugin);
+    const gallery = (): HTMLElement | null => screen.queryByRole('dialog', { name: 'New template' });
+
+    await act(async () => { await openTemplateGallery(vault.app); });
+    act(() => vault.workspace.trigger('window-close', {}, { document: document.implementation.createHTMLDocument('Popout') }));
+    expect(gallery()).toBeTruthy();
+    act(() => vault.workspace.trigger('window-close', {}, window));
+    expect(gallery()).toBeNull();
+    expect(document.querySelector('.atlas-te-gallery-host')).toBeNull();
+
+    await act(async () => { await openTemplateGallery(vault.app); });
+    expect(gallery()).toBeTruthy();
+    act(() => { for (const unload of unloads) unload(); });
+    expect(gallery()).toBeNull();
     expect(document.querySelector('.atlas-te-gallery-host')).toBeNull();
   });
 

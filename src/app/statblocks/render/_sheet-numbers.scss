@@ -44,6 +44,14 @@ $track-boxes-per-line: 12;
         text-align: start;
       }
     }
+
+    // Many slots with long names ("Communication") in a narrow card: names still wrap between words, and a word wider
+    // than its cell is cut short instead of running into the next one.
+    > .atlas-sb-score-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   }
 
   // Table: up to `perLine` groups side by side, fewer where the width does

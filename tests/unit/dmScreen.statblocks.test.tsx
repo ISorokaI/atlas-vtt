@@ -37,6 +37,8 @@ const app = {
       : '## Notes\nAn old Atlas creature note.',
   },
   metadataCache: {
+    on: vi.fn(() => ({})),
+    offref: vi.fn(),
     getFileCache: (file: TFile) => ({ frontmatter: file.path === creaturePath
       ? { statblock: true, name: creature.name }
       : { 'atlas-type': 'statblock', 'template-id': 'old-template', name: 'New Creature 32' } }),

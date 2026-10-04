@@ -4,7 +4,7 @@
 // While a note shows beside its statblock pane, `pairProperties.ts` marks the
 // note's leaf with `data-atlas-statblock-pair`; the pane's tray edits what the
 // Properties would show. Not scoped under `.atlas-vtt-plugin`: the leaf is the
-// user's note, and this attribute is the only mark Atlas sets on it.
+// user's note, and these attributes are the only marks Atlas sets on it.
 //
 // Properties hide through Obsidian's own variables: its rules
 // (`.markdown-source-view.is-live-preview.show-properties .metadata-container`
@@ -20,9 +20,10 @@
 }
 
 // The note's `atlas-statblock` fence would draw the statblock a second time
-// beside the pane: it shrinks to one line. Obsidian styles the fence's element
-// only through `.block-language-*`, below this rule's specificity.
-.workspace-leaf[data-atlas-statblock-pair] .atlas-statblock-fence {
+// beside the pane, native or Fantasy Statblocks' (`data-atlas-statblock-beside`):
+// it shrinks to one line. Obsidian styles the fence's element only through
+// `.block-language-*`, below this rule's specificity.
+.workspace-leaf[data-atlas-statblock-beside] .atlas-statblock-fence {
   > * {
     display: none;
   }

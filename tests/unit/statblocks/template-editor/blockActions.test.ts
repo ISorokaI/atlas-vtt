@@ -80,6 +80,14 @@ describe('inserting', () => {
     expect(outcome.announce).toBe('Added Stat strip.');
   });
 
+  it('inserts a recipe into a template that has its fields without making copies of them', () => {
+    const s = session();
+    const before = s.template.fields.map((field) => field.key);
+    expect(before).toEqual(expect.arrayContaining(['ac', 'hp', 'speed']));
+    insertRecipe(s, 'stat-strip', { after: null });
+    expect(s.template.fields.map((field) => field.key)).toEqual(before);
+  });
+
   it('inserts at the gap the + line named', () => {
     const s = session();
     const outcome = insertCatalogueBlock(s, 'divider', { at: { parentId: 'row00001', index: 1 } });

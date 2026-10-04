@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '../../../packages/components/primitives/button';
 import type { FieldValue, TemplateField } from '../../model/templateTypes';
+import type { FieldRead } from '../../values/fieldValues';
 import { parseNumberText } from '../../values/numberText';
 import { valueText } from '../../values/valueText';
 import { removedMessage } from './announcements';
@@ -27,7 +28,8 @@ interface TrayValueRowProps {
 /**
  * A key the template does not show: its value as raw text (a list or a map
  * shows read-only), Add to template, and Remove from note, a `delete` patch
- * that the note's own undo takes back.
+ * that the note's own undo takes back. A commit is based on the value typing
+ * started from, so a change in the note meanwhile is a conflict (§8.1).
  */
 export function TrayValueRow({ field, onAddToTemplate }: TrayValueRowProps): React.JSX.Element {
   const pane = usePaneEdit();
@@ -36,17 +38,18 @@ export function TrayValueRow({ field, onAddToTemplate }: TrayValueRowProps): Rea
   const shown = draft ?? valueText(read.value);
   const conflict = pane.conflicts.get(field.key);
 
-  const typed = useRef<string | null>(null);
+  // What is typed, and the value shown when typing started.
+  const typed = useRef<{ text: string; from: FieldRead } | null>(null);
   const type = (text: string | null): void => {
-    typed.current = text;
+    typed.current = text === null ? null : { text, from: typed.current?.from ?? read };
     setDraft(text);
   };
   const commit = (): void => {
-    const text = typed.current;
-    if (text === null) return;
+    const edit = typed.current;
+    if (edit === null) return;
     type(null);
-    const next = rawValue(text, read.value);
-    void pane.write(field, fieldPatches(field.key, read, next), { base: read.value, mine: next });
+    const next = rawValue(edit.text, edit.from.value);
+    void pane.write(field, fieldPatches(field.key, edit.from, next), { base: edit.from.value, mine: next });
   };
   const commitRef = useRef(commit);
   commitRef.current = commit;

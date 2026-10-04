@@ -62,8 +62,11 @@ describe('the Blocks tab', () => {
     const results = screen.getByRole('listbox', { name: 'Blocks found' });
     expect(results.hasAttribute('data-atlas-standing-list')).toBe(true);
     expect(within(results).getAllByRole('option').map((option) => option.querySelector('.atlas-ctx-item__label')?.textContent)).toEqual(['Ability scores', 'Scores']);
-    key(search, 'ArrowDown');
+    // The keys start on the block whose name starts with what was typed.
     expect(search.getAttribute('aria-activedescendant')).toContain('block:scores');
+    key(search, 'ArrowDown');
+    expect(search.getAttribute('aria-activedescendant')).toContain('recipe:ability-scores');
+    key(search, 'ArrowUp');
     key(search, 'Enter');
     expect(session.template.layout.blocks.at(-1)?.type).toBe('scores');
     expect((search as HTMLInputElement).value).toBe('');

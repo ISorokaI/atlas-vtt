@@ -7,6 +7,7 @@ import { NotePreviewUIManager } from '../../src/app/services/NotePreviewUIManage
 
 vi.mock('../../src/app/services/FantasyStatblocksService', () => ({
   findCreatureForNotePath: (): object => ({}),
+  getFantasyStatblocksApi: (): object => ({}),
 }));
 vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({ LinkedStatblock: (): null => null }));
 

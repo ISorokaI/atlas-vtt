@@ -125,7 +125,6 @@ $popover-width: 280px;
   }
 
   .atlas-te-insp-popover {
-    @include atlas-keep-in-view;
     position: absolute;
     left: var(--atlas-te-insp-x);
     top: var(--atlas-te-insp-y);
@@ -137,19 +136,24 @@ $popover-width: 280px;
     }
   }
 
-  // Not clipped: a field picker's list may hang below the last group.
+  // Not clipped unless capped to the view (then it scrolls inside its own border): a field picker's list may hang below
+  // the last group.
+  .atlas-te-insp-popover__motion {
+    transform-origin: top left;
+  }
+
   .atlas-te-insp-popover__panel {
+    @include atlas-keep-in-view;
     @include atlas-elevated-surface;
     @include atlas-panel-radius($radius-2xl);
     box-shadow: $shadow-md;
-    transform-origin: top left;
 
     .atlas-te-insp__header {
       @include atlas-close-header($group-space);
     }
   }
 
-  .atlas-te-insp-popover[data-side='left'] .atlas-te-insp-popover__panel {
+  .atlas-te-insp-popover[data-side='left'] .atlas-te-insp-popover__motion {
     transform-origin: top right;
   }
 

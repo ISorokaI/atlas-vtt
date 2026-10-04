@@ -9,7 +9,7 @@ import { cn } from '../../../utils/cn';
 import { AUTO_TEMPLATE_ID } from '../model/autoTemplate';
 import type { ResolvedStatblock } from '../model/resolvedTypes';
 import type { StatblockTemplate } from '../model/templateTypes';
-import type { FieldRecord } from '../values/fieldValues';
+import { withoutFormerKeys } from '../resolve/fieldMeanings';
 import { useTokenPortrait } from './shared/tokenPortrait';
 import type { SheetVariant, StatblockTokenContext } from './sheetTypes';
 import { StatblockSheet } from './StatblockSheet';
@@ -31,8 +31,9 @@ export interface LinkedSheetProps {
   className?: string | undefined;
 }
 
-function monsterOf(fields: FieldRecord): StatblockMonster {
-  const { name, ...rest } = fields;
+/** The statblock's fields for the DM screen's quantities: a renamed field once, under its current key. */
+function monsterOf({ fields, template }: DrawnStatblock): StatblockMonster {
+  const { name, ...rest } = withoutFormerKeys(fields, template.fields);
   return typeof name === 'string' ? { ...rest, name } : rest;
 }
 
@@ -87,7 +88,7 @@ export function LinkedSheet({ app, statblock, variant, tokens, tokenActions, onC
   // The DM screen draws as boxes and names what the template's Track blocks and Scores slots do.
   const look = useMemo(() => templateQuantityLook(statblock.template), [statblock.template]);
   const footer = tokenActions && tokens.length > 0
-    ? <StatblockTokenResources monster={monsterOf(statblock.fields)} look={look} tokens={tokens} {...tokenActions} />
+    ? <StatblockTokenResources monster={monsterOf(statblock)} look={look} tokens={tokens} {...tokenActions} />
     : undefined;
 
   return (

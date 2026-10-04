@@ -111,11 +111,13 @@ export class SessionCore {
     this.store.getState().edit(edit);
   }
 
-  beginGesture(): void {
-    if (this.disposed || this.file.readOnly) return;
+  /** False when no gesture began: the session is read-only or gone. */
+  beginGesture(): boolean {
+    if (this.disposed || this.file.readOnly) return false;
     this.gestureStarts.push(this.draft());
     this.file.holdWrites();
     beginHistoryTransaction(this.store);
+    return true;
   }
 
   endGesture(): void {

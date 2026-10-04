@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadStatblockOverrides } from '../../../../src/app/packages/components/asset-manager/utils/statblockLoader';
+import { buildStatblockLinkUpdates } from '../../../../src/app/pixi/token-renderer/statblockFrontmatter';
 import { HP_RESOURCE } from '../../../../src/app/resources/resourceDefinitions';
 import { resolveField } from '../../../../src/app/resources/resourceFields';
 import { fillMissingResources } from '../../../../src/app/resources/statblockResourceSync';
@@ -61,6 +62,15 @@ describe('native statblocks reach tokens', () => {
     expect(data).toMatchObject({ name: 'Iron Guard', difficulty: 'Level 3', meanings: { 'hit-points': 'stamina', rating: 'level' } });
     expect(await linkService().readStatblockRecord(GUARD)).toMatchObject({ fields: { stamina: 40 }, meanings: STAMINA });
     expect(refusals.every((refusal) => refusal.mock.calls.length === 0)).toBe(true);
+  });
+
+  it('links a token on an open map with the same values as on closed maps', async () => {
+    const statblock = await linkService().readStatblockRecord(GUARD);
+    expect(statblock && buildStatblockLinkUpdates(statblock, 'Hero', [HP_RESOURCE], { mana: { current: 1, max: 4 } })).toEqual({
+      name: 'Iron Guard',
+      difficulty: 'Level 3',
+      resources: { mana: { current: 1, max: 4 }, hp: { current: 40, max: 40 } },
+    });
   });
 
   it('starts a resource defined later from the hit points the template means', async () => {

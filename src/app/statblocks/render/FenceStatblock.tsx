@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer } from 'react';
+import React from 'react';
 import { Pencil } from 'lucide-react';
 import type { App } from 'obsidian';
 import { Button } from '../../packages/components/primitives/button';
@@ -16,18 +16,6 @@ export interface FenceStatblockProps {
   onEdit?: ((path: string) => void) | undefined;
 }
 
-/** Whether the note is a native statblock now; read again whenever the metadata cache reads the note. */
-function useNativeNote(app: App, path: string): boolean {
-  const [, refresh] = useReducer((count: number): number => count + 1, 0);
-  useEffect(() => {
-    const ref = app.metadataCache.on('changed', (file) => {
-      if (file.path === path) refresh();
-    });
-    return () => app.metadataCache.offref(ref);
-  }, [app, path]);
-  return useNativeTemplateId(app, path, undefined) !== null;
-}
-
 /**
  * What a note's `atlas-statblock` fence shows (D14): the note's statblock and,
  * above it for a native statblock while the statblock editor is switched on,
@@ -35,7 +23,7 @@ function useNativeNote(app: App, path: string): boolean {
  */
 export function FenceStatblock({ app, path, onEdit }: FenceStatblockProps): React.JSX.Element {
   const editorOn = useExperimentalFeature('statblockEditor', SettingsService.forApp(app));
-  const native = useNativeNote(app, path);
+  const native = useNativeTemplateId(app, path, undefined) !== null;
   return (
     <>
       {onEdit && editorOn && native && (

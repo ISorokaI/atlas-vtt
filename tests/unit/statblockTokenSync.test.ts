@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { statblockTokenChanges, syncLinkedTokens } from '../../src/app/pixi/token-renderer/statblockTokenSync';
+import { applyLinkChange, statblockTokenChanges, syncLinkedTokens } from '../../src/app/pixi/token-renderer/statblockTokenSync';
 import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
+import type { LinkChangeEvent } from '../../src/app/services/TokenStatblockLinkService';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { builtInTemplate } from '../../src/app/statblocks/library/builtInTemplates';
@@ -57,5 +58,39 @@ describe('linked tokens following their statblock', () => {
     const changes = statblockTokenChanges({ t1: warden }, WARDEN, resolved, [{ ...HP_RESOURCE, field: 'vigour' }], 'art/new.webp');
 
     expect(changes).toEqual([{ id: 't1', changes: { resources: { hp: { current: 10, max: 22 } }, imagePath: 'art/new.webp' } }]);
+  });
+});
+
+describe('open-map tokens following a change of their art\'s link', () => {
+  const art = warden.imagePath;
+  const unlinked = (fromNote?: boolean): LinkChangeEvent => ({ type: 'unlinked', tokenImagePath: art, statblockPath: null, ...(fromNote && { fromNote }) });
+  const other: Character = { ...warden, id: 't3', imagePath: 'art/ogre.webp', statblockPath: 'Bestiary/Ogre.md' };
+
+  it('take an unlink the note\'s image caused without it becoming an undo step', () => {
+    const { store, steps } = mapWith({ t1: warden, t2: { ...warden, id: 't2' }, t3: other });
+
+    applyLinkChange(store, unlinked(true), () => null);
+
+    const { t1, t2, t3 } = store.getState().objects.tokens as Record<string, Character>;
+    expect([t1?.statblockPath, t1?.resources, t2?.resources]).toEqual([undefined, undefined, undefined]);
+    expect(t3).toEqual(other);
+    expect(steps()).toBe(0);
+  });
+
+  it('take a link the note\'s image caused untracked, with what the statblock gives', () => {
+    const { store, steps } = mapWith({ t1: { ...warden, statblockPath: undefined, resources: undefined } });
+
+    applyLinkChange(store, { type: 'linked', tokenImagePath: art, statblockPath: WARDEN, fromNote: true }, (_token, path) => ({ statblockPath: path, resources: { hp: { current: 9, max: 9 } } }));
+
+    expect(store.getState().objects.tokens.t1).toMatchObject({ statblockPath: WARDEN, resources: { hp: { current: 9, max: 9 } } });
+    expect(steps()).toBe(0);
+  });
+
+  it('make a link change made by hand one undo step for all its tokens', () => {
+    const { store, steps } = mapWith({ t1: warden, t2: { ...warden, id: 't2' } });
+
+    applyLinkChange(store, unlinked(), () => null);
+
+    expect(steps()).toBe(1);
   });
 });

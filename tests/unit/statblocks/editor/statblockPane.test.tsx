@@ -106,9 +106,14 @@ describe('the statblock pane over a native note', () => {
     const chip = screen.getByRole('group', { name: 'Hit Points conflict' });
     expect(chip.textContent).toContain('Changed in the note: 14 → 18');
     writer.answer = (patches) => ({ applied: [...patches], conflicts: [], backend: 'editor', problem: null });
-    await act(async () => { fireEvent.click(within(chip).getByRole('button', { name: 'Keep mine' })); });
+    // A click focuses the button it lands on.
+    const keep = within(chip).getByRole('button', { name: 'Keep mine' });
+    keep.focus();
+    await act(async () => { fireEvent.click(keep); });
     expect(writer.writes.at(-1)?.patches).toEqual([{ op: 'set', path: ['hp'], base: 18, next: 20 }]);
     expect(screen.queryByRole('group', { name: 'Hit Points conflict' })).toBeNull();
+    // The chip goes with its answer; focus stays on the value it was about.
+    expect(document.activeElement).toBe(blockOf(result.container, 'gchp0000'));
   });
 
   it('drops a conflict for the note\'s value without writing', async () => {
@@ -119,9 +124,12 @@ describe('the statblock pane over a native note', () => {
     fireEvent.change(input, { target: { value: '20' } });
     await act(async () => { fireEvent.keyDown(input, { key: 'Enter' }); });
     const writes = writer.writes.length;
-    fireEvent.click(screen.getByRole('button', { name: 'Use the note\'s' }));
+    const notes = screen.getByRole('button', { name: 'Use the note\'s' });
+    notes.focus();
+    fireEvent.click(notes);
     expect(screen.queryByRole('group', { name: 'Hit Points conflict' })).toBeNull();
     expect(writer.writes.length).toBe(writes);
+    expect(document.activeElement).toBe(blockOf(result.container, 'gchp0000'));
   });
 
   it('edits an entry by its path and moves it with Alt+↓', async () => {

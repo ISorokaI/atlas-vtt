@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Component, MarkdownRenderer, type App } from 'obsidian';
 import { diceLinkProps, linkDiceIn, splitDiceSegments } from '../../../services/statblockDiceLinks';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { inlineMarkdown } from './inlineMarkdown';
 
 interface MarkdownTextProps {
   /** Raw text, which may contain markdown and wiki links */
@@ -49,7 +50,7 @@ export function StatblockMarkdown({
 
     el.replaceChildren();
     const component = new Component();
-    runInBackground(MarkdownRenderer.render(app, text, el, sourcePath, component), 'Rendering statblock markdown');
+    runInBackground(MarkdownRenderer.render(app, inlineMarkdown(text), el, sourcePath, component), 'Rendering statblock markdown');
 
     // Obsidian wraps single-line markdown in a <p>; unwrap so it stays inline.
     const paragraphs = el.querySelectorAll('p');

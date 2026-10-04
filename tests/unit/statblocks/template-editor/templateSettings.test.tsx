@@ -14,9 +14,28 @@ afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const settings = (): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-te-inspector .atlas-te-insp__fade')].at(-1)!;
+
+/**
+ * jsdom has no PointerEvent and no pointer capture: Radix reads the pointer's
+ * position from the event and moves the slider only while its target holds it.
+ */
+function stubPointers(element: HTMLElement): void {
+  vi.stubGlobal('PointerEvent', class extends MouseEvent {
+    readonly pointerId: number;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  });
+  let captured = false;
+  element.setPointerCapture = (): void => { captured = true; };
+  element.hasPointerCapture = (): boolean => captured;
+  element.releasePointerCapture = (): void => { captured = false; };
+}
 
 describe('the template\'s settings', () => {
   it('show while nothing is selected, and edit the description and the columns one step each', () => {
@@ -45,6 +64,31 @@ describe('the template\'s settings', () => {
     key(thumb, 'ArrowLeft');
     expect(session.template.layout).not.toHaveProperty('columnWidth');
     expect(within(settings()).getByText('22 em')).toBeTruthy();
+  });
+
+  it('ends a press on the column width at the pointer\'s release, also where the width did not change', () => {
+    const session = new FakeSession(sampleTemplate());
+    mountEditor(session);
+    const thumb = within(settings()).getByRole('slider', { name: 'Column width' });
+    // 14 to 40 em over 260 px: 10 px an em, 22 em at 80 px.
+    thumb.closest<HTMLElement>('.slider-root')!.getBoundingClientRect = (): DOMRect => new DOMRect(0, 0, 260, 10);
+    stubPointers(thumb);
+
+    fireEvent.pointerDown(thumb, { button: 0, pointerId: 1, clientX: 80 });
+    fireEvent.pointerUp(thumb, { pointerId: 1, clientX: 80 });
+    fireEvent.click(within(settings()).getByRole('radio', { name: '2' }));
+    expect(session.steps).toBe(1);
+    session.undo();
+    expect(session.template.layout.maxColumns).toBe(1);
+
+    fireEvent.pointerDown(thumb, { button: 0, pointerId: 2, clientX: 80 });
+    fireEvent.pointerMove(thumb, { pointerId: 2, clientX: 160 });
+    expect(session.template.layout.columnWidth).toBe(30);
+    fireEvent.pointerMove(thumb, { pointerId: 2, clientX: 80 });
+    fireEvent.pointerUp(thumb, { pointerId: 2, clientX: 80 });
+    expect(session.template.layout).not.toHaveProperty('columnWidth');
+    fireEvent.click(within(settings()).getByRole('radio', { name: '3' }));
+    expect(session.steps).toBe(3);
   });
 
   it('says that no role starts from a template, and what a copy is based on', () => {

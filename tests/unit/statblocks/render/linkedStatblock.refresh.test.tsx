@@ -5,7 +5,7 @@ import { HP_RESOURCE } from '../../../../src/app/resources/resourceDefinitions';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import type { TokenVitals } from '../../../../src/app/services/statblockVitalsSync';
 import { addNote, creatureVault, forbidWrites, type CreatureVault } from '../../../mocks/creatureVault';
-import { MARSH_PATH, marshText } from '../library/templateTexts';
+import { MARSH_PATH, TEMPLATE_FOLDER, marshText } from '../library/templateTexts';
 import {
   NATIVE, WARDEN, barOf, captionOf, fantasyCardOf, loadFantasyStatblocks, renderLinked, sheetOf, unloadFantasyStatblocks,
 } from './linkedStatblockKit';
@@ -85,6 +85,39 @@ describe('LinkedStatblock: following changes', () => {
     act(() => current.vault.trigger('create', new TFile(MARSH_PATH)));
     await waitFor(() => expect(sheetOf(container)?.dataset.template).toBe('marsh-creature'));
     expect(barOf(container)).toBeNull();
+  });
+
+  it('follows the template a note is switched to, also through a later rename of that template', async () => {
+    const bogPath = `${TEMPLATE_FOLDER}/Bog creature.atlastemplate`;
+    const fenPath = `${TEMPLATE_FOLDER}/Fen creature.atlastemplate`;
+    current.files.set(MARSH_PATH, marshText());
+    current.files.set(bogPath, marshText({ id: 'bog-creature-p4q8rs' }));
+    addNote(current, WARDEN, NATIVE);
+    const { container } = renderLinked(current, { path: WARDEN });
+    await waitFor(() => expect(sheetOf(container)?.dataset.template).toBe('marsh-creature'));
+
+    addNote(current, WARDEN, { ...NATIVE, 'atlas-template': 'bog-creature-p4q8rs' });
+    act(() => current.metadata.trigger('changed', new TFile(WARDEN)));
+    await waitFor(() => expect(sheetOf(container)?.dataset.template).toBe('bog-creature'));
+
+    current.files.set(fenPath, current.files.get(bogPath)!);
+    current.files.delete(bogPath);
+    act(() => current.vault.trigger('rename', new TFile(fenPath), bogPath));
+    await waitFor(() => expect(sheetOf(container)?.dataset.template).toBe('fen-creature'));
+  });
+
+  it('draws a note adopted as a native statblock with its template while Fantasy Statblocks is loaded', async () => {
+    loadFantasyStatblocks(current);
+    current.files.set(MARSH_PATH, marshText());
+    addNote(current, WARDEN, { statblock: true, name: 'Marsh Warden' });
+    current.bestiary.push({ name: 'Marsh Warden', path: WARDEN });
+    const { container } = renderLinked(current, { path: WARDEN });
+    await waitFor(() => expect(fantasyCardOf(container)?.textContent).toContain('Marsh Warden'));
+
+    addNote(current, WARDEN, NATIVE);
+    act(() => current.metadata.trigger('changed', new TFile(WARDEN)));
+    await waitFor(() => expect(sheetOf(container)?.dataset.template).toBe('marsh-creature'));
+    expect(fantasyCardOf(container)).toBeNull();
   });
 
   it('hands a frontmatter statblock to Fantasy Statblocks once the plugin loads after mount', async () => {

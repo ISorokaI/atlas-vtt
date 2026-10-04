@@ -41,6 +41,11 @@ export class FakeSession implements EditorSession {
     return this.snapshot.template;
   }
 
+  /** Whether a gesture is open (a drag, a label being typed). */
+  get gestureOpen(): boolean {
+    return this.gestureDepth > 0;
+  }
+
   getSnapshot = (): SessionSnapshot => this.snapshot;
 
   subscribe = (listener: () => void): (() => void) => {

@@ -39,6 +39,7 @@ const VIEW_ID = 'statblock-predicate-preview';
 const FENCE = 'Bestiary/Orc.md';
 const NATIVE = 'Bestiary/Marsh Warden.md';
 const PLAIN = 'Notes/Tavern.md';
+const GOBLIN = 'Bestiary/Goblin Chief.md';
 
 let manager: NotePreviewUIManager;
 let eventBus: EventEmitter;
@@ -63,17 +64,21 @@ beforeEach(() => {
       [FENCE]: '# Orc\n\n```statblock\nname: Orc\nhp: 15\n```',
       [NATIVE]: '---\nstatblock: true\n---',
       [PLAIN]: '# The Tavern',
+      [GOBLIN]: '---\nstatblock: true\n---\n```statblock\ncreature: Goblin Chief\n```',
     },
   });
-  app.metadataCache.getFileCache = vi.fn((file: { path: string }) => (file.path === NATIVE
-    ? { frontmatter: { statblock: true, 'atlas-template': 'builtin:generic-creature', name: 'Marsh Warden' } }
-    : null));
+  const frontmatter: Record<string, Record<string, unknown>> = {
+    [NATIVE]: { statblock: true, 'atlas-template': 'builtin:generic-creature', name: 'Marsh Warden' },
+    [GOBLIN]: { statblock: true, name: 'Goblin Chief' },
+  };
+  app.metadataCache.getFileCache = vi.fn((file: { path: string }) => (frontmatter[file.path] ? { frontmatter: frontmatter[file.path] } : null));
   Object.assign(app.workspace, { getLeavesOfType: () => [], on: () => ({}) });
   eventBus = new EventEmitter();
   manager = new NotePreviewUIManager(app, eventBus, createViewAtlasStore(app, VIEW_ID), VIEW_ID);
 });
 
 afterEach(() => {
+  Reflect.deleteProperty(window, 'FantasyStatblocks');
   manager.destroy();
   document.body.empty();
   Platform.isMacOS = false;
@@ -102,5 +107,37 @@ describe('the token hover preview decides with the statblock predicate', () => {
     document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Meta' }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(opened).toEqual([]);
+  });
+});
+
+describe('a frontmatter statblock while Fantasy Statblocks is loaded', () => {
+  /** Fantasy Statblocks with "Parse Frontmatter" off, its default: the bestiary holds only `parsed`. */
+  function loadFantasyStatblocks(parsed: Array<{ name: string; path?: string }> = []): void {
+    Object.assign(window, { FantasyStatblocks: {
+      getBestiaryCreatures: () => parsed,
+      hasCreature: (name: string) => parsed.some((creature) => creature.name === name),
+      getCreatureFromBestiary: (name: string) => parsed.find((creature) => creature.name === name) ?? null,
+    } });
+  }
+
+  it('shows the note, as before, while the plugin has not parsed it', async () => {
+    loadFantasyStatblocks();
+    hoverToken(GOBLIN);
+    await settle();
+    expect(opened).toEqual([{ kind: 'note', notePath: GOBLIN }]);
+  });
+
+  it('shows the statblock once the plugin knows the note, and a native note in any case', async () => {
+    loadFantasyStatblocks([{ name: 'Goblin Chief', path: GOBLIN }]);
+    hoverToken(GOBLIN);
+    hoverToken(NATIVE);
+    await settle();
+    expect(opened).toEqual([{ kind: 'statblock', notePath: GOBLIN }, { kind: 'statblock', notePath: NATIVE }]);
+  });
+
+  it('shows the statblock without the plugin, which Atlas then draws itself', async () => {
+    hoverToken(GOBLIN);
+    await settle();
+    expect(opened).toEqual([{ kind: 'statblock', notePath: GOBLIN }]);
   });
 });

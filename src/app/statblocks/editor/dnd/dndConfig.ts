@@ -1,5 +1,8 @@
 /** What every drag-and-drop context of the statblock editor shares (§7.6). */
 
+/** Marks the editor's root while a block is held: its chrome steps aside and its keys stand aside for the drag's. */
+export const DRAGGING_ATTRIBUTE = 'data-dragging';
+
 /** A press becomes a drag after 4 px, so a click still selects. */
 export const POINTER_ACTIVATION = { activationConstraint: { distance: 4 } };
 

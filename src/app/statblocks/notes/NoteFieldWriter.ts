@@ -62,6 +62,8 @@ export class NoteFieldWriter {
   private readonly echoes = new OwnEchoes();
   /** Editors written to since their last save, saved by a flush. */
   private readonly touched = new Set<MarkdownView>();
+  /** Commits of inputs that may hold typed text, run by every `flushAll`. */
+  private readonly pending = new Set<() => Promise<void>>();
   private readonly detachers: Array<() => void> = [];
 
   private constructor(private readonly app: App) {
@@ -95,10 +97,25 @@ export class NoteFieldWriter {
     await this.saveTouched(path);
   }
 
-  /** Every pending change to disk or into its editor, and every editor written to saved (on close, quit, window close). */
+  /**
+   * Every pending change to disk or into its editor, and every editor written to saved (on close,
+   * quit, window close). The registered commits run first: each queues its write as it starts.
+   */
   async flushAll(): Promise<void> {
+    const commits = this.runPending();
     await this.queue.flushAll();
+    await commits;
     await this.saveTouched();
+  }
+
+  /**
+   * Registers the commit of an input text is typed in (§8.5). Quitting, closing a window or
+   * unloading neither blurs it nor closes its pane, so `flushAll` runs the commit and the typed
+   * text reaches the note. Returns the unregistration.
+   */
+  registerPending(commit: () => Promise<void>): () => void {
+    this.pending.add(commit);
+    return () => { this.pending.delete(commit); };
   }
 
   /** Whether a frontmatter (or note text) is one Atlas wrote into the note a moment ago: its echo, not someone's edit. */
@@ -117,6 +134,17 @@ export class NoteFieldWriter {
     const view = editingViewOf(this.app, path);
     view?.editor.redo();
     return view !== null;
+  }
+
+  private runPending(): Promise<void> {
+    const commits = [...this.pending].map(async (commit) => {
+      try {
+        await commit();
+      } catch (error) {
+        console.error('[Atlas] Committing a statblock value failed:', error);
+      }
+    });
+    return Promise.all(commits).then(() => undefined);
   }
 
   private enqueue(path: string, request: WriteRequest, now: boolean): Promise<WriteOutcome> {

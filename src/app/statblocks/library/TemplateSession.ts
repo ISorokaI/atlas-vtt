@@ -31,12 +31,19 @@ export class TemplateSession {
   }
 
   private released = false;
+  /** The gestures this handle began and has not ended yet. */
+  private gestures = 0;
 
   private constructor(private readonly app: App, private readonly core: SessionCore) {}
 
-  /** Lets go of the session; after the last holder, pending edits are written and the session closes. Safe to call twice. */
+  /**
+   * Lets go of the session; after the last holder, pending edits are written and the session closes. Safe to call twice.
+   * A gesture still open (a slider held while its tab closes) ends here and keeps what it changed: the core is shared,
+   * and a gesture left open would hold every other view's undo, redo and autosave.
+   */
   release(): void {
     if (this.released) return;
+    for (; this.gestures > 0; this.gestures -= 1) this.core.endGesture();
     this.released = true;
     runInBackground(releaseSessionCore(this.app, this.core), 'Saving the statblock template');
   }
@@ -52,15 +59,20 @@ export class TemplateSession {
   }
 
   beginGesture(): void {
-    if (!this.released) this.core.beginGesture();
+    if (!this.released && this.core.beginGesture()) this.gestures += 1;
   }
 
+  /** Ends the innermost gesture this handle began; never one another view of the template holds. */
   endGesture(): void {
-    if (!this.released) this.core.endGesture();
+    if (this.released || this.gestures === 0) return;
+    this.gestures -= 1;
+    this.core.endGesture();
   }
 
   abandonGesture(): void {
-    if (!this.released) this.core.abandonGesture();
+    if (this.released || this.gestures === 0) return;
+    this.gestures -= 1;
+    this.core.abandonGesture();
   }
 
   undo(): void {

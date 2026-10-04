@@ -44,21 +44,32 @@ function withoutSource(template: StatblockTemplate): StatblockTemplate {
 
 /**
  * The least column width in em, as a slider. A drag is one undo step, from
- * the press to the release; each arrow key press is one of its own.
+ * the press to the release; each arrow key press is one of its own. The drag
+ * ends on its window's pointerup, which comes even when the value did not
+ * change (Radix commits only a changed value), and with the slider.
  */
 function ColumnWidth({ template, disabled }: { template: StatblockTemplate; disabled: boolean }): React.JSX.Element {
   const { session } = useTemplateEditor();
-  const dragging = useRef(false);
+  const endDrag = useRef<(() => void) | null>(null);
   const labelId = useId();
   const width = template.layout.columnWidth ?? DEFAULT_COLUMN_WIDTH;
-  const release = (): void => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    session.endGesture();
+  useEffect(() => () => endDrag.current?.(), []);
+  const startDrag = (event: React.PointerEvent): void => {
+    if (disabled || endDrag.current) return;
+    // The handle that began the gesture ends it, even if the editor's session changed meanwhile.
+    const held = session;
+    const win = event.currentTarget.ownerDocument.defaultView ?? window;
+    const end = (): void => {
+      win.removeEventListener('pointerup', end);
+      win.removeEventListener('pointercancel', end);
+      endDrag.current = null;
+      held.endGesture();
+    };
+    endDrag.current = end;
+    held.beginGesture();
+    win.addEventListener('pointerup', end);
+    win.addEventListener('pointercancel', end);
   };
-  const latestRelease = useRef(release);
-  latestRelease.current = release;
-  useEffect(() => () => latestRelease.current(), []);
   return (
     <>
       <span id={labelId} className="atlas-te-setting__label">Column width</span>
@@ -73,15 +84,10 @@ function ColumnWidth({ template, disabled }: { template: StatblockTemplate; disa
             step={1}
             disabled={disabled}
             getValueText={(value) => `${value} em`}
-            onPointerDown={() => {
-              if (disabled || dragging.current) return;
-              dragging.current = true;
-              session.beginGesture();
-            }}
+            onPointerDown={startDrag}
             onValueChange={([value]) => {
               if (value !== undefined) session.apply((current) => withColumnWidth(current, value));
             }}
-            onValueCommit={release}
           />
           <span className="atlas-te-setting__value">{width} em</span>
         </div>

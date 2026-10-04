@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
@@ -15,7 +15,7 @@ import type { EditorSession } from '../template-editor/sessionTypes';
 import { cancelledText, DRAG_INSTRUCTIONS, pickedUpText, targetText } from './announcements';
 import { CanvasDrag } from './canvasDrag';
 import { noCollisions } from './collision';
-import { POINTER_ACTIVATION, SILENT_ANNOUNCEMENTS } from './dndConfig';
+import { DRAGGING_ATTRIBUTE, POINTER_ACTIVATION, SILENT_ANNOUNCEMENTS } from './dndConfig';
 import { sourceName, sourceOf, subjectOf, type DragSource } from './dragSources';
 import { applyDrop } from './dropEdits';
 import type { DropView } from './dropView';
@@ -52,6 +52,8 @@ interface Live {
   source: DragSource;
   keyboard: boolean;
   name: string;
+  /** The session the drag holds a gesture of, from pick-up to drop. */
+  session: EditorSession;
 }
 
 function isKeyboard(event: Event | null): boolean {
@@ -106,11 +108,13 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
         if (target) latest.current.announce(targetText(latest.current.session.getSnapshot().template.layout, template.fields, target, subject.movingId));
       },
     }, subject, keyboard);
-    live.current = { drag, source: picked, keyboard, name };
+    // The whole drag is one gesture: nothing is saved while a block is held, and a change written elsewhere meanwhile is a conflict, not a silent reload under the drag.
+    session.beginGesture();
+    live.current = { drag, source: picked, keyboard, name, session };
     stepper.current = drag;
     landing.current = { id: null, fade: false };
     drag.start();
-    rootRef.current?.setAttribute('data-dragging', '');
+    rootRef.current?.setAttribute(DRAGGING_ATTRIBUTE, '');
     setStage(stage);
     setHost(stage.doc.body);
     setSource(picked);
@@ -121,14 +125,16 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
     const current = live.current;
     live.current = null;
     stepper.current = null;
-    rootRef.current?.removeAttribute('data-dragging');
+    rootRef.current?.removeAttribute(DRAGGING_ATTRIBUTE);
     rootRef.current?.removeAttribute('data-drop-refused');
     setView(null);
     if (!current) return;
-    const { session, settle, select, announce } = latest.current;
+    const { settle, select, announce } = latest.current;
+    const { session } = current;
     const target = current.drag.finish();
     if (dropped && target && target.kind !== 'refused') {
       const outcome = applyDrop(session, current.source, target);
+      session.endGesture();
       settle(outcome);
       // Found when the copy settles: by then the card has drawn the block in its new place.
       landing.current = { id: outcome.landed ?? outcome.inserted ?? null, fade: outcome.inserted !== undefined };
@@ -136,6 +142,7 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
       if (id) setLanded((was) => ({ id, count: (was?.count ?? 0) + 1 }));
       return;
     }
+    session.abandonGesture();
     announce(cancelledText(current.source.kind === 'block' ? current.name : null));
     if (current.keyboard && current.source.kind === 'block') select([current.source.id], true);
   }, [rootRef]);
@@ -168,6 +175,13 @@ export function TemplateDragAndDrop(props: TemplateDragAndDropProps): React.JSX.
   ) : null), [source, props.session, props.record, props.app, props.sourcePath]);
 
   const clearLanded = useCallback(() => setLanded(null), []);
+
+  // A drag cut short by the editor going away gives its gesture back, so the session saves and undoes again.
+  useEffect(() => () => {
+    const current = live.current;
+    live.current = null;
+    current?.session.abandonGesture();
+  }, []);
 
   return (
     <DndContext

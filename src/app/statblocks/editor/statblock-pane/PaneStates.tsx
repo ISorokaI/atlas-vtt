@@ -27,6 +27,11 @@ export function TemplateMissingBar({ templateId, onChoose }: { templateId: strin
   return <PaneBar text={<>Template <code>{templateId}</code> not found</>} action="Choose a template" onAction={onChoose} />;
 }
 
+/** The `statblockEditor` experimental switch is off: the pane only shows the note. */
+export function EditorOffBar(): React.JSX.Element {
+  return <PaneBar text="Turn on the statblock editor under Experimental features to edit statblocks." />;
+}
+
 export function NewerTemplateBar(): React.JSX.Element {
   return <PaneBar text="Update Atlas to edit this template" />;
 }

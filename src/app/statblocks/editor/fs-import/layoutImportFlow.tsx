@@ -5,43 +5,21 @@
  * where it has something to say.
  */
 
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { AnimatePresence } from 'framer-motion';
+import React from 'react';
 import { Notice, type App } from 'obsidian';
 import { identityOf, importFsLayout, readLayoutText, type FsLayoutImport, type LayoutIdentity } from '../../fs/fsImport';
 import { notesUsingLayout } from '../../fs/fsLayoutNotes';
 import { firstBlockId } from '../gallery/gallerySources';
 import { TemplateLibrary } from '../../library/TemplateLibrary';
+import { showHostedDialog } from '../hostedDialog';
 import { openTemplateEditor } from '../openTemplateEditor';
 import { LayoutImportDialog, type LayoutImportDialogProps } from './LayoutImportDialog';
 
 type HostedDialog = Omit<LayoutImportDialogProps, 'onClose'>;
 
-function DialogHost({ dialog, onGone }: { dialog: HostedDialog; onGone: () => void }): React.JSX.Element {
-  const [open, setOpen] = useState(true);
-  return (
-    <AnimatePresence onExitComplete={onGone}>
-      {open && <LayoutImportDialog key="layout-import" {...dialog} onClose={() => setOpen(false)} />}
-    </AnimatePresence>
-  );
-}
-
 /** Shows the dialog in `dialog.doc`; focus goes back where it was once it has left. */
 export function showLayoutImportDialog(dialog: HostedDialog): void {
-  const { doc } = dialog;
-  const previous = doc.activeElement;
-  const container = doc.body.createDiv({ cls: 'atlas-fs-import-host' });
-  const root = createRoot(container);
-  const onGone = (): void => {
-    // Never inside React's own commit.
-    queueMicrotask(() => {
-      root.unmount();
-      container.remove();
-      if (previous?.instanceOf(HTMLElement) && previous.isConnected) previous.focus({ preventScroll: true });
-    });
-  };
-  root.render(<DialogHost dialog={dialog} onGone={onGone} />);
+  showHostedDialog(dialog.doc, 'atlas-fs-import-host', (close) => <LayoutImportDialog key="layout-import" {...dialog} onClose={close} />);
 }
 
 /** Opens the layout's template in the template editor, its first block selected. */

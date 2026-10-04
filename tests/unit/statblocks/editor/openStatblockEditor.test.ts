@@ -77,6 +77,25 @@ describe('openStatblockEditor', () => {
     expect(fake.workspace.setActiveLeaf).toHaveBeenCalledWith(pane, { focus: true });
   });
 
+  it('never takes another pair\'s note leaf, though it is the current one: the note opens in a new tab', async () => {
+    const other = 'Bestiary/Bog Hag.md';
+    const note = noteLeaf(other);
+    const pane = new FakeLeaf({ type: STATBLOCK_PANE_VIEW_TYPE, state: { notePath: other, pairId: 'atlas-pair-1' } });
+    note.group = 'atlas-pair-1';
+    pane.group = 'atlas-pair-1';
+    const { app, fake } = setup([note, pane], note);
+    await openStatblockEditor(app, { notePath: NOTE });
+
+    expect(note.openFile).not.toHaveBeenCalled();
+    expect(note.getViewState().state?.file).toBe(other);
+    expect(note.group).toBe('atlas-pair-1');
+    expect(fake.workspace.getLeaf).toHaveBeenCalledWith('tab');
+    const [, , opened, newPane] = fake.leaves;
+    expect(opened!.getViewState().state?.file).toBe(NOTE);
+    expect(newPane!.group).toBe(opened!.group);
+    expect(newPane!.group).not.toBe('atlas-pair-1');
+  });
+
   it('opens a pair in a new window on request, and from the map when the setting says so', async () => {
     const map = new FakeLeaf({ type: 'atlas-vtt' });
     const asked = setup([map], map);

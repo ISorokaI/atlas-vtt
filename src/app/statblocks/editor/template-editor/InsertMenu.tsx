@@ -9,7 +9,7 @@ import { cn } from '../../../../utils/cn';
 import { sampleRecord } from '../../model/sampleValues';
 import { StatblockSheet } from '../../render/StatblockSheet';
 import type { Box } from './gapGeometry';
-import { findItems, groupItems, insertItems, itemKey, previewTemplate, type InsertItem } from './insertItems';
+import { bestMatch, findItems, groupItems, insertItems, itemKey, previewTemplate, type InsertItem } from './insertItems';
 import type { ChromeStyle } from './LabelEditor';
 
 export interface InsertMenuProps {
@@ -90,11 +90,11 @@ export function InsertMenu({ layer, anchor, app, onInsert, onClose }: InsertMenu
   const keepInView = useKeepInView(ref, true, above ? 'top' : 'bottom', `${anchor.left},${anchor.top}`);
   const found = useMemo(() => findItems(ALL_ITEMS, query), [query]);
   const groups = useMemo(() => groupItems(found), [found]);
-  const ordered = groups.flatMap((group) => group.items);
+  const ordered = useMemo(() => groups.flatMap((group) => group.items), [groups]);
   const current = ordered[Math.min(active, ordered.length - 1)];
 
   useEffect(() => { inputRef.current?.focus({ preventScroll: true }); }, []);
-  useEffect(() => setActive(0), [query]);
+  useEffect(() => setActive(bestMatch(ordered, query)), [ordered, query]);
 
   // Opens upward where the layer has no room below the anchor.
   useLayoutEffect(() => {

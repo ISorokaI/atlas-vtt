@@ -167,6 +167,41 @@ describe('the template editor\'s side panes', () => {
     expectConcentricClose(document.querySelector('.atlas-te-dialog')!, 'Remove attribution');
   });
 
+  it('keeps the block toolbar on its block when a conflict bar opens above the canvas and when it goes', async () => {
+    const session = new FakeSession(sampleTemplate());
+    mount(session, 1180);
+    await act(async () => { frame('stat-hp1').click(); });
+    await frames(2);
+    const gap = (): number => frame('stat-hp1').getBoundingClientRect().top - document.querySelector('.atlas-te-toolbar')!.getBoundingClientRect().bottom;
+    const resting = gap();
+    expect(resting).toBeGreaterThan(0);
+    const blockTop = frame('stat-hp1').getBoundingClientRect().top;
+    await act(async () => { session.patch({ conflict: 'changed', saveState: 'conflict' }); });
+    await frames(3);
+    expect(frame('stat-hp1').getBoundingClientRect().top, 'the bar moved the canvas down').toBeGreaterThan(blockTop + 10);
+    expect(gap()).toBeCloseTo(resting, 0);
+    await act(async () => { session.patch({ conflict: null, saveState: 'saved' }); });
+    await frames(3);
+    expect(gap()).toBeCloseTo(resting, 0);
+  });
+
+  it('keeps the narrow inspector popover\'s border whole where it is taller than the room: the panel scrolls inside it', async () => {
+    mount(new FakeSession(sampleTemplate()), 860);
+    await frames(3);
+    await act(async () => { frame('stat-hp1').click(); });
+    await wait(400);
+    for (const name of ['Look', 'When empty', 'Format', 'Advanced']) {
+      const header = [...document.querySelectorAll<HTMLElement>('.atlas-te-insp-popover .atlas-te-group__header')].find((element) => element.textContent === name);
+      if (header?.getAttribute('aria-expanded') !== 'true') await act(async () => { header?.click(); });
+    }
+    await wait(400);
+    const panel = document.querySelector<HTMLElement>('.atlas-te-insp-popover__panel')!;
+    expect(panel.scrollHeight, 'the open groups are taller than the room').toBeGreaterThan(panel.clientHeight);
+    const box = panel.getBoundingClientRect();
+    expect(box.bottom, 'its bottom border shows inside the window').toBeLessThanOrEqual(window.innerHeight);
+    expect(px(getComputedStyle(panel).borderBottomWidth)).toBeGreaterThan(0);
+  });
+
   it('animates only transform and opacity: the inspector\'s crossfade, its groups, the panels and the popover', async () => {
     const root = mount(new FakeSession(sampleTemplate()), 1180);
     await frames(2);

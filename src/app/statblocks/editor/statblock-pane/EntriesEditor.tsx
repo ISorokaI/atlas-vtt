@@ -4,6 +4,7 @@ import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { isModHeld } from '../../../keyboard/modKey';
 import { Button } from '../../../packages/components/primitives/button';
 import type { FieldValue, TemplateField } from '../../model/templateTypes';
+import { deepEqual } from '../../notes/listIdentity';
 import type { NotePatch } from '../../notes/patchTypes';
 import { entryName, entryText } from '../../values/entryValues';
 import { SortableEntries, SortableEntry } from '../dnd/SortableEntries';
@@ -11,7 +12,7 @@ import {
   entryList, entryPartPatches, entryWithPart, insertEntryPatch, moveEntryPatch, moveEntryToPatch, newEntry, removeEntryPatch,
   shownEntryIndexes, type EntryPart,
 } from './entryPatches';
-import { EntryRow } from './EntryRow';
+import { EntryRow, type PendingPart } from './EntryRow';
 import { removedMessage } from './announcements';
 import { focusStaysIn } from './focusWithin';
 import { usePaneEdit } from './paneEditContext';
@@ -24,7 +25,12 @@ interface EntriesEditorProps {
   addLabel: string | undefined;
 }
 
-type Focus = { index: number; part: EntryPart } | null;
+/**
+ * A part to focus. `awaits` holds a request made with a write (a move, a
+ * duplicate): the row is focused only once the note holds `entry` at `index`,
+ * since a row focused earlier shows its neighbour and would take its text.
+ */
+type Focus = { index: number; part: EntryPart; awaits?: { list: FieldValue[]; entry: FieldValue } } | null;
 
 /** "Action" for "Actions", "Ability" for "Abilities": what one entry of the field is called. */
 export function singular(label: string): string {
@@ -56,10 +62,16 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
 
   useLayoutEffect(() => {
     if (!focus) return;
+    const { awaits } = focus;
+    if (awaits && !deepEqual(items[focus.index], awaits.entry)) {
+      // Not in the note yet: wait. A note that changed some other way leaves focus where it is.
+      if (!deepEqual(items, awaits.list)) setFocus(null);
+      return;
+    }
     const row = rootRef.current?.querySelector(`[data-entry-row="${focus.index}"] [data-entry-part="${focus.part}"]`);
     if (row?.instanceOf(HTMLElement)) row.focus();
     setFocus(null);
-  }, [focus, items.length]);
+  }, [focus, items]);
 
   const write = (patches: Array<NotePatch | null>): void => {
     void pane.write(field, patches.filter((patch): patch is NotePatch => patch !== null));
@@ -77,7 +89,7 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
   const rowKey = (index: number) => (
     event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
     part: EntryPart,
-    pending: () => { part: EntryPart; text: string } | null,
+    pending: () => PendingPart | null,
   ): void => {
     const item = items[index];
     if (item === undefined) return;
@@ -85,22 +97,23 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
     if (step !== null) {
       event.preventDefault();
       const typed = pending();
-      const parts = typed ? entryPartPatches(list, index, item, shape, typed.part, typed.text) : [];
+      const parts = typed ? entryPartPatches(list, index, typed.from, shape, typed.part, typed.text) : [];
       const moved = typed ? entryWithPart(item, shape, typed.part, typed.text) : item;
       const order = items.map((value, at): FieldValue => (at === index ? moved : value));
       write([...parts, moveEntryPatch(list, order, index, step)]);
-      setFocus({ index: Math.min(Math.max(index + step, 0), items.length - 1), part });
+      const to = Math.min(Math.max(index + step, 0), items.length - 1);
+      setFocus({ index: to, part, awaits: { list: items, entry: moved } });
     } else if (event.key.toLowerCase() === 'd' && isModHeld(event)) {
       event.preventDefault();
       write([insertEntryPatch(list, items, index, item)]);
-      setFocus({ index: index + 1, part });
+      setFocus({ index: index + 1, part, awaits: { list: items, entry: item } });
     } else if (event.key === 'Enter' && part === 'name' && !isModHeld(event)) {
       event.preventDefault();
       setFocus({ index, part: 'text' });
     } else if (event.key === 'Enter' && part === 'text' && isModHeld(event)) {
       event.preventDefault();
       const typed = pending();
-      if (typed) write(entryPartPatches(list, index, item, shape, typed.part, typed.text));
+      if (typed) write(entryPartPatches(list, index, typed.from, shape, typed.part, typed.text));
       setAdding({ afterIndex: index });
     } else if (event.key === 'Escape' && !handledByAnotherControl(event.nativeEvent)) {
       event.preventDefault();
@@ -123,6 +136,7 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
               {(handle) => (
                 <EntryRow
                   index={index}
+                  item={item}
                   rowId={String(index)}
                   name={entryName(item, shape) ?? ''}
                   text={entryText(item, shape) ?? ''}
@@ -130,7 +144,7 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
                   canMoveUp={index > 0}
                   canMoveDown={index < items.length - 1}
                   handle={handle}
-                  onCommit={(part, text) => write(entryPartPatches(list, index, item, shape, part, text))}
+                  onCommit={(part, text, from) => write(entryPartPatches(list, index, from, shape, part, text))}
                   onRowKey={rowKey(index)}
                   onMove={(step) => write([moveEntryPatch(list, items, index, step)])}
                   onDuplicate={() => write([insertEntryPatch(list, items, index, item)])}

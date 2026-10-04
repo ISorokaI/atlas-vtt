@@ -22,12 +22,14 @@ export function InspectorPopover(): React.JSX.Element {
   const [dismissed, setDismissed] = useState<BlockSelection | null>(null);
   const originRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const variants = useAnchoredPopoverVariants();
   const primary = primaryOf(selection);
   // Selecting a block, even the same one again, makes a new selection and brings the popover back.
   const open = primary !== null && dismissed !== selection;
   const placement = useBesideBlock(originRef, popoverRef, open ? primary : null, snapshot.template);
-  const keepInView = useKeepInView(popoverRef, open && placement !== null, 'bottom', placement ? `${placement.left},${placement.top}` : undefined);
+  // The bordered panel is what keeps in view: capped, it scrolls inside its own border, which stays whole.
+  const keepInView = useKeepInView(panelRef, open && placement !== null, 'bottom', placement ? `${placement.left},${placement.top}` : undefined);
 
   const close = (): void => {
     setDismissed(selection);
@@ -37,7 +39,6 @@ export function InspectorPopover(): React.JSX.Element {
   };
 
   const style: React.CSSProperties & ChromeStyle = {
-    ...keepInView.style,
     '--atlas-te-insp-x': `${placement?.left ?? 0}px`,
     '--atlas-te-insp-y': `${placement?.top ?? 0}px`,
   };
@@ -49,7 +50,7 @@ export function InspectorPopover(): React.JSX.Element {
           <div
             key="inspector"
             ref={popoverRef}
-            className={cn('atlas-te-insp-popover', keepInView.capped && 'atlas-keep-in-view--capped')}
+            className="atlas-te-insp-popover"
             style={style}
             data-side={placement?.side}
             data-placed={placement ? '' : undefined}
@@ -62,8 +63,14 @@ export function InspectorPopover(): React.JSX.Element {
               close();
             }}
           >
-            <motion.div className="atlas-te-insp-popover__panel atlas-te-insp" variants={variants} initial="hidden" animate="visible" exit="exit">
-              <FadingInspectorBody selection={selection} headerEnd={<CloseButton className="atlas-te-insp__close" onClick={close} />} />
+            <motion.div className="atlas-te-insp-popover__motion" variants={variants} initial="hidden" animate="visible" exit="exit">
+              <div
+                ref={panelRef}
+                className={cn('atlas-te-insp-popover__panel atlas-te-insp', keepInView.capped && 'atlas-keep-in-view--capped')}
+                style={keepInView.style}
+              >
+                <FadingInspectorBody selection={selection} headerEnd={<CloseButton className="atlas-te-insp__close" onClick={close} />} />
+              </div>
             </motion.div>
           </div>
         )}

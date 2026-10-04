@@ -46,9 +46,12 @@ describe('dragging blocks in the template editor', () => {
     const line = dropLine();
     expect(line?.orientation).toBe('horizontal');
     expect(live()).toBe('Section Defenses, position 2 of 3.');
+    // The whole drag is one gesture: nothing saves meanwhile, and a change written elsewhere is a conflict.
+    expect(session.gestureOpen).toBe(true);
 
     await drop(window, { x: hp.left + hp.width / 2, y: hp.top + 2 });
     await wait(SETTLED_MS);
+    expect(session.gestureOpen).toBe(false);
     expect(sectionShape(session)).toBe('title001 section1(stat-ac1 divider1 stat-hp1) row00001(stat-sp1 stat-cr1)');
     expect(session.steps).toBe(1);
     const ac = frame('stat-ac1').getBoundingClientRect();
@@ -109,6 +112,28 @@ describe('dragging blocks in the template editor', () => {
     expect(session.steps).toBe(1);
     expect(document.activeElement?.getAttribute('data-block-id')).toBe('stat-hp1');
     expect(live()).toBe('Moved Hit points to the top level, position 3 of 5.');
+  });
+
+  it('cancels a pointer drag on Escape, also with the pressed block selected, and the release drops nothing', async () => {
+    const session = new FakeSession(sampleTemplate());
+    mount(session, 1280);
+    await frames(2);
+    await userEvent.click(frame('divider1'));
+    const hp = frame('stat-hp1').getBoundingClientRect();
+    const at = { x: hp.left + hp.width / 2, y: hp.top + 2 };
+    await pickUpAndMove(window, pointIn(frame('divider1')), at);
+    expect(dropLine()).not.toBeNull();
+    expect(session.gestureOpen).toBe(true);
+    await userEvent.keyboard('{Escape}');
+    await frames(2);
+    expect(dropLine()).toBeNull();
+    expect(session.gestureOpen).toBe(false);
+    expect(live()).toBe('Cancelled. Divider stays where it was.');
+    await drop(window, at);
+    await wait(SETTLED_MS);
+    expect(session.steps).toBe(0);
+    expect(sectionShape(session)).toBe('title001 section1(stat-ac1 stat-hp1) row00001(stat-sp1 stat-cr1) divider1');
+    expect(document.activeElement?.getAttribute('data-block-id')).toBe('divider1');
   });
 
   it('inserts a palette tile where it is dropped and opens its label', async () => {

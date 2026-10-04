@@ -1,16 +1,19 @@
 /**
  * Linked tokens on an open map following their statblock after it changed (§11, token sync).
  * The statblock is read through the resolver, so renamed keys and a template's meanings count;
- * the changes are no edit of the map's and never become an undo step.
+ * the changes are no edit of the map's and never become an undo step. Tokens also follow a
+ * change of their art's link (`applyLinkChange`).
  */
 
 import { difficultyLabel, scalarText } from '../../creatures/statblockRating';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
+import type { LinkChangeEvent } from '../../services/TokenStatblockLinkService';
 import { syncedResources, type StatblockFields } from '../../resources/statblockResourceSync';
 import { NO_MEANINGS } from '../../statblocks/resolve/fieldMeanings';
 import type { TokenUpdates, ViewAtlasStore } from '../../storeFactory';
 import { runUntracked } from '../../stores/history';
 import type { TokenEntity } from '../../types';
+import { STATBLOCK_UNLINK_UPDATES } from './statblockFrontmatter';
 
 export type TokenChanges = Array<{ id: string; changes: TokenUpdates }>;
 
@@ -53,4 +56,27 @@ export function syncLinkedTokens(
 ): void {
   const entries = statblockTokenChanges(store.getState().objects.tokens, statblockPath, statblock, definitions, image);
   if (entries.length > 0) runUntracked(store, () => store.getState().updateTokens(entries));
+}
+
+/** What a token freshly linked to the statblock takes from it; null when the statblock cannot be read. */
+export type LinkUpdates = (token: TokenEntity, statblockPath: string) => TokenUpdates | null;
+
+/**
+ * The open map's tokens with the art whose link changed follow it in one write: a link starts
+ * their statblock values, an unlink clears them. A change a statblock note's image caused
+ * (`fromNote`) is no edit of the map's and never becomes an undo step.
+ */
+export function applyLinkChange(store: ViewAtlasStore, event: LinkChangeEvent, linkUpdates: LinkUpdates): void {
+  const entries: TokenChanges = [];
+  for (const [id, token] of Object.entries(store.getState().objects.tokens)) {
+    if (token.imagePath !== event.tokenImagePath) continue;
+    const changes = event.type === 'unlinked'
+      ? STATBLOCK_UNLINK_UPDATES
+      : event.statblockPath ? linkUpdates(token, event.statblockPath) : null;
+    if (changes) entries.push({ id, changes });
+  }
+  if (entries.length === 0) return;
+  const write = (): void => store.getState().updateTokens(entries);
+  if (event.fromNote) runUntracked(store, write);
+  else write();
 }

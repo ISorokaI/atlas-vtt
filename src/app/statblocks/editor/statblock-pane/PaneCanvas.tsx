@@ -27,6 +27,11 @@ export interface PaneCanvasProps {
   footer?: React.ReactNode;
   /** Raised to move focus to the first empty value (a pair just opened); 0 never does. */
   focusRequest: number;
+  /**
+   * The last request acted on, kept by the pane across notes: the canvas is
+   * made anew for each note, and following the partner must not move focus.
+   */
+  handledFocusRequest: React.RefObject<number>;
   onExit: (step: 1 | -1) => void;
   onCommitted: () => void;
   onWriteProblem: (problem: string | null) => void;
@@ -42,20 +47,19 @@ export interface PaneCanvasProps {
  * seams, so the card is drawn by the same code the map and the DM screen use.
  */
 export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
-  const { app, notePath, template, templateName, record, header, footer, focusRequest, writable } = props;
+  const { app, notePath, template, templateName, record, header, footer, focusRequest, handledFocusRequest, writable } = props;
   const cardRef = useRef<HTMLDivElement>(null);
   const editor = usePaneEditor({ ...props, cardRef });
-  const handledRequest = useRef(0);
   const { spots } = editor.controller;
 
   // A pair opens with focus on the first empty value; a restored workspace never moves focus.
   useEffect(() => {
-    if (focusRequest === handledRequest.current || !writable) return;
-    handledRequest.current = focusRequest;
+    if (focusRequest === handledFocusRequest.current || !writable) return;
+    handledFocusRequest.current = focusRequest;
     const empty = spots.order.find((spot) => isEmptyValue(readField(record, spot.field).value)) ?? spots.order[0];
     if (!empty) return;
     cardRef.current?.querySelector<HTMLElement>(`[data-block-id="${empty.blockId}"]`)?.focus({ preventScroll: true });
-  }, [focusRequest, writable, spots, record]);
+  }, [focusRequest, handledFocusRequest, writable, spots, record]);
 
   return (
     <PaneEditContext.Provider value={editor.controller}>

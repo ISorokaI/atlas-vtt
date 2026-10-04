@@ -1,6 +1,8 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { ItemView, Scope, type EventRef, type TAbstractFile, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
+import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
+import { SettingsService } from '../../services/SettingsService';
 import { StatblockEditorRoot } from './StatblockEditorRoot';
 import { movePairToWindow, reopenPartner } from './openStatblockEditor';
 import { PairPropertiesMark } from './pairProperties';
@@ -22,7 +24,9 @@ const NO_PARTNER: PartnerInfo = { leaf: null, path: null };
  * The statblock pane (§4.6, §7.1, §7.2): an `ItemView` beside a statblock
  * note that edits its values in place. `navigation = false`, so neither
  * Obsidian's linked-tab sync nor any navigation ever opens a file in it; it
- * follows its partner itself. Restoring its state reads, never writes.
+ * follows its partner itself. Restoring its state reads, never writes. A pane
+ * restored or left open while the statblock editor is switched off only shows
+ * its note, and leaves the note's Properties shown.
  */
 export class StatblockPaneView extends ItemView {
   navigation = false;
@@ -31,12 +35,14 @@ export class StatblockPaneView extends ItemView {
   private partner: PartnerInfo = NO_PARTNER;
   private mark: PairPropertiesMark | null = null;
   private stopTracking: (() => void) | null = null;
+  private stopSettings: (() => void) | null = null;
   private readonly fileRefs: EventRef[] = [];
   private propertiesShown = false;
   private kind: PaneNoteKind = 'loading';
   private announcement = '';
   private focusRequest = 0;
   private readonly pendingCommit: PendingCommit = { current: null };
+  private releasePending: (() => void) | null = null;
   private readonly services: PaneServices;
   private readonly paneActions: StatblockPaneActions;
 
@@ -84,6 +90,13 @@ export class StatblockPaneView extends ItemView {
     this.contentEl.empty();
     this.contentEl.addClass('atlas-vtt-plugin', 'atlas-statblock-pane-view');
     this.root = createRoot(this.contentEl);
+    // The pane follows the experimental switch at once, as it is turned on or off.
+    this.stopSettings = SettingsService.forApp(this.app)?.onChange(() => {
+      this.updateMark();
+      this.render();
+    }) ?? null;
+    // Quitting closes no pane, so the writer's last flush commits the text being typed (§8.5).
+    this.releasePending = this.services.writer.registerPending(() => this.pendingCommit.current?.() ?? Promise.resolve());
     const { vault } = this.app;
     this.fileRefs.push(
       vault.on('rename', (file: TAbstractFile, oldPath: string) => this.renamed(file.path, oldPath)),
@@ -103,7 +116,11 @@ export class StatblockPaneView extends ItemView {
     } catch (error) {
       console.error(`[Atlas] Saving the statblock of ${path ?? 'a note'} failed:`, error);
     }
+    this.releasePending?.();
+    this.releasePending = null;
     for (const ref of this.fileRefs.splice(0)) this.app.vault.offref(ref);
+    this.stopSettings?.();
+    this.stopSettings = null;
     this.stopTracking?.();
     this.stopTracking = null;
     if (!this.anotherPaneHoldsPair()) this.mark?.release();
@@ -151,9 +168,16 @@ export class StatblockPaneView extends ItemView {
     this.render();
   }
 
-  /** Properties hide only beside a native statblock, where the tray edits what they would show (D7). */
+  private editorOn(): boolean {
+    return experimentalFeatureOn(this.app, 'statblockEditor');
+  }
+
+  /** Properties hide only beside a native statblock, where the tray edits what they would show (D7); the note's fence shrinks beside any statblock the pane draws. */
   private updateMark(): void {
-    this.mark?.update(this.partner.leaf, this.kind === 'atlas' && !this.propertiesShown);
+    this.mark?.update(this.partner.leaf, {
+      hideProperties: this.editorOn() && this.kind === 'atlas' && !this.propertiesShown,
+      shownBeside: this.kind === 'atlas' || this.kind === 'fantasy',
+    });
   }
 
   /** After the pair moved to a popout the new pane holds the same pair: the old one leaves its mark. */
@@ -219,6 +243,7 @@ export class StatblockPaneView extends ItemView {
           notePath: this.state.notePath,
           collectionId: this.state.collectionId,
           paired: this.partner.leaf !== null && this.partner.path === this.state.notePath,
+          editorOn: this.editorOn(),
           propertiesShown: this.propertiesShown,
           announcement: this.announcement,
           focusRequest: this.focusRequest,

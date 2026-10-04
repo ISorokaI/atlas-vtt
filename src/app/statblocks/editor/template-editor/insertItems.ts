@@ -49,6 +49,18 @@ export function findItems(items: readonly InsertItem[], query: string): InsertIt
   return items.filter((item) => words.every((word) => item.label.toLowerCase().includes(word)));
 }
 
+/**
+ * Which of the items found the keys start on: one named exactly what was typed ("stat" is Stat, not Stat strip),
+ * else the first whose name starts with it, else the first.
+ */
+export function bestMatch(items: readonly InsertItem[], query: string): number {
+  const typed = query.trim().toLowerCase();
+  if (!typed) return 0;
+  const exact = items.findIndex((item) => item.label.toLowerCase() === typed);
+  if (exact !== -1) return exact;
+  return Math.max(items.findIndex((item) => item.label.toLowerCase().startsWith(typed)), 0);
+}
+
 /** The items under their group headings, groups in menu order, empty groups left out. */
 export function groupItems(items: readonly InsertItem[]): Array<{ id: InsertGroup; label: string; items: InsertItem[] }> {
   return INSERT_GROUPS

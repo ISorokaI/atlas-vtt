@@ -57,6 +57,8 @@ export interface StatblockPaneProps {
   collectionId: string | null;
   /** Whether the note is open beside the pane, in its pair. */
   paired: boolean;
+  /** The `statblockEditor` experimental switch: while off the pane only shows the note. */
+  editorOn: boolean;
   /** Whether Properties show beside this pane (the user chose Show Properties). */
   propertiesShown: boolean;
   /** The last thing said to assistive technology ("Undid in Marsh Warden."). */

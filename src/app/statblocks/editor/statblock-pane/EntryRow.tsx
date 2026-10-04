@@ -1,24 +1,39 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActionsMenuButton } from '../../../packages/components/shared/ActionsMenuButton';
 import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
+import type { FieldValue } from '../../model/templateTypes';
 import type { EntryPart } from './entryPatches';
+
+/** Text typed into a part, and the entry typing started on, which the commit is based on. */
+export interface TypedPart {
+  text: string;
+  from: FieldValue;
+}
+
+interface Draft extends TypedPart {
+  focused: boolean;
+  /** The part's text when typing started. */
+  started: string;
+}
 
 /**
  * A part's text: the note's while the part is not being typed in, the typed
  * text from focus until the note holds what was committed. What arrives from
- * the note never replaces what is being typed.
+ * the note never replaces what is being typed; the commit is based on the
+ * entry typing started on, so the note's own change meanwhile (another
+ * writer, a reorder) is found by the patcher or reported, never overwritten.
  */
-export function usePartDraft(current: string): {
+export function usePartDraft(current: string, item: FieldValue): {
   value: string;
   focus: () => void;
   change: (text: string) => void;
   /** Ends typing; returns the text to commit, or null when nothing changed. */
-  end: () => string | null;
+  end: () => TypedPart | null;
 } {
-  const [draft, setDraftState] = useState<{ text: string; focused: boolean } | null>(null);
+  const [draft, setDraftState] = useState<Draft | null>(null);
   // Read synchronously: a part ended by a key is not ended again by the blur or unmount that follows.
   const draftRef = useRef(draft);
-  const setDraft = (next: { text: string; focused: boolean } | null): void => {
+  const setDraft = (next: Draft | null): void => {
     draftRef.current = next;
     setDraftState(next);
   };
@@ -30,20 +45,30 @@ export function usePartDraft(current: string): {
   }, [current]);
   return {
     value: draft?.text ?? current,
-    focus: () => setDraft({ text: current, focused: true }),
-    change: (text) => setDraft({ text, focused: true }),
+    focus: () => setDraft({ text: current, focused: true, started: current, from: item }),
+    change: (text) => {
+      const typing = draftRef.current?.focused ? draftRef.current : null;
+      setDraft({ text, focused: true, started: typing?.started ?? current, from: typing?.from ?? item });
+    },
     end: () => {
-      const typed = draftRef.current?.focused ? draftRef.current.text : null;
-      const changed = typed !== null && typed !== current;
-      setDraft(changed ? { text: typed, focused: false } : null);
-      return changed ? typed : null;
+      const typed = draftRef.current?.focused ? draftRef.current : null;
+      const changed = typed !== null && typed.text !== typed.started;
+      setDraft(changed ? { ...typed, focused: false } : null);
+      return changed ? { text: typed.text, from: typed.from } : null;
     },
   };
+}
+
+/** What a key that ends typing takes along: the part, its text and the entry typing started on. */
+export interface PendingPart extends TypedPart {
+  part: EntryPart;
 }
 
 export interface EntryRowProps {
   /** Position of the entry in the stored list. */
   index: number;
+  /** The entry as the note holds it now. */
+  item: FieldValue;
   name: string;
   text: string;
   noun: string;
@@ -53,9 +78,10 @@ export interface EntryRowProps {
   canMoveDown: boolean;
   /** The drag handle, under the row's menu. */
   handle?: React.ReactNode;
-  onCommit: (part: EntryPart, text: string) => void;
+  /** Writes typed text; `from` is the entry typing started on. */
+  onCommit: (part: EntryPart, text: string, from: FieldValue) => void;
   /** Keys the editor handles for the row: Alt+↑/↓ move it, Mod+Enter in its text adds the next entry, Escape leaves. */
-  onRowKey: (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, part: EntryPart, pending: () => { part: EntryPart; text: string } | null) => void;
+  onRowKey: (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, part: EntryPart, pending: () => PendingPart | null) => void;
   onMove: (step: 1 | -1) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -63,12 +89,12 @@ export interface EntryRowProps {
 
 /** One entry being edited: its name, run in as the card writes it, then its text, and a menu. */
 export function EntryRow(props: EntryRowProps): React.JSX.Element {
-  const { name, text, noun, rowId } = props;
-  const nameDraft = usePartDraft(name);
-  const textDraft = usePartDraft(text);
+  const { item, name, text, noun, rowId } = props;
+  const nameDraft = usePartDraft(name, item);
+  const textDraft = usePartDraft(text, item);
   const finish = (part: EntryPart): void => {
     const done = (part === 'name' ? nameDraft : textDraft).end();
-    if (done !== null) props.onCommit(part, done);
+    if (done !== null) props.onCommit(part, done.text, done.from);
   };
   // Text typed in a row that goes (its note changed, the pane closed) is written first.
   const finishRef = useRef(finish);
@@ -77,10 +103,9 @@ export function EntryRow(props: EntryRowProps): React.JSX.Element {
     finishRef.current('name');
     finishRef.current('text');
   }, []);
-  const pendingOf = (part: EntryPart) => (): { part: EntryPart; text: string } | null => {
-    const draft = part === 'name' ? nameDraft : textDraft;
-    const typed = draft.end();
-    return typed === null ? null : { part, text: typed };
+  const pendingOf = (part: EntryPart) => (): PendingPart | null => {
+    const typed = (part === 'name' ? nameDraft : textDraft).end();
+    return typed === null ? null : { part, ...typed };
   };
   const menu: ContextMenuEntry[] = [
     { type: 'item', label: 'Move up', icon: 'arrow-up', disabled: !props.canMoveUp, onClick: () => props.onMove(-1) },

@@ -126,7 +126,8 @@ describe('TemplateEditor', () => {
     const search = screen.getByRole('combobox', { name: 'Find a block' });
     fireEvent.change(search, { target: { value: 'stat' } });
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Stat strip', 'Stat']);
-    key(search, 'ArrowDown');
+    // The exact match is highlighted, though the recipe is listed above it.
+    expect(screen.getByRole('option', { selected: true }).textContent).toBe('Stat');
     key(search, 'Enter');
     const added = session.template.layout.blocks.at(-1);
     expect(added?.type).toBe('stat');

@@ -21,8 +21,10 @@ import { TEMPLATE_EXTENSION } from './src/app/statblocks/library/templateFiles';
 import { appPaneServices } from './src/app/statblocks/editor/paneServices';
 import { statblockSettingsSections } from './src/app/settings/statblockSettingsSection';
 import { registerNoteWriterFlush } from './src/app/plugin/noteWriterFlush';
+import { registerHostedDialogRelease } from './src/app/statblocks/editor/hostedDialog';
 import { editInStatblockPane } from './src/app/statblocks/editor/create/entryPoints';
 import { paneCreationActions } from './src/app/statblocks/editor/create/paneCreation';
+import { paneTokenLinkActions } from './src/app/statblocks/editor/tokenLinkAction';
 import { registerStatblockFileMenu } from './src/app/statblocks/editor/create/statblockCommands';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
@@ -101,6 +103,8 @@ export default class AtlasVTTPlugin extends Plugin {
     registerStatblockFence(this, (path) => { editInStatblockPane(this.app, path, { collectionId: null, from: 'note' }); });
     // Statblock edits reach their notes before a window closes or Obsidian quits.
     registerNoteWriterFlush(this);
+    // The template gallery and the layout import report go with their window, and with Atlas.
+    registerHostedDialogRelease(this);
 
     await storageReady;
     await this.settingsService.initialize();
@@ -186,6 +190,7 @@ export default class AtlasVTTPlugin extends Plugin {
       services: appPaneServices,
       actions: {
         ...paneCreationActions(this.app),
+        ...paneTokenLinkActions(this.app),
         editTemplate: (templateId, collectionId, notePath) => {
           void openTemplateEditor(this.app, { templateId, collectionId, previewPath: notePath });
         },

@@ -2,7 +2,7 @@ import React, { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { STANDING_LIST } from '../../../keyboard/tooltipEscape';
 import { useTemplateEditor } from './editorContext';
 import { insertItemGlyph } from './editorGlyphs';
-import { findItems, groupItems, INSERT_GROUPS, insertItems, itemKey, type InsertItem } from './insertItems';
+import { bestMatch, findItems, groupItems, INSERT_GROUPS, insertItems, itemKey, type InsertItem } from './insertItems';
 import { PaletteTile } from './PaletteTile';
 
 const ALL_ITEMS = insertItems();
@@ -116,7 +116,7 @@ export function BlocksPalette(): React.JSX.Element {
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
-          setActive(0);
+          setActive(bestMatch(findItems(ALL_ITEMS, event.target.value), event.target.value));
         }}
         onKeyDown={onSearchKey}
       />

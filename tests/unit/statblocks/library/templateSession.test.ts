@@ -144,6 +144,37 @@ describe('TemplateSession: sharing and read-only templates', () => {
     expect(second.getSnapshot().template.description).toBe('Still open');
   });
 
+  it('ends a gesture a view still holds when it lets go, so the other views undo and save again', async () => {
+    const first = await open();
+    const second = await open();
+    first.beginGesture();
+    first.apply(described('Held'));
+    first.release();
+    // The view's React tree unmounts after the release; its cleanup reaches a released handle.
+    first.endGesture();
+    second.apply(described('After'));
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    expect(JSON.parse(vault.files.get(MARSH_PATH)!)).toMatchObject({ description: 'After' });
+    second.undo();
+    expect(second.getSnapshot().template.description).toBe('Held');
+    second.undo();
+    expect(second.getSnapshot().template.description).toBe(MARSH_CREATURE.description);
+  });
+
+  it('ends only the gestures a view began itself', async () => {
+    const first = await open();
+    const second = await open();
+    first.beginGesture();
+    first.apply(described('Typing'));
+    second.endGesture();
+    second.abandonGesture();
+    first.apply(heading('Moves'));
+    first.endGesture();
+    expect(first.getSnapshot().template.description).toBe('Typing');
+    first.undo();
+    expect(first.getSnapshot().template.description).toBe(MARSH_CREATURE.description);
+  });
+
   it('shows a draft through the library while it is unsaved', async () => {
     const session = await open();
     const library = TemplateLibrary.forApp(vault.app);

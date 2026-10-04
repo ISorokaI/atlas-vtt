@@ -52,6 +52,8 @@ export interface LinkChangeEvent {
   tokenImagePath: string;
   statblockPath: string | null;
   previousStatblockPath?: string | null;
+  /** A statblock note's image moved the link: open maps apply it untracked, as no edit of theirs. */
+  fromNote?: boolean;
 }
 
 /**
@@ -95,9 +97,11 @@ export class TokenStatblockLinkService extends EventEmitter {
     options: { 
       showConfirmation?: boolean;
       updateStatblockAvatar?: boolean;
+      /** The note's image named the token (`followStatblockImage`); passed on with every event. */
+      fromNote?: boolean;
     } = {}
   ): Promise<boolean> {
-    const { showConfirmation = true, updateStatblockAvatar = true } = options;
+    const { showConfirmation = true, updateStatblockAvatar = true, fromNote = false } = options;
     
     // Get the statblock file
     const statblockFile = this.app.vault.getAbstractFileByPath(statblockPath);
@@ -118,14 +122,14 @@ export class TokenStatblockLinkService extends EventEmitter {
       }
       
       // Unlink the existing token - make sure to clear its asset metadata
-      await this.unlinkToken(existingTokenPath, { updateStatblockAvatar: false, notify: false });
+      await this.unlinkToken(existingTokenPath, { updateStatblockAvatar: false, notify: false, fromNote });
     }
     
     // Check if this token is already linked to another statblock
     const currentStatblockPath = await this.getStatblockLinkedToToken(tokenImagePath);
     if (currentStatblockPath && currentStatblockPath !== statblockPath) {
       // Unlink from current statblock
-      await this.unlinkToken(tokenImagePath, { updateStatblockAvatar: true, notify: false });
+      await this.unlinkToken(tokenImagePath, { updateStatblockAvatar: true, notify: false, fromNote });
     }
     
     // Find the asset using improved path matching
@@ -159,7 +163,8 @@ export class TokenStatblockLinkService extends EventEmitter {
       type: 'linked',
       tokenImagePath: finalTokenPath,
       statblockPath,
-      previousStatblockPath: currentStatblockPath
+      previousStatblockPath: currentStatblockPath,
+      ...(fromNote && { fromNote }),
     });
     
     // Update all spawned tokens on all maps
@@ -177,15 +182,17 @@ export class TokenStatblockLinkService extends EventEmitter {
    * Unlinks a token from its statblock.
    * `notify` fires the asset-manager refresh event; pass false when the unlink
    * is one step of a larger operation that refreshes once at the end.
+   * `fromNote` marks the event as one a statblock note's image caused.
    */
   async unlinkToken(
     tokenImagePath: string,
     options: { 
       updateStatblockAvatar?: boolean;
       notify?: boolean;
+      fromNote?: boolean;
     } = {}
   ): Promise<boolean> {
-    const { updateStatblockAvatar = true, notify = true } = options;
+    const { updateStatblockAvatar = true, notify = true, fromNote = false } = options;
     
     // Get current statblock
     const statblockPath = await this.getStatblockLinkedToToken(tokenImagePath);
@@ -228,7 +235,8 @@ export class TokenStatblockLinkService extends EventEmitter {
       type: 'unlinked',
       tokenImagePath,
       statblockPath: null,
-      previousStatblockPath: statblockPath
+      previousStatblockPath: statblockPath,
+      ...(fromNote && { fromNote }),
     });
     
     // Update all spawned tokens on all maps
@@ -528,7 +536,7 @@ export class TokenStatblockLinkService extends EventEmitter {
   /**
    * Finds an asset by any path format (resource URL or file path).
    */
-  private async findAssetByAnyPath(path: string): Promise<TokenAsset | null> {
+  async findAssetByAnyPath(path: string): Promise<TokenAsset | null> {
     const tokenAssets = await this.assetService.getTokenAssets();
     const normalizedSearchPath = this.normalizeResourcePath(path);
     

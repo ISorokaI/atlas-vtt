@@ -37,11 +37,26 @@ interface Settled {
 
 const templateIdOf = (source: StatblockSource | null): TemplateId | null => (source?.kind === 'atlas' ? source.templateId : null);
 
+/** Calls `onChange` whenever the metadata cache reads the note at `path` anew. */
+function useNoteChanges(app: App, path: string | null, onChange: () => void): void {
+  useEffect(() => {
+    if (path === null) return undefined;
+    const ref = app.metadataCache.on('changed', (file) => {
+      if (file.path === path) onChange();
+    });
+    return () => app.metadataCache.offref(ref);
+  }, [app, path, onChange]);
+}
+
 /**
  * The template id a native note names, read without waiting: from the
- * metadata cache, or from the note's text; null for every other note.
+ * metadata cache, or from the note's text; null for every other note. Read
+ * again whenever the metadata cache reads the note anew, so a note switched
+ * to another template, or adopted, is followed with it.
  */
 export function useNativeTemplateId(app: App, path: string, text: string | undefined): TemplateId | null {
+  const [, noteChanged] = useReducer((count: number): number => count + 1, 0);
+  useNoteChanges(app, text === undefined ? path : null, noteChanged);
   const fromText = useMemo(() => (text === undefined ? undefined : templateIdOf(statblockSourceFromText(text))), [text]);
   if (fromText !== undefined) return fromText;
   const file = app.vault.getAbstractFileByPath(path);
@@ -62,17 +77,6 @@ async function readLinked(app: App, note: LinkedNote): Promise<LinkedStatblockRe
   const file = app.vault.getAbstractFileByPath(note.path);
   const source = file instanceof TFile ? await statblockSourceOf(app, file) : null;
   return { kind: 'none', fence: source?.kind === 'fs-fence' };
-}
-
-/** Calls `onChange` whenever the metadata cache reads the note at `path` anew. */
-function useNoteChanges(app: App, path: string | null, onChange: () => void): void {
-  useEffect(() => {
-    if (path === null) return undefined;
-    const ref = app.metadataCache.on('changed', (file) => {
-      if (file.path === path) onChange();
-    });
-    return () => app.metadataCache.offref(ref);
-  }, [app, path, onChange]);
 }
 
 /** Calls `onChange` when the library's entry for `templateId` changes (an open session's draft too), or its first load ends. */
