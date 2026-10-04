@@ -15,7 +15,7 @@
   .atlas-sb-tabstrip {
     display: flex;
     flex-wrap: wrap;
-    gap: $spacing-m;
+    gap: $spacing-xs $spacing-m;
     border-bottom: 1px solid color-mix(in oklch, var(--text-accent) 30%, transparent);
   }
 
@@ -55,6 +55,11 @@
 
   .atlas-sb-tabpanel {
     padding-top: $spacing-s;
+  }
+
+  // A Spells group's levels stand under its loose lines, a line's gap below them.
+  .atlas-sb-spell-group > .atlas-sb-spell-tabs {
+    margin-top: $spacing-s;
   }
 
   .atlas-sb-spell-panel {
