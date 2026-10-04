@@ -123,7 +123,7 @@ describe('a grid whose background was destroyed', () => {
     const viewport = new Container();
     const background = new Sprite(mapTexture());
     viewport.addChild(background);
-    const grid = new GridSystem({} as never, viewport as never, background, { size: 70, enabled: false });
+    const grid = new GridSystem({ renderer: { resolution: 1 } } as never, viewport as never, background, { size: 70, enabled: false });
     try {
       background.destroy();
 

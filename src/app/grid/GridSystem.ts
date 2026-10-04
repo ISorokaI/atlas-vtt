@@ -3,7 +3,8 @@ import { Viewport } from 'pixi-viewport';
 import type { RenderLayer } from 'pixi.js';
 import { drawSquareGrid } from './squareGridDrawer';
 import { drawHexGrid } from './hexGridDrawer';
-import type { GridBounds, GridLineType } from './gridLineStyle';
+import { strokeHolds, visibleGridStroke } from './gridLineStyle';
+import type { GridBounds, GridLineType, GridStroke } from './gridLineStyle';
 import { createHexLayout, hexCellExtent, isHexGridType, nearestHexCenter } from './hexGeometry';
 import type { HexLayout } from './hexGeometry';
 import { contrastColorForSprite } from './gridContrastColor';
@@ -64,8 +65,16 @@ export class GridSystem {
   /** Holds the grid lines and, on a numbered grid, the cell numbers. */
   private gridSprite: Container | null = null;
   private cellNumberLabels: CellNumberLabels | null = null;
+  /** Draws the lines with a stroke; set while there is a grid. */
+  private drawLines: ((stroke: GridStroke) => void) | null = null;
+  private drawnStroke: GridStroke | null = null;
   private readonly onViewportZoomed = (): void => {
     this.cellNumberLabels?.setView(this.numberView());
+    const stroke = this.visibleStroke();
+    if (this.drawLines && this.drawnStroke && !strokeHolds(this.drawnStroke, stroke)) {
+      this.drawLines(stroke);
+      this.drawnStroke = stroke;
+    }
   };
   /** The map the grid overlays; null between two maps, when there is nothing to draw on. */
   private bgSprite: Sprite | null;
@@ -139,7 +148,7 @@ export class GridSystem {
   }
 
   private createExplicitGrid(): void {
-    const { size, offsetX = 0, offsetY = 0, color, alpha, lineWidth, lineType = 'solid', isAligning } = this.options;
+    const { size, offsetX = 0, offsetY = 0, color, lineType = 'solid', isAligning } = this.options;
 
     const bgSprite = this.background;
     if (!bgSprite) {
@@ -177,28 +186,31 @@ export class GridSystem {
 
     // `??`, not `||`: black is 0x000000 and must not fall through to the automatic colour
     const gridColor = isAligning ? ALIGNMENT_GRID_COLOR : (color ?? this.getAutoColor(bgSprite));
-    const gridAlpha = isAligning ? Math.min(alpha! * 1.5, 1) : alpha!;
 
     const lines = new Graphics();
-    lines.setStrokeStyle({
-      width: lineWidth!,
-      color: gridColor,
-      alpha: gridAlpha,
-      alignment: 0,
-      cap: 'round',
-      join: 'miter'
-    });
-
-    if (hexLayout) {
-      drawHexGrid(lines, bounds, hexLayout, lineType, lineWidth);
-    } else {
-      drawSquareGrid(lines, bounds, size, offsetX, offsetY, lineType, lineWidth);
-    }
-    if (lineType === 'dotted') {
-      lines.fill({ color: gridColor, alpha: gridAlpha });
-    } else {
-      lines.stroke();
-    }
+    this.drawLines = (stroke: GridStroke): void => {
+      lines.clear();
+      lines.setStrokeStyle({
+        width: stroke.width,
+        color: gridColor,
+        alpha: stroke.alpha,
+        alignment: 0,
+        cap: 'round',
+        join: 'miter'
+      });
+      if (hexLayout) {
+        drawHexGrid(lines, bounds, hexLayout, lineType, stroke.width);
+      } else {
+        drawSquareGrid(lines, bounds, size, offsetX, offsetY, lineType, stroke.width);
+      }
+      if (lineType === 'dotted') {
+        lines.fill({ color: gridColor, alpha: stroke.alpha });
+      } else {
+        lines.stroke();
+      }
+    };
+    this.drawnStroke = this.visibleStroke();
+    this.drawLines(this.drawnStroke);
 
     const grid = new Container({ label: 'grid', eventMode: 'none', interactiveChildren: false });
     grid.addChild(lines);
@@ -252,6 +264,13 @@ export class GridSystem {
     this._isCreating = false;
   }
 
+  /** The stroke the lines need at the current zoom (`visibleGridStroke`). */
+  private visibleStroke(): GridStroke {
+    const { alpha, isAligning, lineWidth } = this.options;
+    const lineAlpha = isAligning ? Math.min(alpha! * 1.5, 1) : alpha!;
+    return visibleGridStroke(lineWidth!, lineAlpha, this.viewport.scale.x * this.app.renderer.resolution);
+  }
+
   private numberView(): CellNumberView {
     return { zoom: this.viewport.scale.x, pixelRatio: this.app.renderer.resolution };
   }
@@ -270,6 +289,8 @@ export class GridSystem {
   /** Clean up grid-only resources */
   private destroyGridResources(): void {
     this.cellNumberLabels = null;
+    this.drawLines = null;
+    this.drawnStroke = null;
     if (!this.gridSprite) return;
 
     this.gridSprite.visible = false;

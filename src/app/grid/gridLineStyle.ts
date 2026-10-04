@@ -113,3 +113,28 @@ export function drawVertexMarker(
 
   graphics.poly(points, true);
 }
+
+export interface GridStroke {
+  width: number;
+  alpha: number;
+}
+
+/**
+ * The stroke a grid line is drawn with at a zoom. A line thinner than a device pixel falls
+ * between pixel centres and vanishes at some zooms, so with a cell size that is no whole number
+ * some lines showed and others did not. Such a line is drawn one device pixel wide and as much
+ * fainter as it was thinner, which keeps the ink it has.
+ */
+export function visibleGridStroke(lineWidth: number, alpha: number, devicePixelsPerUnit: number): GridStroke {
+  const hairline = 1 / devicePixelsPerUnit;
+  if (!(lineWidth < hairline)) return { width: lineWidth, alpha };
+  return { width: hairline, alpha: alpha * (lineWidth / hairline) };
+}
+
+/**
+ * Whether lines drawn with `drawn` still show as `needed` asks: never thinner, so no line can
+ * vanish, and not much wider, so zooming in does not leave them heavy.
+ */
+export function strokeHolds(drawn: GridStroke, needed: GridStroke): boolean {
+  return drawn.width >= needed.width && drawn.width <= needed.width * 1.2;
+}

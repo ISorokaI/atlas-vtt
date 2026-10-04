@@ -10,6 +10,7 @@
 
 ## Fixed
 
+- Grid lines no longer break up or vanish at some zoom levels after the grid size was changed. Zoomed out, a line thinner than a screen pixel is drawn one pixel wide and fainter instead. Contributed by ISorokaI
 - Zooming a map whose grid is switched off no longer folds the map into a grey wedge pointing at one of its pins
 - Rolls show as result cards when the graphics card cannot draw 3D dice, for example after Obsidian lost or blocked WebGL, instead of an empty white panel. Contributed by ISorokaI
 - Corrected the swapped export and import icons in the asset manager's collection header. Contributed by anacletoTM
