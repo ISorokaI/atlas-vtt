@@ -2,7 +2,8 @@ import type { App } from 'obsidian';
 import { payloadBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
-import { BUNDLE_MANIFEST, TEMPLATE_ROLE, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
+import { BUNDLE_MANIFEST, PRESET_ROLE, TEMPLATE_ROLE, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
+import { flushPresetEdits, packedPresetRecord, withSystemPresetFile } from './bundlePresetFiles';
 import { rewriteContent, toBuffer } from './bundleContent';
 import { selectContent } from './bundleContents';
 import { exportedSettings, folderBelow } from './bundleSettings';
@@ -10,7 +11,7 @@ import { reportFileStep, type BundleProgressListener } from './bundleProgress';
 import { coverCandidates, coverFileFor, currentCover, type CoverCandidate, type CoverChoice, type CurrentCover } from './collectionCover';
 import { CollectionReferenceCollector, withStatblockTemplates, type MissingReference } from './collectionReferences';
 import { sha256 } from './hashing';
-import { readInstallRecord, type InstalledTemplate } from './installRecord';
+import { readInstallRecord, type InstalledPreset, type InstalledTemplate } from './installRecord';
 import { withLinkedFiles } from './noteLinks';
 import { remapPaths } from './pathRemap';
 import { originNames, recordRelease } from './releaseRecord';
@@ -90,7 +91,7 @@ export async function prepareCollectionExport(app: App, assets: AssetService, co
   if (!collection) throw new Error(`Collection ${collectionId} not found`);
   const collectionAssets = (await assets.getAssets(collectionId)).filter((asset) => EXPORTED_TYPES.has(asset.type));
   const { files: referenced, missing } = await new CollectionReferenceCollector(app, assets).collect(collectionAssets, collection.settings.lootBases);
-  const files = await withStatblockTemplates(app, withLinkedFiles(app, referenced), collection.settings);
+  const files = withSystemPresetFile(app, await withStatblockTemplates(app, withLinkedFiles(app, referenced), collection.settings), collection.settings);
   const fileSizes = new Map<string, number>();
   for (const file of files) fileSizes.set(file.vaultPath, await vaultFileSize(app, file.vaultPath));
   const publisher = await publisherOf(app, assets, collection);
@@ -178,7 +179,9 @@ export async function exportCollectionBundle(
   const zip = new JSZip();
   const files: BundleFile[] = [];
   const templates: Record<string, InstalledTemplate> = {};
+  const presets: Record<string, InstalledPreset> = {};
   if (selected.files.some((file) => file.role === TEMPLATE_ROLE)) await flushTemplateEdits(app);
+  if (selected.files.some((file) => file.role === PRESET_ROLE)) await flushPresetEdits(app);
   for (const [index, file] of selected.files.entries()) {
     reportFileStep(onProgress, 'Adding', index, selected.files.length, 0, 0.6);
     const content = await readVaultBinary(app, file.vaultPath);
@@ -187,6 +190,10 @@ export async function exportCollectionBundle(
     const template = file.role === TEMPLATE_ROLE ? await packTemplateFile(file.vaultPath, content) : null;
     if (file.role === TEMPLATE_ROLE && !template) continue;
     if (template) templates[template.installed.localId] = template.installed;
+    // A preset file that holds no preset stays behind.
+    const preset = file.role === PRESET_ROLE ? await packedPresetRecord(content) : null;
+    if (file.role === PRESET_ROLE && !preset) continue;
+    if (preset) presets[preset.localId] = preset;
     const data = template ? toBuffer(template.text) : rewriteContent(file, payloadBytes(file.vaultPath, content), origin.names);
     const bundlePath = named(file.vaultPath);
     files.push({
@@ -219,7 +226,7 @@ export async function exportCollectionBundle(
   });
   return {
     blob,
-    commit: () => (choice.kind === 'share' ? Promise.resolve() : recordRelease(app, assets, preview.collection, manifest, cover, templates)),
+    commit: () => (choice.kind === 'share' ? Promise.resolve() : recordRelease(app, assets, preview.collection, manifest, cover, templates, presets)),
     fileName: bundleFileName(collection.name, collection.version),
     collectionName: collection.name,
     version: collection.version,

@@ -12,9 +12,9 @@ import { TemplateLibrary } from '../../../../src/app/statblocks/library/Template
 import type { CollectionSettings } from '../../../../src/app/types/collectionSettingsTypes';
 import { withDynamicLighting, withStatblockEditor } from '../../../mocks/experimentalFeatures';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
-import { memorySettings } from '../../../mocks/memorySettings';
+import { memoryPresets } from '../../../mocks/memoryPresets';
 
-const service = new SystemPresetService(memorySettings());
+const service = new SystemPresetService(memoryPresets());
 vi.mock('../../../../src/app/react/hooks/useSystemPresets', () => ({
   useSystemPresets: () => ({ service, presets: service.list() }),
 }));

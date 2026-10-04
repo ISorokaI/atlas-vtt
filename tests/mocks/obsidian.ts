@@ -24,16 +24,14 @@ export class App {
     pushScope(scope: Scope): void { this.scopes.push(scope); },
     popScope(scope: Scope): void { this.scopes = this.scopes.filter((candidate) => candidate !== scope); },
   };
-  /** Obsidian's vault-scoped local storage, kept per app like a device's. */
-  private readonly localStorage = new Map<string, unknown>();
-  loadLocalStorage(key: string): unknown {
-    return this.localStorage.has(key) ? this.localStorage.get(key) : null;
-  }
-  saveLocalStorage(key: string, value: unknown): void {
-    if (value === null || value === undefined) this.localStorage.delete(key);
-    else this.localStorage.set(key, value);
-  }
+  /** The vault's local storage, as `loadLocalStorage` and `saveLocalStorage` reach it. */
+  localStorage = new Map<string, unknown>();
   constructor() {}
+  loadLocalStorage(key: string): unknown { return this.localStorage.get(key) ?? null; }
+  saveLocalStorage(key: string, data: unknown): void {
+    if (data === null) this.localStorage.delete(key);
+    else this.localStorage.set(key, data);
+  }
 }
 
 export class Plugin {}

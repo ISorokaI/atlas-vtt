@@ -15,6 +15,7 @@ import { planImport, resolvePlan, type ImportAction, type PlannedItem, type Reso
 import { buildReview, type ImportReview } from './importReview';
 import { planTemplateImport, reusedNotesOf, switchReusedNotes, templateReview, templatesChangedSinceReview, writeTemplates } from './importTemplates';
 import { readInstallRecord, writeInstallRecord, type CollectionField } from './installRecord';
+import { planPresetImport, presetsChangedSinceReview, writePresets } from './bundlePresetFiles';
 
 export interface ImportDecision {
   /** Name for a new collection; defaults to the bundle's, or the suggested free name when that is taken. */
@@ -71,8 +72,10 @@ export async function openCollectionImport(
 
   onProgress({ message: 'Comparing with your vault…', fraction: 0.6 });
   const reader = bundleFileReader(bundle);
-  const templates = await planTemplateImport(app, manifest, reader, record, existing?.name ?? suggestedName ?? manifest.collection.name);
-  const targets = await planTargets(app, assets, bundle, collectionId, record, templates.planned);
+  const collectionName = existing?.name ?? suggestedName ?? manifest.collection.name;
+  const templates = await planTemplateImport(app, manifest, reader, record, collectionName);
+  const presets = await planPresetImport(app, manifest, reader, record, collectionName);
+  const targets = await planTargets(app, assets, bundle, collectionId, record, templates.planned, presets);
   // Compare against what the user sees: open maps may hold unsaved changes.
   await saveOpenMaps(app, new Set([...targets.paths.values(), ...Object.values(record?.files ?? {}).map((file) => file.target)]));
   const { items, unitAssets } = await gatherImportInputs(app, assets, bundle, targets, existing, record);
@@ -137,7 +140,7 @@ async function assertUnchangedSinceReview(app: App, assets: AssetService, contex
   const items = context.plan.units.flatMap((unit) => unit.items).filter((item) => item.kind === 'field' || actions.has(item.key));
   const files = items.filter((item) => item.kind === 'file').map((item) => context.targets.targetOf(idOf(item.key))!);
   await saveOpenMaps(app, new Set(files));
-  let changed = await templatesChangedSinceReview(app, context.targets.templates);
+  let changed = await templatesChangedSinceReview(app, context.targets.templates) || await presetsChangedSinceReview(app, context.targets.presets);
   for (const item of items) changed ||= await currentFingerprint(app, assets, context, item) !== item.mine;
   if (changed) throw new Error('Your vault changed since the review. Import the file again to see the current changes');
 }
@@ -184,6 +187,7 @@ async function applyImport(
       written += 1;
     }
     written += await writeTemplates(journal, targets.templates);
+    written += await writePresets(app, journal, targets.presets);
     // Removals come last, checked against the vault as the writes left it.
     const removalTargets = new Set(removals.map((item) => targets.targetOf(idOf(item.key))!));
     const inUse = removalTargets.size > 0 ? await pathsInUse(app, assets, targets, upsert, remove, removalTargets) : new Set<string>();

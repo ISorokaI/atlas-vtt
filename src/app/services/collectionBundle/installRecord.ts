@@ -50,6 +50,15 @@ export interface InstalledTemplate extends InstalledItem {
   target: string;
 }
 
+/**
+ * A user game system preset the collection brought, fingerprinted by content without its id
+ * (`presetFingerprint`). Presets are found by id, wherever their file is.
+ */
+export interface InstalledPreset extends InstalledItem {
+  /** Its id in this vault: the bundle's, or a copy's when the vault's own had changed. */
+  localId: string;
+}
+
 /** What the vault got from a collection's last import or export: the baseline of the next update. */
 export interface InstallRecord {
   uid: string;
@@ -68,6 +77,8 @@ export interface InstallRecord {
   fields: Partial<Record<CollectionField, InstalledItem>>;
   /** Keyed by the template's id in the bundle; missing in records of bundles without templates. */
   templates?: Record<string, InstalledTemplate>;
+  /** Keyed by the preset's id in the bundle; missing in records of bundles without a user preset. */
+  presets?: Record<string, InstalledPreset>;
 }
 
 /** Where versions before install records synced kept them, by collection uid. */

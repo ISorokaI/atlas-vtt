@@ -1,5 +1,5 @@
 import { COLLECTIONS_DIR, ATLAS_VTT_DIR, GLOBAL_ASSETS_DIR } from '../AssetService';
-import { REUSABLE_FILE_ROLES, SNAPSHOT_FILE_ROLES, TEMPLATE_ROLE, type BundleFile, type BundleFileRole } from './bundleFormat';
+import { ID_MATCHED_ROLES, REUSABLE_FILE_ROLES, SNAPSHOT_FILE_ROLES, TEMPLATE_ROLE, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { sceneThumbnailPath } from './collectionReferences';
 import { baseName, parentPath } from '../../utils/pathUtils';
 import { sceneSnapshotFolder } from '../../snapshots/snapshotPaths';
@@ -157,8 +157,8 @@ export function planImportPaths(files: readonly BundleFile[], rules: ImportPathR
   const unplaced: Array<{ file: BundleFile; folder: string }> = [];
   const besideMaps: Array<{ file: BundleFile; map: string }> = [];
   for (const file of files) {
-    // Templates are placed by their id (`templatePlacer`), not by their path.
-    if (file.role === TEMPLATE_ROLE) continue;
+    // Templates and presets are placed by their id (`templatePlacer`, `planPresets`), not by their path.
+    if (ID_MATCHED_ROLES.has(file.role)) continue;
     const path = file.vaultPath;
     const map = sceneMapOf(file, mapPaths);
     const scene = SNAPSHOT_FILE_ROLES.has(file.role) ? rules.sceneOfSnapshot(file) : null;

@@ -21,6 +21,15 @@ export function readHotkeyOverrides(stored: unknown): HotkeyOverrides {
   return overrides;
 }
 
+/**
+ * Saved bindings of actions this Atlas does not have. A newer Atlas on another device may
+ * have added them, so they are written back unchanged.
+ */
+export function foreignHotkeys(stored: unknown): Record<string, string> {
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+  return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, string] => !isHotkeyId(entry[0]) && typeof entry[1] === 'string'));
+}
+
 /** Binds `id` to `key`; binding an action to its default removes the override. */
 export function withHotkey(overrides: HotkeyOverrides, id: MapHotkeyId, key: string): HotkeyOverrides {
   const others = Object.entries(overrides).filter(([other]) => other !== id);
