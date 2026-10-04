@@ -38,6 +38,7 @@ import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
 import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
+import { OverlayScroll } from '../../packages/components/primitives/OverlayScroll';
 import { CommandItem } from './command-palette/CommandItem';
 import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
@@ -934,8 +935,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                     </>
                   )}
 
-                  <div
+                  <OverlayScroll
                     ref={optionsContainerRef}
+                    frameClassName="atlas-command-palette-options-frame"
                     className="atlas-command-palette-options"
                     onMouseMove={handleMouseMove}
                   >
@@ -960,7 +962,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
                         )}
                       </div>
                     )}
-                  </div>
+                  </OverlayScroll>
 
                   {!activePanel && (
                     <div className="atlas-command-palette-footer">
