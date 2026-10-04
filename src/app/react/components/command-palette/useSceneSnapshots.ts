@@ -3,6 +3,8 @@ import { Notice, TFile } from 'obsidian';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
 import { SceneSnapshotService, nextSnapshotName, type SceneSnapshotEntry } from '../../../snapshots/SceneSnapshotService';
+import { snapshotFolderForMap } from '../../../snapshots/sceneSnapshotFolders';
+import { AssetService } from '../../../services/AssetService';
 import { confirmAction } from '../../../ui/confirmDialog';
 import { SNAPSHOT_THUMBNAIL_SIZE } from '../../../services/MapThumbnailService';
 
@@ -30,13 +32,16 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
   const mapPath = useAtlasStore((state) => state.mapPath);
   const service = useMemo(() => new SceneSnapshotService(app), [app]);
   const [entries, setEntries] = useState<SceneSnapshotEntry[]>([]);
+  const [folder, setFolder] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
 
   const refresh = useCallback(async (): Promise<void> => {
-    setEntries(mapPath ? await service.list(mapPath) : []);
+    const sceneFolder = mapPath ? await snapshotFolderForMap(AssetService.getInstance(app), mapPath) : null;
+    setFolder(sceneFolder);
+    setEntries(sceneFolder ? await service.list(sceneFolder) : []);
     setIsLoading(false);
-  }, [mapPath, service]);
+  }, [app, mapPath, service]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -59,14 +64,14 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
 
   const save = useCallback(async (): Promise<void> => {
     const mapFile = view?.file;
-    if (!view || !(mapFile instanceof TFile)) return;
+    if (!view || !folder || !(mapFile instanceof TFile)) return;
     const name = nextSnapshotName(entries.map((entry) => entry.snapshot.name));
 
     await run(async () => {
       await view.saveMap();
-      await service.create(mapFile, name, view.serviceManager.renderMapThumbnail(SNAPSHOT_THUMBNAIL_SIZE));
+      await service.create(folder, mapFile, name, view.serviceManager.renderMapThumbnail(SNAPSHOT_THUMBNAIL_SIZE));
     }, 'Could not save the snapshot');
-  }, [entries, run, service, view]);
+  }, [entries, folder, run, service, view]);
 
   const restore = useCallback(async (entry: SceneSnapshotEntry): Promise<void> => {
     if (!view) return;

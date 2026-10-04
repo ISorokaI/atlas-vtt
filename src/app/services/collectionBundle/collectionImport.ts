@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { payloadBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { zipPathFor } from './bundleFormat';
 import { rewriteContent } from './bundleContent';
@@ -14,6 +15,7 @@ import { planImport, resolvePlan, type ImportAction, type PlannedItem, type Reso
 import { buildReview, type ImportReview } from './importReview';
 import { planTemplateImport, reusedNotesOf, switchReusedNotes, templateReview, templatesChangedSinceReview, writeTemplates } from './importTemplates';
 import { readInstallRecord, writeInstallRecord, type CollectionField } from './installRecord';
+import { planPresetImport, presetsChangedSinceReview, writePresets } from './bundlePresetFiles';
 
 export interface ImportDecision {
   /** Name for a new collection; defaults to the bundle's, or the suggested free name when that is taken. */
@@ -63,15 +65,17 @@ export async function openCollectionImport(
   const bundle = await openBundle(data, onProgress);
   const { manifest } = bundle;
   const existing = await assets.findCollectionByUid(manifest.collection.uid);
-  const record = existing ? await readInstallRecord(app, existing.uid) : null;
+  const record = existing ? await readInstallRecord(app, existing) : null;
   const nameTaken = await assets.isCollectionNameTaken(manifest.collection.name, existing?.id);
   const suggestedName = !existing && nameTaken ? await assets.freeCollectionName(manifest.collection.name) : undefined;
   const collectionId = existing?.id ?? await assets.freeCollectionIdFor(manifest.collection.name);
 
   onProgress({ message: 'Comparing with your vault…', fraction: 0.6 });
   const reader = bundleFileReader(bundle);
-  const templates = await planTemplateImport(app, manifest, reader, record, existing?.name ?? suggestedName ?? manifest.collection.name);
-  const targets = await planTargets(app, assets, bundle, collectionId, record, templates.planned);
+  const collectionName = existing?.name ?? suggestedName ?? manifest.collection.name;
+  const templates = await planTemplateImport(app, manifest, reader, record, collectionName);
+  const presets = await planPresetImport(app, manifest, reader, record, collectionName);
+  const targets = await planTargets(app, assets, bundle, collectionId, record, templates.planned, presets);
   // Compare against what the user sees: open maps may hold unsaved changes.
   await saveOpenMaps(app, new Set([...targets.paths.values(), ...Object.values(record?.files ?? {}).map((file) => file.target)]));
   const { items, unitAssets } = await gatherImportInputs(app, assets, bundle, targets, existing, record);
@@ -83,7 +87,7 @@ export async function openCollectionImport(
 
   return {
     review: {
-      ...buildReview(manifest, await assets.getVaultId(), existing, record, plan, restorePlan, unitAssets, suggestedName, targets.skipped),
+      ...buildReview(manifest, await assets.knownVaultId(), existing, record, plan, restorePlan, unitAssets, suggestedName, targets.skipped),
       cover: await bundleCover(bundle),
       templates: templateReview(targets.templates, reusedNotes),
     },
@@ -136,7 +140,7 @@ async function assertUnchangedSinceReview(app: App, assets: AssetService, contex
   const items = context.plan.units.flatMap((unit) => unit.items).filter((item) => item.kind === 'field' || actions.has(item.key));
   const files = items.filter((item) => item.kind === 'file').map((item) => context.targets.targetOf(idOf(item.key))!);
   await saveOpenMaps(app, new Set(files));
-  let changed = await templatesChangedSinceReview(app, context.targets.templates);
+  let changed = await templatesChangedSinceReview(app, context.targets.templates) || await presetsChangedSinceReview(app, context.targets.presets);
   for (const item of items) changed ||= await currentFingerprint(app, assets, context, item) !== item.mine;
   if (changed) throw new Error('Your vault changed since the review. Import the file again to see the current changes');
 }
@@ -178,10 +182,12 @@ async function applyImport(
       const target = targets.targetOf(bundlePath);
       if (!target) continue;
       const file = filesByPath.get(bundlePath)!;
-      await journal.write(target, rewriteContent(file, await zip.file(zipPathFor(bundlePath))!.async('arraybuffer'), targets.rewrites, targets.templateIds));
+      const raw = payloadBytes(file.vaultPath, await zip.file(zipPathFor(bundlePath))!.async('arraybuffer'));
+      await journal.write(target, rewriteContent(file, raw, targets.rewrites, targets.templateIds));
       written += 1;
     }
     written += await writeTemplates(journal, targets.templates);
+    written += await writePresets(app, journal, targets.presets);
     // Removals come last, checked against the vault as the writes left it.
     const removalTargets = new Set(removals.map((item) => targets.targetOf(idOf(item.key))!));
     const inUse = removalTargets.size > 0 ? await pathsInUse(app, assets, targets, upsert, remove, removalTargets) : new Set<string>();

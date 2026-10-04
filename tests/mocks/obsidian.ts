@@ -12,6 +12,17 @@ export class Scope {
   }
 }
 
+export class Keymap {
+  /** The pane an event asks for: Ctrl (Cmd on macOS) or a middle click a tab, with Alt a split, with Alt and Shift a window. */
+  static isModEvent(event?: MouseEvent | KeyboardEvent | null): 'tab' | 'split' | 'window' | boolean {
+    if (!event) return false;
+    const mod = Platform.isMacOS ? event.metaKey : event.ctrlKey;
+    if (mod && event.altKey) return event.shiftKey ? 'window' : 'split';
+    if (mod || (event instanceof MouseEvent && event.button === 1)) return 'tab';
+    return false;
+  }
+}
+
 export class App {
   vault: any;
   workspace: any;

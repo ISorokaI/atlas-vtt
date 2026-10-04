@@ -4,8 +4,15 @@
 - Statblock templates for 5E (2014 and 2024), Cairn, Draw Steel and Fate, and general ones for creatures, NPCs and hazards
 - Customize the toolbar from the command palette: drag tools to reorder them, or into the tray above it to hide them. With a contribution by oscar-eriksson
 
+## Important changes
+
+- Your library now syncs between devices with Obsidian Sync, Remotely Save and Self-hosted LiveSync. Tokens, encounters, collection settings, game system presets, scene snapshots and loot history used to sit in a hidden folder these tools skip. Each device moves its own once when Atlas starts, so update Atlas on every device before editing your library there
+- With Obsidian Sync, turn on "Sync all other types" in its settings: Atlas keeps its library in JSON files, which Obsidian Sync leaves out otherwise
+- Atlas' own settings (dice, hotkeys, experimental features) now live with the plugin's settings and sync whenever you sync plugin settings
+
 ## Improved
 
+- A scene can measure at its own scale: Distance per cell in the command palette's Grid Settings sets how far one cell of that map reaches, in place of the collection's, for the ruler and for how far lights and senses reach on it. Leave it empty to follow the collection. Contributed by ISorokaI
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike
 - The creature filter Layout is now called Template. Type `template:` in the search; `layout:` still works
 - The token creator finds statblock notes without the Fantasy Statblocks plugin too. Its image source is now called Statblock notes
@@ -19,6 +26,9 @@
 ## Fixed
 
 - Hovering a token whose note holds its statblock in a code block shows the statblock, not the plain note
+- Grid lines no longer break up or vanish at some zoom levels after the grid size was changed. Zoomed out, a line thinner than a screen pixel is drawn one pixel wide and fainter instead. Contributed by ISorokaI
+- Links in Fantasy Statblocks bestiary statblocks show as links instead of raw text such as `rules/skills.md#Perception|Perception`, and a click opens the note in a new tab. Contributed by ISorokaI
+- The asset manager opens and scrolls faster with many tokens: every token card used to make the browser read the token ring image anew, which on slower computers froze the Characters tab with a few dozen tokens. Contributed by ISorokaI
 - Zooming a map whose grid is switched off no longer folds the map into a grey wedge pointing at one of its pins
 - The laser pointer no longer disappears over parts of the map until you zoom
 - Rolls show as result cards when the graphics card cannot draw 3D dice, for example after Obsidian lost or blocked WebGL, instead of an empty white panel. Contributed by ISorokaI
@@ -29,3 +39,4 @@
 - A d100 rolled in 3D shows its tens die on the right number: a 19 lands on 1 and 9, not 2 and 9
 - Loading a scene with explored areas no longer keeps a copy of them in graphics memory
 - The brush ring of the fog tool, the drawing eraser and the explored memory brush stays under the pointer when you scroll the map with a trackpad. With a contribution by Lobby444
+- The DM screen fits the map when Obsidian's sidebars are open or the map shares the window with other panes: it no longer runs off the edges, and its statblocks and note stack once the map is narrow

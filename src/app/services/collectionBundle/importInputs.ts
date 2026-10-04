@@ -1,18 +1,21 @@
 import { TFile, normalizePath, type App } from 'obsidian';
+import { comparedBytes, payloadBytes } from './recordPayload';
 import { AssetService, ATLAS_VTT_DIR, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { ID_MATCHED_ROLES, SNAPSHOT_FILE_ROLES, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { sceneOfSnapshot } from './bundleSnapshots';
 import { linkedFilePath } from '../sceneLinks';
 import type { OpenedBundle } from './bundleReader';
 import { hashHere, mayRewrite, rewriteContent } from './bundleContent';
-import { importedSettings } from './bundleSettings';
+import { importedSettings, withPresetId } from './bundleSettings';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
 import { sha256 } from './hashing';
-import { COLLECTION_FIELDS, type InstallRecord } from './installRecord';
+import { COLLECTION_FIELDS, type InstallRecord, type InstalledItem } from './installRecord';
 import type { PlanItemInput } from './importPlan';
 import { planImportPaths, remapPaths } from './pathRemap';
-import { listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
+import { isHiddenVaultPath, listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { systemPresetsOf } from '../mapCollectionRules';
 import { templateIdMap, withRoleTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
+import { presetIdMap, presetsAfterImport, type PlannedPreset } from '../systemPresets/bundlePresets';
 
 /** Where the bundle's files and records go in this vault. */
 export interface ImportTargets {
@@ -35,6 +38,10 @@ export interface ImportTargets {
   templates: readonly PlannedTemplate[];
   /** Bundle template id → id here, for the bundle's own notes and roles. */
   templateIds: TemplateIdMap;
+  /** The bundle's user presets, placed by preset id (never in `paths`). */
+  presets: readonly PlannedPreset[];
+  /** Bundle preset id → id here, for the collection's settings. */
+  presetIds: ReadonlyMap<string, string>;
 }
 
 export interface SkippedAsset {
@@ -90,10 +97,23 @@ export function referencedStrings(values: readonly unknown[], into: Set<string> 
   return into;
 }
 
-/** Fingerprint of the vault file at `path`, or null when there is none. */
+/** Fingerprint of the vault file at `path` as bundles compare it (a record file by its payload), or null when there is none. */
 export async function vaultFileHash(app: App, path: string): Promise<string | null> {
   const content = await readVaultBinary(app, path);
-  return content ? sha256(content) : null;
+  return content ? sha256(comparedBytes(path, content)) : null;
+}
+
+/**
+ * The vault file's fingerprint for comparing it with what an install recorded. Versions before
+ * record files fingerprinted a map's JSON with the collection it names, so a file that still
+ * matches such a record is unchanged.
+ */
+export async function installedFileHash(app: App, path: string, base: InstalledItem | null): Promise<string | null> {
+  const content = await readVaultBinary(app, path);
+  if (!content) return null;
+  const mine = await sha256(comparedBytes(path, content));
+  if (!base || base.installed === mine) return mine;
+  return await sha256(payloadBytes(path, content)) === base.installed ? base.installed : mine;
 }
 
 /** The vault's record with `localId` when it belongs to the collection being updated; one in another collection is the user's own. */
@@ -109,13 +129,23 @@ export async function planTargets(
   collectionId: string,
   record: InstallRecord | null,
   templates: readonly PlannedTemplate[] = [],
+  presets: readonly PlannedPreset[] = [],
 ): Promise<ImportTargets> {
   const hiddenFiles = await listHiddenFiles(app, `${COLLECTIONS_DIR}/${collectionId}`);
   const exists = (path: string): boolean => app.vault.getAbstractFileByPath(normalizePath(path)) instanceof TFile || hiddenFiles.has(path);
+  // Ids are unique only within the vault that made them: one another collection uses gets a new id here.
+  const assetIds = new Map<string, string>();
+  for (const asset of manifest.assets) {
+    const candidate = record?.assets[asset.id]?.localId ?? asset.id;
+    const local = await assets.getAssetById(candidate);
+    assetIds.set(asset.id, local && local.collection !== collectionId ? AssetService.newAssetId(asset.type) : candidate);
+  }
+
   const paths = new Map<string, string>();
   for (const file of manifest.files) {
     const target = record?.files[file.vaultPath]?.target;
-    if (target) paths.set(file.vaultPath, target);
+    // Snapshots an earlier version installed in a hidden folder are placed anew, where the startup migration put them.
+    if (target && !(SNAPSHOT_FILE_ROLES.has(file.role) && isHiddenVaultPath(target))) paths.set(file.vaultPath, target);
   }
   const unplaced = manifest.files.filter((file) => !paths.has(file.vaultPath));
   // Shared Atlas artwork is only reused when it is the same file; otherwise the bundle's copy gets its own path.
@@ -137,16 +167,15 @@ export async function planTargets(
     existsInVault: exists,
     hasSameContent: (file) => sameContent.has(file.vaultPath) || isOwnArtwork(file.vaultPath),
     recordTargets,
+    sceneOfSnapshot: (file) => {
+      const scene = sceneOfSnapshot(file, manifest.assets);
+      return scene ? assetIds.get(scene) ?? scene : null;
+    },
   });
   for (const [source, target] of planned) paths.set(source, target);
 
-  // Ids are unique only within the vault that made them: one another collection uses gets a new id here.
-  const assetIds = new Map<string, string>();
   for (const asset of manifest.assets) {
-    const candidate = record?.assets[asset.id]?.localId ?? asset.id;
-    const local = await assets.getAssetById(candidate);
-    const localId = local && local.collection !== collectionId ? AssetService.newAssetId(asset.type) : candidate;
-    assetIds.set(asset.id, localId);
+    const localId = assetIds.get(asset.id)!;
     // Records without an explicit file path find their file by id, so a renamed record takes its file along.
     const derivesFile = asset.type !== 'token' && asset.type !== 'note' && !asset.filePath;
     const bundleFile = assets.getAssetFilePath({ ...asset, collection: manifest.collection.id });
@@ -170,7 +199,7 @@ export async function planTargets(
     if (source !== target) rewrites.set(source, target);
   }
   const targets: ImportTargets = {
-    collectionId, paths, assetIds, rewrites, shared, skipped: [], templates, templateIds: templateIdMap(templates),
+    collectionId, paths, assetIds, rewrites, shared, skipped: [], templates, templateIds: templateIdMap(templates), presets, presetIds: presetIdMap(presets),
     targetOf: (bundlePath) => paths.get(bundlePath) ?? record?.files[bundlePath]?.target,
     localIdOf: (bundleId) => assetIds.get(bundleId) ?? record?.assets[bundleId]?.localId ?? bundleId,
   };
@@ -211,8 +240,8 @@ export async function gatherImportInputs(
   const moved = new Set<string>();
 
   for (const file of manifest.files) {
-    // Templates are compared by template id (`planTemplates`), not as files.
-    if (file.role === TEMPLATE_ROLE || targets.shared.has(file.vaultPath) || onlyUsedBySkipped(file)) continue;
+    // Templates and presets are compared by their id (`planTemplates`, `planPresets`), not as files.
+    if (ID_MATCHED_ROLES.has(file.role) || targets.shared.has(file.vaultPath) || onlyUsedBySkipped(file)) continue;
     const target = targets.paths.get(file.vaultPath)!;
     const previousPath = record?.files[file.vaultPath] ? undefined : movedFrom.get(target);
     if (previousPath) moved.add(previousPath);
@@ -221,19 +250,19 @@ export async function gatherImportInputs(
     const theirs = entry && hash !== undefined ? await hashHere(file, hash, () => entry.async('arraybuffer'), targets.templateIds) : hash ?? null;
     let theirsInstalled = theirs ?? undefined;
     if (theirs !== null && entry && mayRewrite(file, targets.rewrites, targets.templateIds)) {
-      theirsInstalled = await sha256(rewriteContent(file, await entry.async('arraybuffer'), targets.rewrites, targets.templateIds));
+      theirsInstalled = await sha256(comparedBytes(target, rewriteContent(file, payloadBytes(file.vaultPath, await entry.async('arraybuffer')), targets.rewrites, targets.templateIds)));
     }
+    const base = record?.files[file.vaultPath] ?? (previousPath ? record?.files[previousPath] : undefined) ?? null;
     items.push({
       key: `file:${file.vaultPath}`, kind: 'file', unit: fileUnit(file),
-      theirs, base: record?.files[file.vaultPath] ?? (previousPath ? record?.files[previousPath] : undefined) ?? null,
-      mine: await vaultFileHash(app, target), theirsInstalled,
+      theirs, base, mine: await installedFileHash(app, target, base), theirsInstalled,
     });
   }
   for (const [path, installed] of Object.entries(record?.files ?? {})) {
     if (moved.has(path)) continue;
     // Only the collection's own folder is the import's to clean up: shared artwork and the user's notes stay.
     if (bundledPaths.has(path) || !installed.target.startsWith(`${COLLECTIONS_DIR}/${targets.collectionId}/`)) continue;
-    items.push({ key: `file:${path}`, kind: 'file', unit: installed.unit ?? `file:${path}`, theirs: null, base: installed, mine: await vaultFileHash(app, installed.target) });
+    items.push({ key: `file:${path}`, kind: 'file', unit: installed.unit ?? `file:${path}`, theirs: null, base: installed, mine: await installedFileHash(app, installed.target, installed) });
   }
 
   for (const asset of manifest.assets) {
@@ -257,14 +286,16 @@ export async function gatherImportInputs(
   }
 
   const presets = systemPresetsOf(app);
-  // Like a note, the settings' roles follow a template that comes in as a copy.
-  const theirsHereCollection = { ...manifest.collection, settings: withRoleTemplates(manifest.collection.settings, targets.templateIds) };
+  // The bundle's settings are read with the presets as the import leaves them, the vault's with those it has.
+  const presetsAfter = presetsAfterImport(presets, targets.presets);
+  // Like a note, the settings' roles follow a template that comes in as a copy, and their system a preset that does.
+  const theirsHereCollection = { ...manifest.collection, settings: withPresetId(withRoleTemplates(manifest.collection.settings, targets.templateIds), targets.presetIds) };
   for (const field of COLLECTION_FIELDS) {
-    const theirs = await fieldFingerprint(theirsHereCollection, field, presets);
+    const theirs = await fieldFingerprint(theirsHereCollection, field, presetsAfter);
     items.push({
       key: `field:${field}`, kind: 'field', unit: `field:${field}`,
       theirs, base: record?.fields[field] ?? null, mine: existing ? await fieldFingerprint(existing, field, presets) : null,
-      theirsInstalled: field === 'settings' ? await fieldFingerprint({ ...manifest.collection, settings: importedSettings(manifest.collection, targets) }, field, presets) : theirs,
+      theirsInstalled: field === 'settings' ? await fieldFingerprint({ ...manifest.collection, settings: importedSettings(manifest.collection, targets) }, field, presetsAfter) : theirs,
     });
   }
   return { items, unitAssets };

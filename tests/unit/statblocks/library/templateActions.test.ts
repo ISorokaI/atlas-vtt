@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../../../src/app/gameSystems/builtInPresets';
 import { AssetService, type CollectionMetadata } from '../../../../src/app/services/AssetService';
-import { SettingsService } from '../../../../src/app/services/SettingsService';
+import { SystemPresetFiles } from '../../../../src/app/services/systemPresets/SystemPresetFiles';
 import { SystemPresetService } from '../../../../src/app/services/SystemPresetService';
 import { builtInTemplate } from '../../../../src/app/statblocks/library/builtInTemplates';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
@@ -12,7 +12,7 @@ import { NoteFieldWriter } from '../../../../src/app/statblocks/notes/NoteFieldW
 import type { StatblockTemplate } from '../../../../src/app/statblocks/model/templateTypes';
 import type { CollectionSettings } from '../../../../src/app/types/collectionSettingsTypes';
 import { MARSH_CREATURE } from '../../../fixtures/statblockTemplateFixtures';
-import { memorySettings } from '../../../mocks/memorySettings';
+import { memoryPresets } from '../../../mocks/memoryPresets';
 import { closeSessionVault, sessionVault, type SessionVault } from './sessionVault';
 import { MARSH_ID, MARSH_PATH, TEMPLATE_FOLDER } from './templateTexts';
 
@@ -20,7 +20,7 @@ const REPLACEMENT = 'builtin:generic-creature';
 const note = (template: string): string => `---\nstatblock: true\natlas-template: ${template}\nname: Bog\n---\nBody.\n`;
 
 let vault: SessionVault;
-let settings: ReturnType<typeof memorySettings>;
+let settings: ReturnType<typeof memoryPresets>;
 let collections: CollectionMetadata[];
 let updateCollectionSettings: ReturnType<typeof vi.fn>;
 
@@ -38,8 +38,8 @@ const read = (path: string): StatblockTemplate => JSON.parse(vault.files.get(pat
 
 beforeEach(async () => {
   vault = sessionVault();
-  settings = memorySettings();
-  vi.spyOn(SettingsService, 'forApp').mockReturnValue(settings as unknown as SettingsService);
+  settings = memoryPresets();
+  vi.spyOn(SystemPresetFiles, 'forApp').mockReturnValue(settings as unknown as SystemPresetFiles);
   const homebrew = new SystemPresetService(settings).create('Homebrew', {
     ...structuredClone(BUILT_IN_SYSTEM_PRESETS[1]!.rules),
     statblockRoles: [{ id: 'monster', name: 'Monster', templateId: MARSH_ID }],
