@@ -7,6 +7,7 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-
 import { PlayerView, PLAYER_VIEW_TYPE } from './src/app/player-view';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
+import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
 import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
@@ -78,7 +79,7 @@ export default class AtlasVTTPlugin extends Plugin {
     const errorLog = new AtlasErrorLog();
     this.register(errorLog.attach());
     const issueReporter = new IssueReporter(this.app, this.manifest, errorLog);
-    this.addCommand({ id: 'report-issue', name: 'Report an issue…', callback: () => issueReporter.open() });
+    this.addCommand({ id: 'report-issue', name: t('command.reportIssue'), callback: () => issueReporter.open() });
 
     // Capture this before migrations/services can create Atlas's storage folder.
     const existingInstallation = this.app.vault.adapter.exists('atlas-vtt');
@@ -121,7 +122,7 @@ export default class AtlasVTTPlugin extends Plugin {
       releaseBuild: __ATLAS_RELEASE_BUILD__,
     });
     this.changelogService = changelogService;
-    this.addCommand({ id: 'view-changelog', name: 'View changelog', callback: () => changelogService.open() });
+    this.addCommand({ id: 'view-changelog', name: t('command.viewChangelog'), callback: () => changelogService.open() });
 
     this.globalAssetManager = new GlobalAssetManagerService(this.app);
     this.imageDisplayService = new ImageDisplayService(this.app);

@@ -8,6 +8,7 @@ import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { SegmentedControl } from "../primitives/SegmentedControl"
 import { LabelTooltip } from "../primitives/tooltip"
+import { t } from "../../../i18n"
 
 
 interface SceneLightingSectionProps {
@@ -32,11 +33,11 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
   return (
     <>
       <div className="atlas-dropdown-section atlas-scene-lighting">
-        <DropdownToggleRow label="Dynamic lighting" value={lighting.enabled} onChange={() => onChange({ enabled: !lighting.enabled })} />
+        <DropdownToggleRow label={t('sceneLight.dynamic')} value={lighting.enabled} onChange={() => onChange({ enabled: !lighting.enabled })} />
         <SegmentedControl<TimeOfDay | 'custom'>
           value={time}
           options={TIMES_OF_DAY}
-          ariaLabel="Time of day"
+          ariaLabel={t('sceneLight.timeOfDay')}
           disabled={disabled}
           onChange={(value) => {
             const stop = TIMES_OF_DAY.find((candidate) => candidate.value === value)
@@ -45,7 +46,7 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
         />
         <div className="atlas-scene-lighting__ambient">
           <DropdownSliderRow
-            label="Ambient light"
+            label={t('sceneLight.ambient')}
             value={Math.round(lighting.ambient * 100)}
             min={0}
             max={100}
@@ -53,7 +54,7 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
             disabled={disabled}
             onChange={(percent) => onChange({ ambient: percent / 100 })}
           />
-          <LabelTooltip label="Ambient colour">
+          <LabelTooltip label={t('sceneLight.ambientColour')}>
             <input
               type="color"
               className="atlas-swatch atlas-swatch--picker"
@@ -66,8 +67,8 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
       </div>
       <div className="atlas-dropdown-section">
         {onRevealExplored && <DropdownMenuItem icon={Eye} label="Mark all areas explored" disabled={disabled} onClick={onRevealExplored} />}
-        <DropdownMenuItem icon={RotateCcw} label="Forget explored areas" disabled={disabled} onClick={onResetExplored} />
-        <DropdownMenuItem icon={SlidersHorizontal} label="Lighting settings…" disabled={disabled} onClick={onOpenSettings} />
+        <DropdownMenuItem icon={RotateCcw} label={t('sceneLight.forgetExplored')} disabled={disabled} onClick={onResetExplored} />
+        <DropdownMenuItem icon={SlidersHorizontal} label={t('sceneLight.openSettings')} disabled={disabled} onClick={onOpenSettings} />
       </div>
     </>
   )

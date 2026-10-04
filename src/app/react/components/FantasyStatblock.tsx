@@ -17,6 +17,7 @@ import { useTokenPortrait } from '../../statblocks/render/shared/tokenPortrait';
 import { StatblockTokenResources, type StatblockTokenActions } from './statblock/StatblockTokenResources';
 import { useBestiaryRevision } from '../hooks/useBestiaryRevision';
 import { StatblockSkeleton } from './statblock/StatblockSkeleton';
+import { t } from '../../i18n';
 
 interface FantasyStatblockProps {
   /** Vault path of the note backing the Fantasy Statblocks creature */
@@ -150,7 +151,7 @@ export function FantasyStatblock({
   if (!api) {
     return (
       <div className="atlas-statblock-missing-hint">
-        Install and enable the Fantasy Statblocks plugin to preview statblocks.
+        {t('statblock.pluginMissing')}
       </div>
     );
   }

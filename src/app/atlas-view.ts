@@ -8,6 +8,7 @@ import { createTabMetaStore, type TabMetaStore } from './stores/tabMetaStore';
 import type { SceneTab } from './types/sceneTabTypes';
 import type AtlasVTTPlugin from '../../main';
 import { claimWorkspaceLeafFocus } from './utils/activeLeafGuard';
+import { t } from './i18n';
 import { isScenePath } from './utils/sceneFiles';
 import { runInBackground } from './utils/backgroundTask';
 
@@ -227,7 +228,7 @@ export class AtlasView extends FileView {
     try {
       // Show loading overlay immediately if we have a file to load
       if (this.file instanceof TFile) {
-        this.store.getState().setMapLoading(true, 0, 'Initializing...');
+        this.store.getState().setMapLoading(true, 0, t('view.initializing'));
       }
 
 
@@ -367,7 +368,7 @@ export class AtlasView extends FileView {
     // Resolve the TFile from the tab's filePath
     const abstractFile = this.app.vault.getAbstractFileByPath(normalizePath(tab.filePath));
     if (!(abstractFile instanceof TFile)) {
-      new Notice(`Scene file not found: ${tab.filePath}`);
+      new Notice(t('view.sceneNotFound', { path: tab.filePath }));
       this.tabMetaStore.getState().removeTab(tabId);
       return;
     }
@@ -648,7 +649,7 @@ export class AtlasView extends FileView {
   private async performSceneLoad(file: TFile): Promise<boolean> {
     // The renderer still shows the previous scene; its pending thumbnail is taken now or never
     this._serviceManager.flushSceneThumbnail();
-    this.store.getState().setMapLoading(true, 0, 'Preparing...');
+    this.store.getState().setMapLoading(true, 0, t('view.preparing'));
     this.currentMapFilePath = file.path;
 
     const rendererService = this._serviceManager.getRendererService();
@@ -843,7 +844,7 @@ export class AtlasView extends FileView {
   getDisplayText(): string {
     // Display the map name if available
     const mapFilePath = this._serviceManager.getMapService().getCurrentMapFilePath();
-    return mapFilePath ? `Atlas: ${mapFilePath.split('/').pop()}` : "Atlas Canvas";
+    return mapFilePath ? `Atlas: ${mapFilePath.split('/').pop()}` : t('view.canvas');
   }
 
   getIcon(): string {

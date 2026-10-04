@@ -3,6 +3,7 @@
 - Statblocks show without the Fantasy Statblocks plugin: Atlas draws them itself on token hovers, in the DM screen and in the asset manager
 - Statblock templates for 5E (2014 and 2024), Cairn, Draw Steel and Fate, and general ones for creatures, NPCs and hazards
 - Customize the toolbar from the command palette: drag tools to reorder them, or into the tray above it to hide them. With a contribution by oscar-eriksson
+- Atlas follows Obsidian's language. Set Obsidian to Russian under Settings → General → Language and Atlas' menus, dialogs, settings and notices appear in Russian; other languages fall back to English until they are translated.
 
 ## Important changes
 

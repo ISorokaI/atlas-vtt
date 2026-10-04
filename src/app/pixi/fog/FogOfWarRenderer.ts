@@ -26,6 +26,7 @@ import { isHandled } from '../utils/handledEvents';
 import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { STROKE_COLORS, ShapeStroke, type StrokeMode } from '../../tools/shapeStroke';
 import { drawStrokeArea } from '../utils/strokePreview';
+import { t } from '../../i18n';
 
 const DEFAULT_BOUNDS: FogBounds = { x: -2000, y: -2000, width: 4000, height: 4000 };
 const BOUNDS_PADDING = 200;
@@ -586,7 +587,7 @@ export class FogOfWarRenderer {
     const worldPos = this.viewport.toWorld(e.global);
     openContextMenuGlobal([{
       type: 'item',
-      label: 'Delete',
+      label: t('common.delete'),
       icon: 'trash',
       destructive: true,
       onClick: () => {
