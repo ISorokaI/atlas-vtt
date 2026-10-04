@@ -1,7 +1,7 @@
 ## New
 
 - Customize the toolbar from the command palette: drag tools to reorder them, or into the tray above it to hide them. With a contribution by oscar-eriksson
-- Atlas follows Obsidian's language. Set Obsidian to Russian under Settings → General → Language and Atlas' menus, dialogs, settings and notices appear in Russian; other languages fall back to English until they are translated.
+- Atlas follows Obsidian's language. Set Obsidian to Russian under Settings → General → Language and Atlas' menus, dialogs, settings and notices appear in Russian; other languages fall back to English until they are translated. Contributed by ISorokaI
 
 ## Important changes
 
