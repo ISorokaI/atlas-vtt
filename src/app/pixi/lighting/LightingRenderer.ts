@@ -3,17 +3,19 @@ import type { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
-import { sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
+import { exploredMemoryOn, sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../types/lightingTypes';
 import { SEES_ALL, type AmbientLight, type AmbientZone, type LightReach, type Sight } from '../../vision/sight';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
+import { hasPaintedFog, type FogReveal } from '../fog/fogReveal';
 import type { HideableLayer } from '../playerSafeFrame';
 import { requestRender } from '../RenderScheduler';
 import { awaitGpu, contextLost } from './engine/gpu';
 import { LightingEngine } from './engine/LightingEngine';
 import type { EngineScene, SceneFrame } from './engine/types';
 import { ExploredMemory } from './ExploredMemory';
+import { PerceivedNow } from './PerceivedNow';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
 import { SceneModelBuilder, SceneSpots, type SceneModel } from './sceneModel';
@@ -70,6 +72,8 @@ export class LightingRenderer implements SceneLightingView {
   readonly modeLayer: HideableLayer;
   private readonly engine: LightingEngine;
   private readonly memory: ExploredMemory;
+  /** What the tokens perceive now, drawn while the scene has painted fog for it to lift. */
+  private readonly perceivedNow: PerceivedNow;
   /** What the scene is built from, and when it is built anew (`SceneModelBuilder`). */
   private readonly model = new SceneModelBuilder();
   private readonly spots = new SceneSpots();
@@ -104,6 +108,7 @@ export class LightingRenderer implements SceneLightingView {
       onChange: () => requestRender(deps.app),
       guard: (work) => this.run(work),
     });
+    this.perceivedNow = new PerceivedNow(renderer);
     renderer.canvas.addEventListener('webglcontextlost', this.onContextLost);
     this.layer.zIndex = LIGHTING_Z_INDEX;
     this.layer.onRender = (): void => this.onLayerRender();
@@ -126,6 +131,13 @@ export class LightingRenderer implements SceneLightingView {
     if (this.zones.length === 0) return lighting;
     if (this.ambient?.lighting !== lighting || this.ambient.zones !== this.zones) this.ambient = { lighting, zones: this.zones, light: { ...lighting, zones: this.zones } };
     return this.ambient.light;
+  }
+
+  /** Painted fog lifts where the party explored (while the scene remembers) or perceives now, and only while token vision hides something. */
+  fogReveal(): FogReveal | null {
+    const { current: perceived, map } = this.perceivedNow;
+    if (this.stopped || !perceived || !map || this.sight.all) return null;
+    return { explored: exploredMemoryOn(this.deps.store.getState().lighting) ? this.memory.current : null, perceived, map };
   }
 
   renderForFrame<T>(frame: SceneFrame, render: () => T): T {
@@ -195,6 +207,7 @@ export class LightingRenderer implements SceneLightingView {
     const bounds = lighting.enabled && !state.isMapLoading ? this.deps.bounds() : null;
     if (!bounds) {
       // Nothing is drawn while off; the next update after switching on rebuilds everything.
+      this.perceivedNow.release();
       this.engine.setEnabled(false);
       this.model.reset();
       this.endAttempt();
@@ -211,6 +224,7 @@ export class LightingRenderer implements SceneLightingView {
     const base = rebuilt || !this.lastScene ? (this.lastScene = this.takeModel(model, state, bounds)) : this.lastScene;
     const spots = this.spots.update(model, state, this.deps.measurement, this.deps.rules);
     this.engine.update({ ...base, spots, ...sceneLook(lighting) });
+    this.perceivedNow.sync(hasPaintedFog(state.objects.fog), bounds, model.perceived, spots);
     requestRender(this.deps.app);
   }
 
@@ -235,6 +249,7 @@ export class LightingRenderer implements SceneLightingView {
     // The memory comes back as it was last saved: the texels its undo steps hold belong to a texture that is gone.
     this.memory.forgetEdits();
     this.memory.reload(state.exploredMask);
+    this.perceivedNow.invalidate();
     this.update(state);
   }
 
@@ -294,5 +309,6 @@ export class LightingRenderer implements SceneLightingView {
     // The composite reads the memory's texture: it goes first.
     this.engine.destroy();
     this.memory.destroy();
+    this.perceivedNow.release();
   }
 }

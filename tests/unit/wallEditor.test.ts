@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 // The lights as a map on a 5-foot grid offers them.
-const onMap = (presets: readonly LightPresetDefinition[]): LightPresetDefinition[] => lightPresetsOnMap(presets, { unitType: 'feet', unitDistance: 5 }, Infinity);
+const onMap = (presets: readonly LightPresetDefinition[]): LightPresetDefinition[] => lightPresetsOnMap(presets, { unitType: 'feet', ruleDistance: 5 }, Infinity);
 const lights = { current: onMap(GENERIC_LIGHT_PRESETS) as readonly LightPresetDefinition[] };
 
 function setup(): { editor: WallEditor; store: ViewAtlasStore; wall: string; bus: EventEmitter } {

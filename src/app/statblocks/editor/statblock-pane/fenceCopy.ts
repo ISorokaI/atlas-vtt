@@ -7,6 +7,7 @@
 
 import { TFile, type App } from 'obsidian';
 import { resolveCreatureFromFence } from '../../../services/FantasyStatblocksService';
+import { decodeStatblockLinks } from '../../../services/statblockLinks';
 import { noteName } from '../../../utils/pathUtils';
 import { jsonRecordCopy } from '../../format/jsonValues';
 import { isReservedKey } from '../../model/reservedKeys';
@@ -20,17 +21,9 @@ export interface FenceValues {
   values: Record<string, FieldValue>;
 }
 
-/** Fantasy Statblocks' encoding of links in the values it hands out. */
-const ENCODED_WIKI = /<STATBLOCK-WIKI-LINK>([\s\S]+?)<STATBLOCK-WIKI-LINK>/g;
-const ENCODED_MARKDOWN = /<STATBLOCK-MARKDOWN-LINK>([\s\S]+?)(?:\|([\s\S]+?))?<STATBLOCK-MARKDOWN-LINK>/g;
-
 /** A value with Fantasy Statblocks' encoded links written as the links they stand for, as the plugin does. */
 export function withPlainLinks(value: FieldValue): FieldValue {
-  if (typeof value === 'string') {
-    return value
-      .replace(ENCODED_WIKI, (_, link: string) => `[[${link}]]`)
-      .replace(ENCODED_MARKDOWN, (_, path: string, alias: string | undefined) => `[${alias ?? ''}](${path})`);
-  }
+  if (typeof value === 'string') return decodeStatblockLinks(value);
   if (Array.isArray(value)) return value.map(withPlainLinks);
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, withPlainLinks(inner)]));

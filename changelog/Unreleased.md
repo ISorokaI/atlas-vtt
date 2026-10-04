@@ -12,6 +12,7 @@
 
 ## Improved
 
+- A scene can measure at its own scale: Distance per cell in the command palette's Grid Settings sets how far one cell of that map reaches, in place of the collection's, for the ruler and for how far lights and senses reach on it. Leave it empty to follow the collection. Contributed by ISorokaI
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike
 - The creature filter Layout is now called Template. Type `template:` in the search; `layout:` still works
 - The token creator finds statblock notes without the Fantasy Statblocks plugin too. Its image source is now called Statblock notes
@@ -21,10 +22,14 @@
 - Right-click any wall of a chain to place a door in it, right where you clicked. A door is one grid cell wide, or fills a wall about that wide
 - Right-click a door to turn it back into wall, a point to remove it (the two walls meeting there become one), and a wall of a selected chain to delete just that wall
 - The undo and redo buttons can be hidden in the toolbar editor too
+- With dynamic lighting, tokens with vision explore fog of war you painted: the players see through it wherever their tokens see, and areas they have explored stay uncovered while the scene remembers explored areas. You keep seeing the fog as you painted it; switch off GM view to see it as your players do
 
 ## Fixed
 
 - Hovering a token whose note holds its statblock in a code block shows the statblock, not the plain note
+- Grid lines no longer break up or vanish at some zoom levels after the grid size was changed. Zoomed out, a line thinner than a screen pixel is drawn one pixel wide and fainter instead. Contributed by ISorokaI
+- Links in Fantasy Statblocks bestiary statblocks show as links instead of raw text such as `rules/skills.md#Perception|Perception`, and a click opens the note in a new tab. Contributed by ISorokaI
+- The asset manager opens and scrolls faster with many tokens: every token card used to make the browser read the token ring image anew, which on slower computers froze the Characters tab with a few dozen tokens. Contributed by ISorokaI
 - Zooming a map whose grid is switched off no longer folds the map into a grey wedge pointing at one of its pins
 - The laser pointer no longer disappears over parts of the map until you zoom
 - Rolls show as result cards when the graphics card cannot draw 3D dice, for example after Obsidian lost or blocked WebGL, instead of an empty white panel. Contributed by ISorokaI
@@ -35,3 +40,4 @@
 - A d100 rolled in 3D shows its tens die on the right number: a 19 lands on 1 and 9, not 2 and 9
 - Loading a scene with explored areas no longer keeps a copy of them in graphics memory
 - The brush ring of the fog tool, the drawing eraser and the explored memory brush stays under the pointer when you scroll the map with a trackpad. With a contribution by Lobby444
+- The DM screen fits the map when Obsidian's sidebars are open or the map shares the window with other panes: it no longer runs off the edges, and its statblocks and note stack once the map is narrow

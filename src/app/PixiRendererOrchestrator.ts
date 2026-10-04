@@ -384,6 +384,8 @@ export class PixiRendererOrchestrator { // Renamed class
         bounds: () => this.getMapRect(),
         albedo: () => (this.backgroundSprite && !this.backgroundSprite.destroyed ? this.backgroundSprite.texture : null),
       });
+      // The players explore painted fog with their tokens' sight: it lifts where they have been or see now.
+      this.fogRenderer.followSight(() => this.lighting?.renderer.fogReveal() ?? null);
     }
 
     // Initialize Audio system
