@@ -10,6 +10,7 @@
 
 ## Fixed
 
+- Links in statblocks from the Fantasy Statblocks bestiary show as links again instead of raw text such as `rules/skills.md#Perception|Perception`, and the formatting around them (bold, italics) renders. A click on a link in a statblock opens the note in a new tab. Contributed by ISorokaI
 - Zooming a map whose grid is switched off no longer folds the map into a grey wedge pointing at one of its pins
 - Rolls show as result cards when the graphics card cannot draw 3D dice, for example after Obsidian lost or blocked WebGL, instead of an empty white panel. Contributed by ISorokaI
 - Corrected the swapped export and import icons in the asset manager's collection header. Contributed by anacletoTM

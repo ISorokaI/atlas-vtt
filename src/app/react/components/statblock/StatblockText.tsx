@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Component, MarkdownRenderer, type App } from 'obsidian';
 import { diceLinkProps, linkDiceIn, splitDiceSegments } from '../../../services/statblockDiceLinks';
+import { decodeStatblockLinks } from '../../../services/statblockLinks';
 import { runInBackground } from '../../../utils/backgroundTask';
 
 interface MarkdownTextProps {
@@ -49,7 +50,7 @@ export function StatblockMarkdown({
 
     el.replaceChildren();
     const component = new Component();
-    runInBackground(MarkdownRenderer.render(app, text, el, sourcePath, component), 'Rendering statblock markdown');
+    runInBackground(MarkdownRenderer.render(app, decodeStatblockLinks(text), el, sourcePath, component), 'Rendering statblock markdown');
 
     // Obsidian wraps single-line markdown in a <p>; unwrap so it stays inline.
     const paragraphs = el.querySelectorAll('p');
@@ -61,7 +62,18 @@ export function StatblockMarkdown({
     // effect rebuilds from scratch on every run. React never owns these nodes.
     linkDiceIn(el);
 
+    // Rendered outside a note, Obsidian does not follow its links. A new tab keeps the map open.
+    const openLink = (event: MouseEvent): void => {
+      const link = (event.target as HTMLElement | null)?.closest?.('a.internal-link');
+      const target = link?.getAttribute('data-href') ?? link?.getAttribute('href');
+      if (!target) return;
+      event.preventDefault();
+      runInBackground(app.workspace.openLinkText(target, sourcePath, true), `Opening ${target}`, 'Could not open the linked note');
+    };
+    el.addEventListener('click', openLink);
+
     return () => {
+      el.removeEventListener('click', openLink);
       component.unload();
       el.replaceChildren();
     };
