@@ -1,11 +1,13 @@
-import React, { useId, useState } from 'react';
+import React, { useContext, useId, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { useElementHeight } from '../../../react/hooks/useElementHeight';
 import { MOTION_NORMAL_MS, EASE_OUT_CONTROL_POINTS } from '../../../utils/motion';
 import type { SectionBlock } from '../../model/templateTypes';
 import { valueText } from '../../values/valueText';
+import type { SheetState } from '../sheetState';
 import { useSheet } from '../sheetContext';
+import { TabPanelContext } from '../tabs/openTabs';
 import { SheetHeading } from '../values/SheetHeading';
 import type { BlockViewProps } from './blockViewProps';
 
@@ -59,10 +61,19 @@ function Collapsible({ heading, initiallyOpen, children }: {
   );
 }
 
-/** A vertical stack of blocks with an optional heading, which may fold. */
+/** What a Section is headed with: its heading property's value, else its own heading. */
+export function sectionHeading(block: SectionBlock, state: SheetState): string {
+  return (block.headingField ? valueText(state.reader(block.headingField)) : '') || block.heading || '';
+}
+
+/**
+ * A vertical stack of blocks with an optional heading, which may fold. As a
+ * tab's panel it is the stack alone: its heading is the tab.
+ */
 export function SectionView({ block, children }: SectionViewProps): React.JSX.Element {
   const { state } = useSheet();
-  const heading = (block.headingField ? valueText(state.reader(block.headingField)) : '') || block.heading || '';
+  const inTab = useContext(TabPanelContext) === block.id;
+  const heading = inTab ? '' : sectionHeading(block, state);
 
   if (block.collapsible && heading.trim()) {
     return (

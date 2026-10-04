@@ -11,6 +11,7 @@ import { BlockList } from './BlockView';
 import { useStatblockDiceRolling } from './shared/useStatblockDiceRolling';
 import { SheetContext, type SheetContextValue } from './sheetContext';
 import { sheetState } from './sheetState';
+import { OpenTabsContext, useOpenTabsState } from './tabs/openTabs';
 import type { SheetMode, SheetVariant, StatblockTokenContext } from './sheetTypes';
 import '../../react/components/statblock/statblock.scss';
 import './statblock-sheet.scss';
@@ -43,6 +44,8 @@ export interface StatblockSheetProps {
   footer?: React.ReactNode;
   /** Empty headed sections folded into chips under the card (`foldRule.ts`); keep the set while it is unchanged. */
   folded?: ReadonlySet<string> | undefined;
+  /** A block whose tabs open whenever it or the layout changes (the template editor's selection). */
+  reveal?: string | null | undefined;
 }
 
 /**
@@ -67,12 +70,14 @@ export function StatblockSheet({
   header,
   footer,
   folded,
+  reveal = null,
 }: StatblockSheetProps): React.JSX.Element {
   const state = useMemo(
     () => sheetState({ template, record: fields, lookups, mode, token, folded }),
     [template, fields, lookups, mode, token, folded],
   );
   const sheet = useMemo((): SheetContextValue => ({ state, app, sourcePath }), [state, app, sourcePath]);
+  const openTabs = useOpenTabsState(template.layout, reveal);
   const diceRef = useStatblockDiceRolling({
     app,
     notePath: sourcePath,
@@ -88,21 +93,23 @@ export function StatblockSheet({
 
   return (
     <SheetContext.Provider value={sheet}>
-      <div
-        ref={diceRef}
-        className={cn('atlas-statblock', 'atlas-sb-sheet', `atlas-sb-sheet--${variant}`, mode === 'editing' && 'is-editing')}
-        data-template={slug}
-        data-layout={slug}
-        data-variant={variant}
-      >
-        <div className="atlas-statblock-body">
-          {header}
-          <div className="atlas-sb-columns" style={columns}>
-            <BlockList blocks={template.layout.blocks} />
+      <OpenTabsContext.Provider value={openTabs}>
+        <div
+          ref={diceRef}
+          className={cn('atlas-statblock', 'atlas-sb-sheet', `atlas-sb-sheet--${variant}`, mode === 'editing' && 'is-editing')}
+          data-template={slug}
+          data-layout={slug}
+          data-variant={variant}
+        >
+          <div className="atlas-statblock-body">
+            {header}
+            <div className="atlas-sb-columns" style={columns}>
+              <BlockList blocks={template.layout.blocks} />
+            </div>
+            {footer}
           </div>
-          {footer}
         </div>
-      </div>
+      </OpenTabsContext.Provider>
     </SheetContext.Provider>
   );
 }
