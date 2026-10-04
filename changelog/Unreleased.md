@@ -2,6 +2,7 @@
 
 - Statblocks show without the Fantasy Statblocks plugin: Atlas draws them itself on token hovers, in the DM screen and in the asset manager
 - Statblock templates for 5E (2014 and 2024), Cairn, Draw Steel and Fate, and general ones for creatures, NPCs and hazards
+- Customize the toolbar from the command palette: drag tools to reorder them, or into the tray above it to hide them. With a contribution by oscar-eriksson
 
 ## Improved
 
@@ -9,6 +10,7 @@
 - The creature filter Layout is now called Template. Type `template:` in the search; `layout:` still works
 - The token creator finds statblock notes without the Fantasy Statblocks plugin too. Its image source is now called Statblock notes
 - An open map uses much less graphics memory: 3D dice share one drawing context per window, and with dynamic lighting on the map no longer keeps antialiasing buffers it does not draw into
+- On narrow windows, tools move into More tools from the right; the command palette always stays
 
 ## Fixed
 
