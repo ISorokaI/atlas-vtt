@@ -7,6 +7,9 @@
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike
 - An open map uses much less graphics memory: 3D dice share one drawing context per window, and with dynamic lighting on the map no longer keeps antialiasing buffers it does not draw into
 - On narrow windows, tools move into More tools from the right; the command palette always stays
+- Walls join: click a wall's end point to draw on from it, and a wall you end near another wall's end point lands exactly on it. A dragged end point joins the one you drop it on, and from then on they move together. Hold Alt to place a point freely
+- Right-click any wall of a chain to place a door in it, right where you clicked. A door is one grid cell wide, or fills a wall about that wide
+- Right-click a door to turn it back into wall, a point to remove it (the two walls meeting there become one), and a wall of a selected chain to delete just that wall
 
 ## Fixed
 
