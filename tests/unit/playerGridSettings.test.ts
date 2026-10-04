@@ -7,7 +7,7 @@ it('keeps a hidden map grid available for a player capture without enabling it f
   const viewport = new Container();
   const background = new Sprite(Texture.WHITE); background.width = 500; background.height = 500;
   viewport.addChild(background);
-  const grid = new GridSystem({ renderer: { resolution: 1 } } as any, viewport as any, background, { size: 70, enabled: false });
+  const grid = new GridSystem({} as any, viewport as any, background, { size: 70, enabled: false });
   try {
     const sprite = grid.getGridSprite();
     expect(sprite).not.toBeNull();
