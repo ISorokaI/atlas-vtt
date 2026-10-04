@@ -126,6 +126,17 @@ export class SystemPresetFiles implements PresetStorage {
     });
   }
 
+  /**
+   * Text another part of Atlas has just written to a preset file (a collection import), taken in
+   * without waiting for the vault's event, which then finds it known.
+   */
+  recordWrite(path: string, text: string): void {
+    if (!isPresetPath(path) || this.files.get(path)?.text === text) return;
+    this.bump(path);
+    this.files.set(path, { text, preset: readPresetText(text) });
+    this.changed();
+  }
+
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };

@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { AssetService } from '../../../../src/app/services/AssetService';
 import { SystemPresetFiles } from '../../../../src/app/services/systemPresets/SystemPresetFiles';
-import { SystemPresetService } from '../../../../src/app/services/SystemPresetService';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../../../src/app/gameSystems/builtInPresets';
 import { exportCollectionBundle, prepareCollectionExport } from '../../../../src/app/services/collectionBundle/collectionExport';
 import { openCollectionImport, type ImportDecision } from '../../../../src/app/services/collectionBundle/collectionImport';
@@ -13,7 +12,6 @@ import { NoteFieldWriter } from '../../../../src/app/statblocks/notes/NoteFieldW
 import { findCode } from '../../../../src/app/statblocks/model/fsCodeKeys';
 import { MARSH_CREATURE_JSON } from '../../../fixtures/statblockTemplateFixtures';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../../../mocks/inMemoryVault';
-import { memoryPresets } from '../../../mocks/memoryPresets';
 
 vi.mock('../../../../src/app/atlas-view', () => ({
   ATLAS_VIEW_TYPE: 'atlas-vtt',
@@ -123,20 +121,22 @@ describe('exporting a collection with statblock templates', () => {
   });
 
   it('writes out the roles a collection reads from a user preset, which then counts as unchanged where that preset is', async () => {
-    const settings = memoryPresets();
     const dnd = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!;
-    const preset = new SystemPresetService(settings).create('Marsh', { ...dnd.rules, statblockRoles: [ROLE] });
-    const creator = await creatorVault({ systemPresetId: preset.id });
+    const creator = await creatorVault({ systemPresetId: 'marsh-preset' });
+    const presets = SystemPresetFiles.open(creator.vault.app);
+    presets.create({ id: 'marsh-preset', name: 'Marsh', builtIn: false, rules: { ...dnd.rules, statblockRoles: [ROLE] } });
+    await presets.flush();
     creator.vault.files.set(NOTE, '---\nstatblock: true\nname: Hag\n---\nA hag.');
-    vi.spyOn(SystemPresetFiles, 'forApp').mockReturnValue(settings as unknown as SystemPresetFiles);
 
     const blob = await release(creator);
     const { manifest } = await unzip(blob);
-    expect(manifest.collection.settings).toMatchObject({ systemPresetId: preset.id, statblockRoles: [ROLE] });
-    expect(manifest.format).toBe(7);
+    expect(manifest.collection.settings).toMatchObject({ systemPresetId: 'marsh-preset', statblockRoles: [ROLE] });
+    // The preset travels with the collection, which only a format 8 reader understands.
+    expect(manifest.format).toBe(8);
     // The publisher's vault reads the bundle's roles as its preset's and keeps the folder that stayed behind: its release is up to date
     expect((await openCollectionImport(creator.vault.app, creator.assets, blob)).review).toMatchObject({ upToDate: true, conflicts: [], counts: { kept: 0 } });
     expect(creator.vault.files.get(MARSH_PATH)).toBe(withCode());
+    SystemPresetFiles.release(creator.vault.app);
   });
 });
 

@@ -1,10 +1,10 @@
 import { TFile, normalizePath, type App } from 'obsidian';
 import { AssetService, ATLAS_VTT_DIR, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { ID_MATCHED_ROLES, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
 import { linkedFilePath } from '../sceneLinks';
 import type { OpenedBundle } from './bundleReader';
 import { hashHere, mayRewrite, rewriteContent } from './bundleContent';
-import { importedSettings } from './bundleSettings';
+import { importedSettings, withPresetId } from './bundleSettings';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
 import { sha256 } from './hashing';
 import { COLLECTION_FIELDS, type InstallRecord } from './installRecord';
@@ -13,6 +13,7 @@ import { planImportPaths, remapPaths } from './pathRemap';
 import { listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { systemPresetsOf } from '../mapCollectionRules';
 import { templateIdMap, withRoleTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
+import { presetIdMap, presetsAfterImport, type PlannedPreset } from '../systemPresets/bundlePresets';
 
 /** Where the bundle's files and records go in this vault. */
 export interface ImportTargets {
@@ -35,6 +36,10 @@ export interface ImportTargets {
   templates: readonly PlannedTemplate[];
   /** Bundle template id → id here, for the bundle's own notes and roles. */
   templateIds: TemplateIdMap;
+  /** The bundle's user presets, placed by preset id (never in `paths`). */
+  presets: readonly PlannedPreset[];
+  /** Bundle preset id → id here, for the collection's settings. */
+  presetIds: ReadonlyMap<string, string>;
 }
 
 export interface SkippedAsset {
@@ -109,6 +114,7 @@ export async function planTargets(
   collectionId: string,
   record: InstallRecord | null,
   templates: readonly PlannedTemplate[] = [],
+  presets: readonly PlannedPreset[] = [],
 ): Promise<ImportTargets> {
   const hiddenFiles = await listHiddenFiles(app, `${COLLECTIONS_DIR}/${collectionId}`);
   const exists = (path: string): boolean => app.vault.getAbstractFileByPath(normalizePath(path)) instanceof TFile || hiddenFiles.has(path);
@@ -170,7 +176,7 @@ export async function planTargets(
     if (source !== target) rewrites.set(source, target);
   }
   const targets: ImportTargets = {
-    collectionId, paths, assetIds, rewrites, shared, skipped: [], templates, templateIds: templateIdMap(templates),
+    collectionId, paths, assetIds, rewrites, shared, skipped: [], templates, templateIds: templateIdMap(templates), presets, presetIds: presetIdMap(presets),
     targetOf: (bundlePath) => paths.get(bundlePath) ?? record?.files[bundlePath]?.target,
     localIdOf: (bundleId) => assetIds.get(bundleId) ?? record?.assets[bundleId]?.localId ?? bundleId,
   };
@@ -211,8 +217,8 @@ export async function gatherImportInputs(
   const moved = new Set<string>();
 
   for (const file of manifest.files) {
-    // Templates are compared by template id (`planTemplates`), not as files.
-    if (file.role === TEMPLATE_ROLE || targets.shared.has(file.vaultPath) || onlyUsedBySkipped(file)) continue;
+    // Templates and presets are compared by their id (`planTemplates`, `planPresets`), not as files.
+    if (ID_MATCHED_ROLES.has(file.role) || targets.shared.has(file.vaultPath) || onlyUsedBySkipped(file)) continue;
     const target = targets.paths.get(file.vaultPath)!;
     const previousPath = record?.files[file.vaultPath] ? undefined : movedFrom.get(target);
     if (previousPath) moved.add(previousPath);
@@ -257,14 +263,16 @@ export async function gatherImportInputs(
   }
 
   const presets = systemPresetsOf(app);
-  // Like a note, the settings' roles follow a template that comes in as a copy.
-  const theirsHereCollection = { ...manifest.collection, settings: withRoleTemplates(manifest.collection.settings, targets.templateIds) };
+  // The bundle's settings are read with the presets as the import leaves them, the vault's with those it has.
+  const presetsAfter = presetsAfterImport(presets, targets.presets);
+  // Like a note, the settings' roles follow a template that comes in as a copy, and their system a preset that does.
+  const theirsHereCollection = { ...manifest.collection, settings: withPresetId(withRoleTemplates(manifest.collection.settings, targets.templateIds), targets.presetIds) };
   for (const field of COLLECTION_FIELDS) {
-    const theirs = await fieldFingerprint(theirsHereCollection, field, presets);
+    const theirs = await fieldFingerprint(theirsHereCollection, field, presetsAfter);
     items.push({
       key: `field:${field}`, kind: 'field', unit: `field:${field}`,
       theirs, base: record?.fields[field] ?? null, mine: existing ? await fieldFingerprint(existing, field, presets) : null,
-      theirsInstalled: field === 'settings' ? await fieldFingerprint({ ...manifest.collection, settings: importedSettings(manifest.collection, targets) }, field, presets) : theirs,
+      theirsInstalled: field === 'settings' ? await fieldFingerprint({ ...manifest.collection, settings: importedSettings(manifest.collection, targets) }, field, presetsAfter) : theirs,
     });
   }
   return { items, unitAssets };

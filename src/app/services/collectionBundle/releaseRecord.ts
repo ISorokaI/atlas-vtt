@@ -1,10 +1,10 @@
 import type { App } from 'obsidian';
 import { COLLECTIONS_DIR, type AssetService, type CollectionMetadata } from '../AssetService';
 import { systemPresetsOf } from '../mapCollectionRules';
-import { TEMPLATE_ROLE, type CollectionBundleManifest } from './bundleFormat';
+import { ID_MATCHED_ROLES, type CollectionBundleManifest } from './bundleFormat';
 import { storeCover, type CoverFile } from './collectionCover';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
-import { COLLECTION_FIELDS, deleteInstallRecord, moveInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord, type InstalledTemplate } from './installRecord';
+import { COLLECTION_FIELDS, deleteInstallRecord, moveInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord, type InstalledPreset, type InstalledTemplate } from './installRecord';
 
 /** How a shared copy names the collection, its folder and the files and records it carries. */
 export interface OriginNames {
@@ -50,7 +50,8 @@ export async function originNames(app: App, collection: CollectionMetadata, pack
  * too, so a shared copy coming back is matched to them instead of copied; an
  * import only ever removes files inside the collection's own folder. Templates are
  * recorded by id (`templates`, keyed by their id): installed as the vault holds them,
- * code included, and with the packed version, without code, as their source.
+ * code included, and with the packed version, without code, as their source. A user preset
+ * is recorded by its id (`presets`).
  */
 export async function recordRelease(
   app: App,
@@ -59,6 +60,7 @@ export async function recordRelease(
   manifest: CollectionBundleManifest,
   cover: CoverFile | null,
   templates: Readonly<Record<string, InstalledTemplate>>,
+  installedPresets: Readonly<Record<string, InstalledPreset>> = {},
 ): Promise<void> {
   const { collection } = manifest;
   let collectionId = exportedFrom.id;
@@ -86,9 +88,10 @@ export async function recordRelease(
     assets: {},
     fields: {},
     ...(Object.keys(templates).length > 0 && { templates: { ...templates } }),
+    ...(Object.keys(installedPresets).length > 0 && { presets: { ...installedPresets } }),
   };
   for (const file of manifest.files) {
-    if (file.sha256 && file.role !== TEMPLATE_ROLE) record.files[file.vaultPath] = { target: file.vaultPath, source: file.sha256, installed: file.sha256 };
+    if (file.sha256 && !ID_MATCHED_ROLES.has(file.role)) record.files[file.vaultPath] = { target: file.vaultPath, source: file.sha256, installed: file.sha256 };
   }
   for (const asset of manifest.assets) {
     const fingerprint = await assetFingerprint(asset);
