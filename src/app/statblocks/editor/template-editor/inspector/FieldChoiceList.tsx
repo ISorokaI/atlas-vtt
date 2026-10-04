@@ -53,7 +53,7 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
     >
       {groups.length === 0 && <div className="atlas-te-choices__empty">No field matches</div>}
       {groups.map((group) => (
-        <div key={group.id} role="group" aria-label={group.label ?? 'New field'} className="atlas-te-choices__group">
+        <div key={group.id} role="group" aria-label={group.label ?? 'New property'} className="atlas-te-choices__group">
           {group.label && <div className="atlas-te-choices__group-label" aria-hidden="true">{group.label}</div>}
           {group.choices.map((choice) => (
             <div
@@ -69,7 +69,7 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
               onClick={() => onPick(choice)}
             >
               <span className="atlas-te-choices__label">
-                {choice.kind === 'new' ? `New field “${choice.label}”` : choice.label}
+                {choice.kind === 'new' ? `New property “${choice.label}”` : choice.label}
               </span>
               <span className={cn('atlas-te-choices__hint', choice.kind === 'new' && 'atlas-te-choices__hint--key')}>
                 {hint(choice)}

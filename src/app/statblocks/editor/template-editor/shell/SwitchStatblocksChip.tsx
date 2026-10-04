@@ -62,11 +62,12 @@ export function SwitchStatblocksChip({ app, from, to, builtInName, notes }: Swit
               size="sm"
               autoFocus
               disabled={busy}
-              onClick={async () => {
+              onClick={() => {
                 setBusy(true);
-                await switchTemplates(app, notes.map((path) => ({ path, from })), to);
-                setBusy(false);
-                close();
+                void switchTemplates(app, notes.map((path) => ({ path, from })), to).finally(() => {
+                  setBusy(false);
+                  close();
+                });
               }}
             >
               Switch them

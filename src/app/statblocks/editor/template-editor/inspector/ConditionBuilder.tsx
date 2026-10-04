@@ -8,12 +8,12 @@ import { ChoiceSetting, SelectSetting, TextSetting } from './InspectorControls';
 type Test = Condition['is'];
 
 const TESTS: Array<{ value: Test; label: string }> = [
-  { value: 'present', label: 'is filled in' },
-  { value: 'absent', label: 'is empty' },
+  { value: 'present', label: 'has a value' },
+  { value: 'absent', label: 'has no value' },
   { value: 'equal', label: 'is' },
   { value: 'not-equal', label: 'is not' },
-  { value: 'above', label: 'is more than' },
-  { value: 'below', label: 'is less than' },
+  { value: 'above', label: 'is above' },
+  { value: 'below', label: 'is below' },
 ];
 
 const NUMBER = /^[+-]?\d+(?:\.\d+)?$/;
@@ -40,8 +40,10 @@ export interface ConditionBuilderProps {
 }
 
 /**
- * Show when (§7.4, Advanced): always, or only when a field of the statblock
- * is filled in, empty, equal to a value, or more or less than a number.
+ * Show only when (spec §10.3): always, or only when a property of the
+ * statblock has a value, has none, is or is not a value, or is above or below
+ * a number. The property may be one no block shows ("New property…"): a
+ * switch a statblock sets without it showing on the card.
  */
 export function ConditionBuilder({ block, session, disabled }: ConditionBuilderProps): React.JSX.Element {
   const condition = block.showWhen;
@@ -56,7 +58,7 @@ export function ConditionBuilder({ block, session, disabled }: ConditionBuilderP
       <ChoiceSetting
         label="Show"
         value={when}
-        options={[{ value: 'always', label: 'Always' }, { value: 'when', label: 'Only when' }]}
+        options={[{ value: 'always', label: 'Always' }, { value: 'when', label: 'Only when…' }]}
         disabled={disabled}
         onChange={(next) => {
           setChoosing(next === 'when');
@@ -66,11 +68,10 @@ export function ConditionBuilder({ block, session, disabled }: ConditionBuilderP
       {when === 'when' && (
         <>
           <FieldSetting
-            label="Field"
+            label="Property"
             value={condition?.field ?? null}
             accepts={null}
             newType="text"
-            allowNew={false}
             session={session}
             disabled={disabled}
             onBind={(template, key) => withBlockChanges(template, block.id, block.type, {
@@ -78,7 +79,7 @@ export function ConditionBuilder({ block, session, disabled }: ConditionBuilderP
             })}
           />
           {condition && (
-            <SelectSetting<Test> label="Test" value={condition.is} options={TESTS} disabled={disabled}
+            <SelectSetting<Test> label="When it" value={condition.is} options={TESTS} disabled={disabled}
               onChange={(is) => set(conditionFor(condition.field, is, condition))} />
           )}
           {condition && 'value' in condition && (

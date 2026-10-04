@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { findBlock } from '../../model/treeQueries';
-import type { TemplateBlock } from '../../model/templateTypes';
 import { useBlockHandleDrag } from '../dnd/useDragSources';
 import { focusToReturn } from '../interaction/chrome';
 import { GutterHandle } from '../interaction/GutterHandle';
@@ -12,6 +11,7 @@ import { turnSelectionInto } from './blockActions';
 import { clipOf } from './blockClipboard';
 import { moveIntoContainer } from './blockMoves';
 import { blockFrame } from './editorChrome';
+import { moreOptionsInUse } from './inspector/groupSummaries';
 import { blockMenu } from './menus/blockMenu';
 import { emptyCardMenu, newerTemplateMenu } from './menus/otherMenus';
 import { primaryOf, type BlockSelection } from './selection';
@@ -38,10 +38,6 @@ type Place = { at: { x: number; y: number } } | { from: Element };
 
 /** Text being typed keeps the browser's own menu. */
 const NATIVE_MENU = 'input, textarea, [contenteditable="true"]';
-
-function settingsInUse(block: TemplateBlock): boolean {
-  return Boolean(block.showWhen || block.className || block.fallback || block.whenEmpty === 'fallback' || ('pattern' in block && block.pattern));
-}
 
 /**
  * The template editor's chrome over the card (spec §3–§5): the gutter handle
@@ -155,7 +151,7 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
           editable={editable}
           revision={snapshot.template}
           hover={store}
-          settingsInUse={settingsInUse(block)}
+          settingsInUse={moreOptionsInUse(block)}
           onTurnInto={(chip) => {
             const turn = menuOf(primary).find((row) => row.kind === 'submenu' && row.id === 'turn-into');
             if (turn?.kind === 'submenu') open(turn.children, { from: chip }, frameOf(primary), frameOf(primary));

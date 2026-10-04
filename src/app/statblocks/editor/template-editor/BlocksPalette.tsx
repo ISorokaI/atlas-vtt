@@ -1,116 +1,96 @@
 import React, { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { STANDING_LIST } from '../../../keyboard/tooltipEscape';
 import { useTemplateEditor } from './editorContext';
-import { insertItemGlyph } from './editorGlyphs';
-import { bestMatch, findItems, groupItems, INSERT_GROUPS, insertItems, itemKey, type InsertItem } from './insertItems';
-import { PaletteTile } from './PaletteTile';
+import { bestMatch, findItems, groupItems, insertItems, itemKey, type InsertItem } from './insertItems';
+import { ItemPreview, PaletteRow } from './PaletteRow';
 
 const ALL_ITEMS = insertItems();
-const GROUPS = groupItems(ALL_ITEMS);
-const GROUP_LABELS = new Map(INSERT_GROUPS.map((group) => [group.id, group.label]));
-/** Tiles stand two to a row; the arrows move by one, up and down by a row. */
-const ROW = 2;
-const STEPS: Readonly<Record<string, number>> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -ROW, ArrowDown: ROW };
 
-interface ResultsProps {
-  id: string;
-  items: readonly InsertItem[];
-  active: InsertItem | undefined;
-  onHover: (item: InsertItem) => void;
-  onChoose: (item: InsertItem) => void;
+/** Where the preview of the row under the pointer or the keys stands: beside the panel, level with the row. */
+interface Shown {
+  item: InsertItem;
+  left: number;
+  top: number;
 }
 
-/** What "Find a block" found: a list that stands open beside the search, so Escape is never its own. */
-function SearchResults({ id, items, active, onHover, onChoose }: ResultsProps): React.JSX.Element {
-  return (
-    <div id={id} role="listbox" aria-label="Blocks found" className="atlas-te-palette__results" {...STANDING_LIST}>
-      {items.length === 0 && <div className="atlas-te-palette__empty">No block matches</div>}
-      {items.map((item) => {
-        const Glyph = insertItemGlyph(item);
-        return (
-          <div
-            key={itemKey(item)}
-            id={`${id}-${itemKey(item)}`}
-            role="option"
-            aria-selected={item === active}
-            data-highlighted={item === active ? '' : undefined}
-            className="atlas-ctx-item atlas-te-palette__result"
-            onPointerMove={() => onHover(item)}
-            onPointerDown={(event) => event.preventDefault()}
-            onClick={() => onChoose(item)}
-          >
-            <span className="atlas-ctx-item__leading">
-              <Glyph className="atlas-te-palette__result-glyph" aria-hidden="true" />
-              <span className="atlas-ctx-item__label">{item.label}</span>
-            </span>
-            <span className="atlas-ctx-item__hint">{GROUP_LABELS.get(item.group)}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+type PreviewStyle = React.CSSProperties & Record<`--${string}`, string>;
 
 /**
- * The Blocks tab (§7.4): "Find a block", then Common (the recipes), Basics,
- * Lists, Numbers, Layout and Media as live miniatures, two to a row. A click
- * or Enter inserts after the selection, which the canvas then selects with
- * its label open.
+ * The Add panel (spec §10.7, §12.3): "Find a block or part", then the parts
+ * of a statblock by book part (Common, Tracks, Dense lines, Tags and costs)
+ * and the blocks by group, each a row with its plain name and one line
+ * saying what it makes. The row under the pointer or the keys shows its
+ * preview beside the panel, drawn as the card draws it. A click or Enter
+ * inserts below the selection; a drag inserts where the line shows. When
+ * nothing matches, a stat of the typed name is offered.
  */
 export function BlocksPalette(): React.JSX.Element {
-  const { insert, snapshot } = useTemplateEditor();
+  const { insert, insertNamedStat } = useTemplateEditor();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const [stop, setStop] = useState(0);
-  const tilesRef = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState<Shown | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const searching = query.trim() !== '';
-  const found = useMemo(() => findItems(ALL_ITEMS, query), [query]);
-  const current = found[Math.min(active, found.length - 1)];
-  const locked = snapshot.readOnly;
+  const items = useMemo(() => (searching ? findItems(ALL_ITEMS, query) : ALL_ITEMS), [searching, query]);
+  const groups = useMemo(() => (searching ? [{ id: 'found', label: 'Found', items }] : groupItems(ALL_ITEMS)), [searching, items]);
+  const current = items[Math.min(active, items.length - 1)];
+  const layer = rootRef.current?.closest('.atlas-te')?.querySelector<HTMLElement>('.atlas-te-layer') ?? null;
 
-  // Tiles are drawn once: they hold one callback that always inserts through the editor as it is now.
+  // Rows are drawn once: they hold one callback that always inserts through the editor as it is now.
   const latestInsert = useRef(insert);
   latestInsert.current = insert;
   const choose = useCallback((item: InsertItem): void => {
     setQuery('');
+    setShown(null);
     latestInsert.current(item);
   }, []);
 
-  const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+  const preview = useCallback((item: InsertItem, row: HTMLElement): void => {
+    const panel = row.closest('.atlas-te-floating') ?? row;
+    const host = row.closest('.atlas-te')?.querySelector('.atlas-te-layer');
+    if (!host) return;
+    const origin = host.getBoundingClientRect();
+    setShown({ item, left: panel.getBoundingClientRect().right - origin.left, top: row.getBoundingClientRect().top - origin.top });
+  }, []);
+
+  const focusRow = (index: number): void => {
+    const rows = rootRef.current?.querySelectorAll<HTMLElement>('.atlas-te-palette__row');
+    rows?.[index]?.focus();
+    rows?.[index]?.scrollIntoView({ block: 'nearest' });
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>): void => {
     if (event.nativeEvent.isComposing) return;
-    const count = found.length;
-    if (event.key === 'ArrowDown' && searching && count) setActive((index) => (index + 1) % count);
-    else if (event.key === 'ArrowUp' && searching && count) setActive((index) => (index - 1 + count) % count);
-    else if (event.key === 'Enter' && searching && current) choose(current);
+    const count = items.length;
+    const inSearch = event.target === event.currentTarget.querySelector('input');
+    let next: number | null = null;
+    if (event.key === 'ArrowDown' && count) next = (active + 1) % count;
+    else if (event.key === 'ArrowUp' && count) next = (active - 1 + count) % count;
+    else if (event.key === 'Enter' && inSearch && current) choose(current);
     else if (event.key === 'Escape' && query) setQuery('');
     else return;
     event.preventDefault();
     event.stopPropagation();
+    if (next === null) return;
+    setActive(next);
+    if (!inSearch) focusRow(next);
   };
 
-  const onTilesKey = (event: React.KeyboardEvent<HTMLDivElement>): void => {
-    const step = STEPS[event.key];
-    const last = ALL_ITEMS.length - 1;
-    const next = step !== undefined ? stop + step : event.key === 'Home' ? 0 : event.key === 'End' ? last : null;
-    if (next === null) return;
-    event.preventDefault();
-    const index = Math.min(Math.max(next, 0), last);
-    setStop(index);
-    tilesRef.current?.querySelectorAll<HTMLElement>('.atlas-te-tile')[index]?.focus();
-  };
+  const previewStyle: PreviewStyle | undefined = shown ? { '--atlas-te-preview-x': `${shown.left}px`, '--atlas-te-preview-y': `${shown.top}px` } : undefined;
 
   return (
-    <div className="atlas-te-palette">
+    <div ref={rootRef} className="atlas-te-palette" onKeyDown={onKeyDown} onPointerLeave={() => setShown(null)}>
       <input
         type="search"
         className="atlas-te-input atlas-te-palette__search"
-        placeholder="Find a block"
-        aria-label="Find a block"
+        placeholder="Find a block or part"
+        aria-label="Find a block or part"
         role="combobox"
-        aria-expanded={searching}
-        aria-controls={searching ? listId : undefined}
-        aria-activedescendant={searching && current ? `${listId}-${itemKey(current)}` : undefined}
+        aria-expanded="true"
+        aria-controls={listId}
+        aria-activedescendant={current ? `${listId}-${itemKey(current)}` : undefined}
         spellCheck={false}
         autoComplete="off"
         value={query}
@@ -118,35 +98,35 @@ export function BlocksPalette(): React.JSX.Element {
           setQuery(event.target.value);
           setActive(bestMatch(findItems(ALL_ITEMS, event.target.value), event.target.value));
         }}
-        onKeyDown={onSearchKey}
       />
-      {searching ? (
-        <SearchResults id={listId} items={found} active={current} onHover={(item) => setActive(found.indexOf(item))} onChoose={choose} />
-      ) : (
-        <div ref={tilesRef} className="atlas-te-palette__groups" onKeyDown={onTilesKey}>
-          {GROUPS.map((group) => (
-            <PaletteGroup key={group.id} label={group.label}>
-              {group.items.map((item) => {
-                const index = ALL_ITEMS.indexOf(item);
-                return (
-                  <PaletteTile key={itemKey(item)} item={item} index={index} tabStop={index === stop} locked={locked}
-                    onInsert={choose} onFocusIndex={setStop} />
-                );
-              })}
-            </PaletteGroup>
-          ))}
-        </div>
+      <div id={listId} className="atlas-te-palette__groups" role="listbox" aria-label="Blocks and parts" {...STANDING_LIST}>
+        {items.length === 0 && (
+          <div className="atlas-te-palette__empty">
+            Nothing called “{query.trim()}”.{' '}
+            <button type="button" className="atlas-te-palette__make" onClick={() => { insertNamedStat(query); setQuery(''); }}>
+              Make a stat called “{query.trim()}”
+            </button>
+          </div>
+        )}
+        {groups.map((group) => (
+          <div key={group.id} role="group" aria-label={group.label} className="atlas-te-palette__group">
+            {!searching && <div className="atlas-te-palette__group-label" aria-hidden="true">{group.label}</div>}
+            {group.items.map((item) => {
+              const index = items.indexOf(item);
+              return (
+                <PaletteRow key={itemKey(item)} item={item} index={index} tabStop={index === Math.min(active, items.length - 1)}
+                  active={item === current && searching} onInsert={choose} onFocusIndex={setActive} onPreview={preview} />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      {shown && layer && createPortal(
+        <div className="atlas-te-palette__preview" style={previewStyle} role="presentation">
+          <ItemPreview item={shown.item} />
+        </div>,
+        layer,
       )}
     </div>
-  );
-}
-
-function PaletteGroup({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
-  const labelId = useId();
-  return (
-    <>
-      <div id={labelId} className="atlas-te-palette__group-label">{label}</div>
-      <div className="atlas-te-palette__grid" role="group" aria-labelledby={labelId}>{children}</div>
-    </>
   );
 }

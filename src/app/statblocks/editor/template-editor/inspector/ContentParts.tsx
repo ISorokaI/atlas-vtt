@@ -1,4 +1,4 @@
-/** The Content group's settings that only some blocks have (§7.5, the Inspector column). */
+/** The Basics that only some blocks have (§10.2): a heading's source, a list's name for one ability, a track's resource. */
 
 import React, { useMemo, useState } from 'react';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -13,8 +13,7 @@ import { collectBlockIds, findBlock } from '../../../model/treeQueries';
 import type { EntriesBlock, OpaqueBlock, ScriptBlock, SectionBlock, TextBlock, TrackBlock } from '../../../model/templateTypes';
 import { useTemplateEditor } from '../editorContext';
 import { applyEdit, applyTree, chainTree } from '../sessionEdit';
-import { boundFieldOf, editBlock, withBlockChanges } from './blockEdits';
-import { EntryParts } from './EntryParts';
+import { editBlock, withBlockChanges } from './blockEdits';
 import { FieldSetting, withOwnField } from './FieldSetting';
 import type { GroupProps } from './groupProps';
 import { ChoiceSetting, SelectSetting, SettingNote, TextSetting } from './InspectorControls';
@@ -29,9 +28,9 @@ export function SectionHeading({ block, session, readOnly }: PartProps<SectionBl
   return (
     <>
       <ChoiceSetting
-        label="Heading from"
+        label="Heading"
         value={source}
-        options={[{ value: 'text', label: 'Text' }, { value: 'field', label: 'Field' }]}
+        options={[{ value: 'text', label: 'Written here' }, { value: 'field', label: 'From a property' }]}
         disabled={readOnly}
         onChange={(next) => {
           setSource(next);
@@ -39,10 +38,10 @@ export function SectionHeading({ block, session, readOnly }: PartProps<SectionBl
         }}
       />
       {source === 'text' ? (
-        <TextSetting label="Heading" value={block.heading ?? ''} session={session} disabled={readOnly}
+        <TextSetting label="Text" value={block.heading ?? ''} session={session} disabled={readOnly}
           onText={(text) => editBlock(session, block.id, 'section', { heading: text.trim() ? text : undefined })} />
       ) : (
-        <FieldSetting label="Heading" value={block.headingField ?? null} accepts={['text', 'choice']} newType="text"
+        <FieldSetting label="Property" value={block.headingField ?? null} accepts={['text', 'choice']} newType="text"
           session={session} disabled={readOnly}
           onBind={(template, key) => withBlockChanges(template, block.id, 'section', { headingField: key })} />
       )}
@@ -60,7 +59,7 @@ export function TextSource({ block, session, readOnly }: PartProps<TextBlock>): 
       <ChoiceSetting
         label="Shows"
         value={source}
-        options={[{ value: 'field', label: 'Field' }, { value: 'text', label: 'Fixed text' }]}
+        options={[{ value: 'field', label: 'A property' }, { value: 'text', label: 'Fixed text' }]}
         disabled={readOnly}
         onChange={(next) => {
           setSource(next);
@@ -68,7 +67,7 @@ export function TextSource({ block, session, readOnly }: PartProps<TextBlock>): 
         }}
       />
       {source === 'field' ? (
-        <FieldSetting value={block.field || null} accepts={['markdown']} newType="markdown" session={session} disabled={readOnly}
+        <FieldSetting label="Property" value={block.field || null} accepts={['markdown']} newType="markdown" session={session} disabled={readOnly}
           onBind={(template, key) => withOwnField(template, block, key)} />
       ) : (
         <TextSetting label="Text" value={block.text ?? ''} session={session} disabled={readOnly} multiline
@@ -78,19 +77,22 @@ export function TextSource({ block, session, readOnly }: PartProps<TextBlock>): 
   );
 }
 
-/** An Entries block's intro, its "Add" row and what each entry holds before its text. */
+/** "Add action" ↔ "action": what one ability of the list is called, as its prompt and menus say it. */
+export function calledFromAddLabel(addLabel: string | undefined): string {
+  return addLabel?.trim().replace(/^add\s+(an?\s+)?/i, '') ?? '';
+}
+
+/** A list's name for one of its abilities, and the text before the list. */
 export function EntriesContent(props: PartProps<EntriesBlock>): React.JSX.Element {
-  const { block, template, session, readOnly } = props;
-  const field = boundFieldOf(template, block);
+  const { block, session, readOnly } = props;
   return (
     <>
-      <FieldSetting label="Intro" value={block.introField ?? null} accepts={['markdown', 'text']} newType="markdown"
+      <TextSetting label="Each one is called" value={calledFromAddLabel(block.addLabel)} placeholder="ability" session={session} disabled={readOnly}
+        onText={(text) => editBlock(session, block.id, 'entries', { addLabel: text.trim() ? `Add ${text.trim().toLowerCase()}` : undefined })} />
+      <FieldSetting label="Text before the list" value={block.introField ?? null} accepts={['markdown', 'text']} newType="markdown"
         session={session} disabled={readOnly}
         onBind={(current, key) => withBlockChanges(current, block.id, 'entries', { introField: key })}
         onClear={() => editBlock(session, block.id, 'entries', { introField: undefined })} />
-      <TextSetting label="Add button" value={block.addLabel ?? ''} placeholder="Add entry" session={session} disabled={readOnly}
-        onText={(text) => editBlock(session, block.id, 'entries', { addLabel: text.trim() ? text : undefined })} />
-      {field && <EntryParts field={field} session={session} readOnly={readOnly} />}
     </>
   );
 }
@@ -108,7 +110,7 @@ export function TrackResource({ block, session, readOnly }: PartProps<TrackBlock
     ...(block.resource && !resources.some((resource) => resource.key === block.resource) ? [{ value: block.resource, label: block.resource }] : []),
   ];
   return (
-    <SelectSetting label="Resource" value={block.resource ?? ''} options={options} disabled={readOnly}
+    <SelectSetting label="Counts from" value={block.resource ?? ''} options={options} disabled={readOnly}
       onChange={(resource) => editBlock(session, block.id, 'track', { resource: resource || undefined })} />
   );
 }

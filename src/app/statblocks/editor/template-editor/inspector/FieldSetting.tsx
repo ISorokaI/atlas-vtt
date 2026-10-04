@@ -29,12 +29,12 @@ export interface FieldSettingProps {
 }
 
 /**
- * A place that shows a field, with the field picker; one step adds a field
- * the template lacks and binds it. Where the collection's statblocks use the
- * key, it says so: that is how they keep their data.
+ * A place that shows a property, with the property picker; one step adds a
+ * property the template lacks and shows it. Where the collection's statblocks
+ * have values of it, it says how many: that is how they keep their data.
  */
 export function FieldSetting(props: FieldSettingProps): React.JSX.Element {
-  const { label = 'Field', value, accepts, newType, session, disabled, allowNew = true, placeholder, onBind, onClear } = props;
+  const { label = 'Property', value, accepts, newType, session, disabled, allowNew = true, placeholder, onBind, onClear } = props;
   const { collectionKeys } = useTemplateEditor();
   const used = value ? collectionKeys.get(value) : undefined;
   return (
@@ -58,7 +58,7 @@ export function FieldSetting(props: FieldSettingProps): React.JSX.Element {
           </div>
           {used !== undefined && (
             <span className="atlas-te-setting__hint">
-              Uses <code>{value}</code>, found in {used === 1 ? '1 statblock' : `${used} statblocks`}.
+              {used === 1 ? 'In 1 statblock of this collection.' : `In ${used} statblocks of this collection.`}
             </span>
           )}
         </>

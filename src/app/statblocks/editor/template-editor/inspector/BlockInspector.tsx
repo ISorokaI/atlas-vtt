@@ -5,18 +5,17 @@ import { blockName } from '../blockNames';
 import { useTemplateEditor } from '../editorContext';
 import { blockGlyph } from '../editorGlyphs';
 import { readOnlyMessage } from '../sessionEdit';
-import { AdvancedGroup } from './AdvancedGroup';
-import { ContentGroup } from './ContentGroup';
-import { FormatGroup } from './FormatGroup';
+import { BasicsGroup } from './BasicsGroup';
 import type { GroupProps } from './groupProps';
-import { LookGroup } from './LookGroup';
-import { WhenEmptyGroup } from './WhenEmptyGroup';
+import { PropertyGroup } from './PropertyGroup';
+import { VisibilityGroup } from './VisibilityGroup';
+import { ThemesGroup, WriteAsGroup } from './WriteAsGroup';
 
 /**
- * The inspector for one block (§7.4): its glyph and name, then Content, Look,
- * When empty, Format and Advanced, each only where the block has something
- * to set. A built-in shows every control, disabled, so nothing moves when its
- * copy appears.
+ * The settings of one block (spec §10.1): its glyph and name, the Basics of
+ * its type in plain words, then More options, folded, each saying what is
+ * set in it: Visibility, Write as, Property (what reaches every statblock's
+ * value, with the reach named) and For themes.
  */
 export function BlockInspector({ id, headerEnd }: { id: string; headerEnd?: React.ReactNode }): React.JSX.Element | null {
   const { session, snapshot } = useTemplateEditor();
@@ -40,11 +39,12 @@ export function BlockInspector({ id, headerEnd }: { id: string; headerEnd?: Reac
         {headerEnd}
       </div>
       {locked && <p className="atlas-te-insp__locked">{locked}</p>}
-      <ContentGroup {...props} />
-      <LookGroup {...props} />
-      <WhenEmptyGroup {...props} />
-      <FormatGroup {...props} />
-      <AdvancedGroup {...props} />
+      <BasicsGroup {...props} />
+      <p className="atlas-te-insp__more">More options</p>
+      <VisibilityGroup {...props} />
+      <WriteAsGroup {...props} />
+      <PropertyGroup {...props} />
+      <ThemesGroup {...props} />
     </div>
   );
 }

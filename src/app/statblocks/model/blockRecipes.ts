@@ -1,103 +1,16 @@
-import { bindsFieldType, createBlock } from './blockCatalogue';
-import { fieldByKey, fieldKeysOf, labelToKey } from './fieldKeys';
-import type { BlockIdSource } from './templateIds';
-import type { BlockType, FieldType, TemplateBlock, TemplateField } from './templateTypes';
+/**
+ * Recipes (spec §7.5, §12.3): several blocks inserted at once, listed by the
+ * part of a statblock they make, in the Add panel and the `/` menu.
+ */
 
-export type RecipeId = 'stat-strip' | 'ability-scores' | 'actions' | 'defenses';
+import { COMMON_RECIPES } from './recipes/commonRecipes';
+import { PART_RECIPES } from './recipes/partRecipes';
+import type { BlockRecipe, RecipeId } from './recipes/recipeKit';
 
-/** lucide-react icon names of the recipes. */
-export type RecipeIcon = 'rows-3' | 'table-2' | 'swords' | 'shield';
+export { MODIFIER_FORMULA } from './recipes/commonRecipes';
+export type { BlockRecipe, RecipeGroup, RecipeIcon, RecipeId, RecipeResult } from './recipes/recipeKit';
 
-/** What a recipe inserts: its blocks, top to bottom, and the new fields they show. */
-export interface RecipeResult {
-  blocks: TemplateBlock[];
-  fields: TemplateField[];
-}
-
-/** Several blocks inserted at once, listed under "Common" at the top of the palette (§7.5). */
-export interface BlockRecipe {
-  id: RecipeId;
-  label: string;
-  icon: RecipeIcon;
-  /**
-   * The recipe's blocks for a template holding `existing` fields. A block shows the template's own field where it has
-   * the recipe's key (a former key too) and the block can show it, so a Stat strip in a template with `ac` shows `ac`;
-   * only the other fields are new, with keys free among the template's keys and former keys.
-   */
-  create(nextId: BlockIdSource, existing: readonly TemplateField[]): RecipeResult;
-}
-
-const ABILITY_SLOTS = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
-/** The d20 ability modifier a Scores column works out from its slot's score. */
-export const MODIFIER_FORMULA = 'floor((value - 10) / 2)';
-
-/** A field a recipe's block shows, and whether the recipe adds it to the template. */
-interface RecipeField {
-  field: TemplateField;
-  isNew: boolean;
-}
-
-/** Finds or makes the fields a recipe's blocks show; made ones get keys free in the template and among each other. */
-function fieldMaker(existing: readonly TemplateField[]): (label: string, type: FieldType, shownBy: BlockType) => RecipeField {
-  const taken = fieldKeysOf(existing);
-  return (label, type, shownBy) => {
-    const own = fieldByKey(existing, labelToKey(label, []));
-    if (own && bindsFieldType(shownBy, own.type)) return { field: own, isNew: false };
-    const key = labelToKey(label, taken);
-    taken.add(key);
-    return { field: { key, label, type }, isNew: true };
-  };
-}
-
-/** The fields among `shown` that the recipe adds. */
-function newFields(shown: readonly RecipeField[]): TemplateField[] {
-  return shown.filter((found) => found.isNew).map((found) => found.field);
-}
-
-function statStrip(nextId: BlockIdSource, existing: readonly TemplateField[]): RecipeResult {
-  const field = fieldMaker(existing);
-  const shown = [field('Armor class', 'number', 'stat'), field('Hit points', 'number', 'stat'), field('Speed', 'text', 'stat')];
-  const row = createBlock('row', nextId);
-  const stats = shown.map(({ field: { key } }) => ({ ...createBlock('stat', nextId, key), look: 'stacked' as const }));
-  return { blocks: [{ ...row, blocks: stats }], fields: newFields(shown) };
-}
-
-function abilityScores(nextId: BlockIdSource, existing: readonly TemplateField[]): RecipeResult {
-  const found = fieldMaker(existing)('Abilities', 'scores', 'scores');
-  const abilities: RecipeField = found.isNew ? { ...found, field: { ...found.field, slots: [...ABILITY_SLOTS] } } : found;
-  const scores = {
-    ...createBlock('scores', nextId, abilities.field.key),
-    columns: [{ label: 'Mod', formula: MODIFIER_FORMULA, display: 'signed' as const }],
-  };
-  return { blocks: [scores], fields: newFields([abilities]) };
-}
-
-function actions(nextId: BlockIdSource, existing: readonly TemplateField[]): RecipeResult {
-  const found = fieldMaker(existing)('Actions', 'entries', 'entries');
-  const entries = { ...createBlock('entries', nextId, found.field.key), heading: 'Actions', addLabel: 'Add action' };
-  return { blocks: [entries], fields: newFields([found]) };
-}
-
-function defenses(nextId: BlockIdSource, existing: readonly TemplateField[]): RecipeResult {
-  const field = fieldMaker(existing);
-  const saves = field('Saving throws', 'pairs', 'pairs');
-  const resistances = field('Damage resistances', 'text', 'stat');
-  const immunities = field('Damage immunities', 'text', 'stat');
-  const section = createBlock('section', nextId);
-  const blocks = [
-    createBlock('pairs', nextId, saves.field.key),
-    createBlock('stat', nextId, resistances.field.key),
-    createBlock('stat', nextId, immunities.field.key),
-  ];
-  return { blocks: [{ ...section, heading: 'Defenses', blocks }], fields: newFields([saves, resistances, immunities]) };
-}
-
-export const BLOCK_RECIPES: readonly BlockRecipe[] = [
-  { id: 'stat-strip', label: 'Stat strip', icon: 'rows-3', create: statStrip },
-  { id: 'ability-scores', label: 'Ability scores', icon: 'table-2', create: abilityScores },
-  { id: 'actions', label: 'Actions', icon: 'swords', create: actions },
-  { id: 'defenses', label: 'Defenses', icon: 'shield', create: defenses },
-];
+export const BLOCK_RECIPES: readonly BlockRecipe[] = [...COMMON_RECIPES, ...PART_RECIPES];
 
 export function recipeById(id: RecipeId): BlockRecipe | undefined {
   return BLOCK_RECIPES.find((recipe) => recipe.id === id);

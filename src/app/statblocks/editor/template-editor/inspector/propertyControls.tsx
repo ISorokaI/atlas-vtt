@@ -4,17 +4,14 @@ import { FIELD_MEANINGS, type FieldMeaning, type TemplateField } from '../../../
 import { useTemplateEditor } from '../editorContext';
 import { MEANING_LABELS } from '../editorGlyphs';
 import { useTemplateUsage } from '../useTemplateUsage';
-import { boundFieldOf, editBlock, withMeaning } from './blockEdits';
-import { ConditionBuilder } from './ConditionBuilder';
-import type { GroupProps } from './groupProps';
-import { InspectorGroup } from './InspectorGroup';
-import { SelectSetting, Setting, SettingNote, TextSetting } from './InspectorControls';
+import { withMeaning } from './blockEdits';
+import { SelectSetting, Setting, SettingNote } from './InspectorControls';
 import { RenameKeyDialog } from './RenameKeyDialog';
 
 const NO_MEANING = '';
 
-/** The bound field's key, and Rename… with the dialog it opens. */
-function KeySetting({ field, readOnly }: { field: TemplateField; readOnly: boolean }): React.JSX.Element {
+/** The property's name in notes (its key, for Dataview and Bases), and Rename… with the dialog it opens. */
+export function KeySetting({ field, readOnly }: { field: TemplateField; readOnly: boolean }): React.JSX.Element {
   const { app, session, snapshot, announce } = useTemplateEditor();
   const usage = useTemplateUsage(app, snapshot.id);
   // The button the dialog opens from: its window, and where focus goes back to.
@@ -26,7 +23,7 @@ function KeySetting({ field, readOnly }: { field: TemplateField; readOnly: boole
   };
   return (
     <>
-      <Setting label="Key">
+      <Setting label="Name in notes">
         {() => (
           <div className="atlas-te-setting__inline">
             <code className="atlas-te-setting__key">{field.key}</code>
@@ -55,8 +52,8 @@ function KeySetting({ field, readOnly }: { field: TemplateField; readOnly: boole
   );
 }
 
-/** What Atlas uses the field for; one field per meaning, so taking one moves it here. */
-function MeaningSetting({ field, readOnly }: { field: TemplateField; readOnly: boolean }): React.JSX.Element {
+/** What Atlas reads the property as; one property per meaning, so taking one moves it here. */
+export function MeaningSetting({ field, readOnly }: { field: TemplateField; readOnly: boolean }): React.JSX.Element {
   const { session, snapshot } = useTemplateEditor();
   const holders = new Map(snapshot.template.fields.filter((other) => other.meaning).map((other) => [other.meaning, other]));
   const options = [
@@ -68,7 +65,7 @@ function MeaningSetting({ field, readOnly }: { field: TemplateField; readOnly: b
   ];
   return (
     <SelectSetting<string>
-      label="Meaning"
+      label="Atlas reads it as"
       value={field.meaning ?? NO_MEANING}
       options={options}
       disabled={readOnly}
@@ -77,25 +74,5 @@ function MeaningSetting({ field, readOnly }: { field: TemplateField; readOnly: b
         session.apply((template) => withMeaning(template, field.key, meaning));
       }}
     />
-  );
-}
-
-/**
- * Advanced (§7.4): the field's key and its rename, the condition the block
- * shows under, the class themes and Fantasy Statblocks see, and what Atlas
- * uses the field for.
- */
-export function AdvancedGroup({ block, template, session, readOnly }: GroupProps): React.JSX.Element | null {
-  // A block of a newer Atlas is written back exactly as it was read.
-  if (block.type === 'opaque') return null;
-  const field = boundFieldOf(template, block);
-  return (
-    <InspectorGroup id="advanced" title="Advanced">
-      {field && <KeySetting field={field} readOnly={readOnly} />}
-      {block.type !== 'script' && <ConditionBuilder block={block} session={session} disabled={readOnly} />}
-      <TextSetting label="Class" value={block.className ?? ''} placeholder="For themes" session={session} disabled={readOnly} code
-        onText={(text) => editBlock(session, block.id, block.type, { className: text.trim() ? text.trim() : undefined })} />
-      {field && <MeaningSetting field={field} readOnly={readOnly} />}
-    </InspectorGroup>
   );
 }

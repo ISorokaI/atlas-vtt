@@ -106,12 +106,12 @@ export function findAction(actions: readonly SurfaceAction[], id: string): Surfa
  * always keeps an icon slot) every row gets a slot, empty where it has none.
  */
 export function alignedEntries(entries: readonly ContextMenuEntry[]): ContextMenuEntry[] {
-  const slots = entries.some((entry) => entry.type === 'submenu' || (entry.type === 'item' && (entry.icon || entry.leading)));
+  const slots = entries.some((entry) => entry.type === 'submenu' || (entry.type === 'item' && (Boolean(entry.icon) || entry.leading !== undefined)));
   return entries.map((entry): ContextMenuEntry => {
     if (entry.type === 'submenu') {
       return Array.isArray(entry.children) ? { ...entry, children: alignedEntries(entry.children) } : entry;
     }
-    if (entry.type !== 'item' || !slots || entry.leading) return entry;
+    if (entry.type !== 'item' || !slots || entry.leading !== undefined) return entry;
     return { ...entry, leading: React.createElement(MenuIcon, { name: entry.icon ?? '' }) };
   });
 }

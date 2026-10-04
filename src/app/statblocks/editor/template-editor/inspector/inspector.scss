@@ -104,6 +104,31 @@ $label-column: 80px;
     }
   }
 
+  // What a folded group holds, in plain words, between its title and its chevron (§10.3).
+  .atlas-te-group__summary {
+    @include atlas-truncate;
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--text-muted);
+    font-weight: $font-weight-normal;
+    font-size: $font-ui-smaller;
+    text-align: end;
+  }
+
+  // "More options": the folded groups' caption, under the Basics.
+  .atlas-te-insp__more {
+    margin: 0;
+    padding: $group-space $group-space 0;
+    border-top: $border-width-s solid var(--divider-color);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-te-insp__more + .atlas-te-group {
+    border-top: none;
+  }
+
   .atlas-te-group__chevron {
     flex-shrink: 0;
     width: $icon-xs;

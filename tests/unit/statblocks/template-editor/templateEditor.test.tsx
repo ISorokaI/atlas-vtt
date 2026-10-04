@@ -126,8 +126,8 @@ describe('TemplateEditor', () => {
     key(frame('divider1'), '/');
     const search = screen.getByRole('combobox', { name: 'Find a block' });
     fireEvent.change(search, { target: { value: 'stat' } });
-    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Stat strip', 'Stat']);
-    // The exact match is highlighted, though the recipe is listed above it.
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toContain('Stat');
+    // The exact match is highlighted, though recipes are listed above it.
     expect(screen.getByRole('option', { selected: true }).textContent).toBe('Stat');
     key(search, 'Enter');
     const added = session.template.layout.blocks.at(-1);
@@ -144,7 +144,7 @@ describe('TemplateEditor', () => {
     expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'stat', field: 'initiative' });
     expect(session.template.fields.at(-1)).toEqual({ key: 'initiative', label: 'Initiative', type: 'text' });
     expect(session.steps).toBe(2);
-    expect(document.querySelector('.atlas-te-live')?.textContent).toBe('New field initiative.');
+    expect(document.querySelector('.atlas-te-live')?.textContent).toBe('Made a new property for it.');
   });
 
   it('deletes a block just inserted with Delete, since no label is open', async () => {

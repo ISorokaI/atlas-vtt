@@ -8,8 +8,8 @@ import { BlockView } from '../../render/BlockView';
 import { SheetContext, type SheetContextValue } from '../../render/sheetContext';
 import { sheetState } from '../../render/sheetState';
 import type { FieldRecord } from '../../values/fieldValues';
-import { FieldFace } from '../template-editor/FieldsList';
-import { TileFace } from '../template-editor/PaletteTile';
+import { FieldFace } from '../template-editor/PropertiesPanel';
+import { ItemPreview } from '../template-editor/PaletteRow';
 import type { DragSource } from './dragSources';
 
 /** The copy under the pointer carries no block id: the canvas's frame stays the one block of that id. */
@@ -51,7 +51,7 @@ export interface DragPreviewProps extends Omit<BlockCopyProps, 'id'> {
 export function DragPreview({ source, template, ...rest }: DragPreviewProps): React.JSX.Element | null {
   switch (source.kind) {
     case 'block': return <BlockCopy template={template} id={source.id} {...rest} />;
-    case 'item': return <div className="atlas-te-tile atlas-te-drag-face"><TileFace item={source.item} /></div>;
+    case 'item': return <div className="atlas-te-drag-face atlas-te-drag-face--item"><ItemPreview item={source.item} /></div>;
     case 'field': {
       const field = fieldByKey(template.fields, source.key);
       return field ? <div className="atlas-te-fields__head atlas-te-drag-face"><FieldFace field={field} /></div> : null;

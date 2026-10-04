@@ -18,7 +18,7 @@ interface InspectorBodyProps {
 /** What the inspector shows for a selection: one block's settings, the template's, or a word about several. */
 export function InspectorBody({ selection, headerEnd }: InspectorBodyProps): React.JSX.Element {
   const primary = primaryOf(selection);
-  if (primary === null) return <TemplateSettings headerEnd={headerEnd} />;
+  if (primary === null) return <TemplateSettings header headerEnd={headerEnd} />;
   if (selection.length > 1) {
     return (
       <div className="atlas-te-insp__content">

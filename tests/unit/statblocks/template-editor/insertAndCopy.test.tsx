@@ -16,46 +16,27 @@ vi.mock('../../../../src/app/statblocks/notes/templateSwitch', () => ({ switchTe
 afterEach(cleanup);
 
 describe('the insert menu\'s items', () => {
-  it('lists the recipes under Common, then the catalogue by group', () => {
+  it('lists the parts of a statblock by book part, then the catalogue by group, in plain words', () => {
     const groups = groupItems(insertItems());
-    expect(groups.map((group) => group.label)).toEqual(['Common', 'Basics', 'Lists', 'Numbers', 'Layout', 'Media']);
-    expect(groups[0]?.items.map((item) => item.label)).toEqual(['Stat strip', 'Ability scores', 'Actions', 'Defenses']);
+    expect(groups.map((group) => group.label)).toEqual([
+      'Common parts', 'Tracks', 'Dense lines', 'Tags and costs', 'Text and stats', 'Lists', 'Numbers', 'Layout', 'Pictures',
+    ]);
+    expect(groups[0]?.items.map((item) => item.label)).toContain('Spellcasting');
     expect(groups.flatMap((group) => group.items).some((item) => item.kind === 'block' && (item.type as string) === 'script')).toBe(false);
+    for (const item of insertItems()) expect(item.example, item.label).not.toBe('');
   });
 
-  it('finds items by every word typed', () => {
-    expect(findItems(insertItems(), 'ab sc').map((item) => item.label)).toEqual(['Ability scores']);
+  it('finds items by every word typed, in their name, their line or other words', () => {
+    expect(findItems(insertItems(), 'ab sc').map((item) => item.label)).toEqual(['Ability scores', 'Score table']);
+    expect(findItems(insertItems(), 'magic').map((item) => item.label)).toEqual(['Spellcasting', 'Spells']);
     expect(findItems(insertItems(), 'zzz')).toEqual([]);
   });
 
   it('starts the keys on the item named exactly what was typed, else on one whose name starts with it', () => {
-    const found = (query: string): string[] => findItems(insertItems(), query).map((item) => item.label);
-    expect(found('stat').slice(0, 2)).toEqual(['Stat strip', 'Stat']);
-    expect(found('stat')[bestMatch(findItems(insertItems(), 'stat'), 'stat')]).toBe('Stat');
-    expect(found('ab')[bestMatch(findItems(insertItems(), 'ab'), 'ab')]).toBe('Ability scores');
-    expect(bestMatch(findItems(insertItems(), 'core'), 'core')).toBe(0);
-    expect(bestMatch(insertItems(), '')).toBe(0);
-  });
-
-  it('inserts the exact match on Enter in the insert menu, not the recipe listed above it', () => {
-    const onInsert = vi.fn();
-    const layer = document.body.createDiv();
-    // jsdom draws nothing, so it has no scrolling into view.
-    Element.prototype.scrollIntoView = vi.fn();
-    render(<InsertMenu layer={layer} anchor={{ left: 0, top: 0, right: 10, bottom: 10 }} onInsert={onInsert} onClose={vi.fn()} />);
-    const search = screen.getByRole('combobox');
-    fireEvent.change(search, { target: { value: 'stat' } });
-    fireEvent.keyDown(search, { key: 'Enter' });
-    expect(onInsert).toHaveBeenCalledWith(expect.objectContaining({ kind: 'block', type: 'stat' }));
-    layer.remove();
-  });
-
-  it('previews each item with a template of its own', () => {
-    for (const item of insertItems()) {
-      const preview = previewTemplate(item);
-      expect(preview.layout.blocks.length, item.label).toBeGreaterThan(0);
-    }
-    expect(previewTemplate({ kind: 'block', type: 'stat', label: 'Stat', group: 'basics' }).fields).toEqual([{ key: 'stat', label: 'Stat', type: 'number' }]);
+    const items = findItems(insertItems(), 'stat');
+    expect(items[bestMatch(items, 'stat')]?.label).toBe('Stat');
+    const spell = findItems(insertItems(), 'spell');
+    expect(spell[bestMatch(spell, 'spell')]?.label).toBe('Spellcasting');
   });
 
   it('turns blocks only into blocks of their kind', () => {

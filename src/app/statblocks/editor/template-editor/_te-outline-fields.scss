@@ -133,11 +133,97 @@ $outline-indent: $spacing-m;
     font-size: $font-ui-smaller;
   }
 
-  .atlas-te-fields__key {
+  // "in 41 statblocks": how many of the collection's statblocks hold it.
+  .atlas-te-fields__used {
     @include atlas-truncate;
     margin-inline-start: auto;
     color: var(--text-muted);
-    font-family: var(--font-monospace);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-fields__tabs {
+    align-self: stretch;
+  }
+
+  .atlas-te-fields__new.btn {
+    align-self: flex-start;
+    gap: $spacing-xs;
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // "+ New property": its name, what it holds and, for one of a list, the choices.
+  .atlas-te-fields__form {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: $pane-space;
+    padding: $pane-space;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-l;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-fields__form-actions {
+    grid-column: 1 / -1;
+    @include atlas-flex-row($spacing-xs);
+    justify-content: flex-end;
+  }
+
+  // ── Tables ──────────────────────────────────────────────────────────────
+  .atlas-te-tables,
+  .atlas-te-table {
+    @include atlas-flex-col($pane-space);
+    align-items: stretch;
+  }
+
+  .atlas-te-table {
+    padding: $pane-space;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-l;
+  }
+
+  .atlas-te-table__head {
+    @include atlas-flex-row($spacing-xs);
+
+    > .atlas-te-table__name {
+      flex: 1;
+      font-family: var(--font-monospace);
+    }
+  }
+
+  .atlas-te-table__use,
+  .atlas-te-table__problem {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-table__problem {
+    color: var(--text-warning);
+  }
+
+  .atlas-te-table__grid {
+    @include atlas-flex-col(2px);
+    align-items: stretch;
+    max-height: 240px;
+    overflow-y: auto;
+    @include atlas-scrollbar;
+  }
+
+  .atlas-te-table__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .atlas-te-table__row--head {
+    color: var(--text-muted);
     font-size: $font-ui-smaller;
   }
 

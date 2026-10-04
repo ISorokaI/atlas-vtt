@@ -7,6 +7,7 @@ import { TemplateDragAndDrop } from '../dnd/DndProvider';
 import { foldedBlocks } from '../../render/foldRule';
 import { FoldedChips } from '../panel-frame/FoldedChips';
 import { BlankCard } from './BlankCard';
+import { insertNamedStat, insertRecipes } from './blockActions';
 import { Canvas } from './Canvas';
 import { DeleteTemplateDialog } from './DeleteTemplateDialog';
 import { dockMenuEntries } from './dock/dockPanels';
@@ -14,7 +15,7 @@ import { EditorFloats } from './dock/EditorFloats';
 import { useFloatingPanels } from './dock/useFloatingPanels';
 import { TemplateEditorContext, type TemplateEditorContextValue } from './editorContext';
 import { EditorOverlays } from './EditorOverlays';
-import type { BlockSelection } from './selection';
+import { primaryOf, type BlockSelection } from './selection';
 import type { EditorSession } from './sessionTypes';
 import { handleShellKey } from './shell/shellKeys';
 import type { ShowWith, ShowWithMode } from './shell/showWith';
@@ -122,6 +123,10 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
       state.insert(item);
       floats.inserted();
     },
+    insertNamedStat: (name) => {
+      state.settle(insertNamedStat(session, name, { after: primaryOf(state.selection) }));
+      floats.inserted();
+    },
     editLabel: state.editLabel, announce: state.announce, collectionId, collectionKeys, openSettings: floats.openSettings,
   };
   const newStatblock = app ? (): void => { void newStatblockFromTemplate(app, snapshot.id, collectionId); } : undefined;
@@ -207,7 +212,15 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
                 onEditLabel={state.editLabel}
                 onInsertAt={state.openInsertAtGap}
                 focusRequest={state.focusRequest}
-                empty={<BlankCard onInsert={snapshot.readOnly ? undefined : (item) => context.insert(item)} />}
+                empty={(
+                  <BlankCard
+                    onInsert={snapshot.readOnly ? undefined : (item) => context.insert(item)}
+                    onStart={snapshot.readOnly ? undefined : (recipes, name) => {
+                      state.settle(insertRecipes(session, recipes, { after: null }, name));
+                      floats.inserted();
+                    }}
+                  />
+                )}
                 shownWidth={showAs.width}
                 folded={foldedSet}
               />

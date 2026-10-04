@@ -67,19 +67,58 @@ const rowOf = (list: HTMLElement, label: string): HTMLElement => {
   return found;
 };
 
-describe('the Fields tab', () => {
-  it('lists every field with its type, key and meaning, and the ones no block shows apart', () => {
+const tab = (name: string): void => { fireEvent.click(screen.getByRole('radio', { name })); };
+
+describe('the Properties panel (spec §10.7)', () => {
+  it('lists the properties on the card with their kind and what Atlas reads them as, never their names in notes', () => {
     const base = sampleTemplate();
     const fields = [...base.fields.map((entry) => (entry.key === 'hp' ? { ...entry, meaning: 'hit-points' as const } : entry)), { key: 'notes', label: 'Notes', type: 'markdown' as const }];
     mountEditor(new FakeSession({ ...base, fields }));
     const list = openFields();
     const hp = rowOf(list, 'Hit points');
-    expect(hp.querySelector('.atlas-te-fields__key')?.textContent).toBe('hp');
     expect(hp.querySelector('.atlas-te-fields__type')?.textContent).toBe('Number');
     expect(hp.querySelector('.atlas-te-fields__badge')?.textContent).toBe('Hit points');
-    const apart = screen.getByRole('list', { name: 'Not shown' });
+    expect(list.textContent).not.toMatch(/\bhp\b/);
+    expect(screen.getByRole('list', { name: 'On the card' })).toBeTruthy();
+    tab('Not on the card');
+    const apart = screen.getByRole('list', { name: 'Not on the card' });
     expect(within(apart).getByText('Notes')).toBeTruthy();
     expect(within(apart).queryByText('Hit points')).toBeNull();
+  });
+
+  it('makes a property no block shows, for a condition to decide by, and deletes it again', () => {
+    const session = new FakeSession(sampleTemplate());
+    mountEditor(session);
+    openFields();
+    tab('Not on the card');
+    fireEvent.click(screen.getByRole('button', { name: 'New property' }));
+    const form = screen.getByRole('form', { name: 'New property' });
+    fireEvent.change(within(form).getByLabelText('Name'), { target: { value: 'Legendary' } });
+    fireEvent.change(within(form).getByLabelText('Holds'), { target: { value: 'choice' } });
+    fireEvent.change(within(form).getByLabelText('Choices'), { target: { value: 'Yes, No' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'Add' }));
+    expect(session.template.fields.at(-1)).toEqual({ key: 'legendary', label: 'Legendary', type: 'choice', options: ['Yes', 'No'] });
+    expect(session.template.layout.blocks.some((block) => 'field' in block && block.field === 'legendary')).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Legendary: statblocks keep their values' }));
+    expect(session.template.fields.some((field) => field.key === 'legendary')).toBe(false);
+  });
+
+  it('makes a lookup table, fills it by pasting from a spreadsheet, and renames it', () => {
+    const session = new FakeSession(sampleTemplate());
+    mountEditor(session);
+    openFields();
+    tab('Tables');
+    expect(screen.getByText('Tables turn one value into another, like a rating into XP.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'New table' }));
+    expect(session.template.lookups).toEqual({ table: {} });
+    const grid = screen.getByRole('table', { name: 'table rows' });
+    fireEvent.paste(grid, { clipboardData: { getData: () => '1/4\t50\n1/2\t100' } });
+    expect(session.template.lookups).toEqual({ table: { '1/4': '50', '1/2': '100' } });
+    const name = screen.getByRole<HTMLInputElement>('textbox', { name: 'Table name' });
+    fireEvent.focus(name);
+    fireEvent.change(name, { target: { value: 'XP' } });
+    fireEvent.blur(name);
+    expect(Object.keys(session.template.lookups ?? {})).toEqual(['xp']);
   });
 
   it('stores a typed sample in the template as one step, and resets it to the default', () => {
@@ -115,9 +154,9 @@ describe('the Fields tab', () => {
     expect(frame('stat-hp1').getAttribute('data-te-selected')).toBe('primary');
   });
 
-  it('says where fields come from while there is none', () => {
+  it('says where properties come from while there is none', () => {
     mountEditor(new FakeSession(template([])));
     openFields();
-    expect(screen.getByText('Fields appear here as you add blocks.')).toBeTruthy();
+    expect(screen.getByText('Properties appear here as you name blocks.')).toBeTruthy();
   });
 });

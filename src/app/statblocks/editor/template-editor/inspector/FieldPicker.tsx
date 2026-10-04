@@ -26,7 +26,7 @@ export interface FieldPickerProps {
  * statblocks use, and New field “Speed”. Enter picks, Escape closes and puts
  * the label back.
  */
-export function FieldPicker({ labelledBy, value, accepts, allowNew, disabled, placeholder = 'Choose a field', onPick }: FieldPickerProps): React.JSX.Element {
+export function FieldPicker({ labelledBy, value, accepts, allowNew, disabled, placeholder = 'Choose a property', onPick }: FieldPickerProps): React.JSX.Element {
   const { snapshot, collectionKeys } = useTemplateEditor();
   const { template } = snapshot;
   const [query, setQuery] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export function FieldPicker({ labelledBy, value, accepts, allowNew, disabled, pl
       {open && (
         <FieldChoiceList
           id={listId}
-          label="Fields"
+          label="Properties"
           groups={groups}
           active={highlighted}
           onHover={(choice) => setActive(choices.indexOf(choice))}

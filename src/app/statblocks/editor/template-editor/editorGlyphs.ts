@@ -5,9 +5,9 @@
  */
 
 import {
-  AlignLeft, CircleDot, CircleHelp, Code, Columns3, Dices, Gauge, Hash, Heading, Heading2, Image, List, ListChecks,
-  Minus, Rows3, Shield, Sparkles, SquareStack, Star, Subtitles, Swords, Table, Table2, Tags, Text, Type,
-  type LucideIcon,
+  AlignJustify, AlignLeft, CircleDot, CircleHelp, Clock, Code, Coins, Columns3, Dices, Eye, Gauge, Hash, Heading, Heading2, Heart,
+  Image, List, ListChecks, ListOrdered, ListTree, Minus, Rows3, ScrollText, Shield, Sparkles, SquareStack, Star, Subtitles, Sword,
+  Swords, Table, Table2, Tags, Text, Type, Zap, type LucideIcon,
 } from 'lucide-react';
 import { blockSpec, type BlockIcon } from '../../model/blockCatalogue';
 import { recipeById, type RecipeIcon } from '../../model/blockRecipes';
@@ -21,7 +21,9 @@ const BLOCK_GLYPHS: Readonly<Record<BlockIcon, LucideIcon>> = {
 };
 
 const RECIPE_GLYPHS: Readonly<Record<RecipeIcon, LucideIcon>> = {
-  'rows-3': Rows3, 'table-2': Table2, swords: Swords, shield: Shield,
+  heading: Heading, 'rows-3': Rows3, 'table-2': Table2, swords: Swords, 'scroll-text': ScrollText, sparkles: Sparkles,
+  'list-checks': ListChecks, eye: Eye, shield: Shield, heart: Heart, zap: Zap, clock: Clock, gauge: Gauge,
+  'align-justify': AlignJustify, sword: Sword, coins: Coins, tags: Tags, 'list-ordered': ListOrdered, 'list-tree': ListTree,
 };
 
 export function blockGlyph(type: BlockType): LucideIcon {
@@ -37,8 +39,8 @@ export function insertItemGlyph(item: InsertItem): LucideIcon {
 
 /** What a field holds, in the words the editor uses. */
 export const FIELD_TYPE_LABELS: Readonly<Record<FieldType, string>> = {
-  text: 'Text', markdown: 'Paragraphs', number: 'Number', rating: 'Rating', dice: 'Dice', choice: 'Choice',
-  list: 'List', scores: 'Scores', entries: 'Entries', pairs: 'Pairs', image: 'Image', spells: 'Spells',
+  text: 'Text', markdown: 'Paragraphs', number: 'Number', rating: 'Rating', dice: 'Dice', choice: 'One of a list',
+  list: 'List', scores: 'Scores', entries: 'Abilities', pairs: 'Labelled values', image: 'Picture', spells: 'Spells',
 };
 
 const FIELD_TYPE_GLYPHS: Readonly<Record<FieldType, LucideIcon>> = {

@@ -35,7 +35,7 @@ function LineFieldRow({ labelId, index, value, disabled, onPick, onRemove }: Row
   const rowLabelId = useId();
   return (
     <div className="atlas-te-setting__inline">
-      <span id={rowLabelId} hidden>{`Field ${index + 1}`}</span>
+      <span id={rowLabelId} hidden>{`Property ${index + 1}`}</span>
       <FieldPicker labelledBy={`${labelId} ${rowLabelId}`} value={value} accepts={LINE_TYPES} allowNew disabled={disabled}
         placeholder={value ? undefined : 'Add a field'} onPick={onPick} />
       {onRemove && <ToolButton icon={X} label="Remove" isActive={false} disabled={disabled} onClick={onRemove} />}
@@ -62,7 +62,7 @@ export function LineFields({ block, session, readOnly }: GroupProps & { block: L
     session.apply((template) => withLineFields(template, block.id, (fields) => fields.filter((_, at) => at !== index)));
   };
   return (
-    <Setting label="Fields" wide>
+    <Setting label="Properties in this line" wide>
       {(labelId) => (
         <div className="atlas-te-setting__list">
           {rows.map((key, index) => (

@@ -96,7 +96,7 @@ function ColumnWidth({ template, disabled }: { template: StatblockTemplate; disa
   );
 }
 
-/** The roles that start from this template, each named with its collection. */
+/** The kinds of statblock that start from this template, each named with its collection. */
 function useRoleNames(): string[] {
   const { app, snapshot } = useTemplateEditor();
   const usage = useTemplateUsage(app, snapshot.id);
@@ -120,11 +120,13 @@ function useBasedOn(template: StatblockTemplate): string | null {
 }
 
 /**
- * The inspector with nothing selected (§7.4): the template's description,
- * columns, the roles that start from it, what it was copied from, and the
- * credit a licensed template carries.
+ * The template's own settings (spec §10.7, ◆ Template): its description,
+ * columns and their width, the kinds of statblock that start from it, what
+ * it was copied from, and the credit a licensed template carries. In the
+ * Settings panel with nothing selected it has a header of its own; in the
+ * dock's panel the panel's title names it.
  */
-export function TemplateSettings({ headerEnd }: { headerEnd?: React.ReactNode }): React.JSX.Element {
+export function TemplateSettings({ headerEnd, header = false }: { headerEnd?: React.ReactNode; header?: boolean }): React.JSX.Element {
   const { session, snapshot } = useTemplateEditor();
   const { template, readOnly } = snapshot;
   const roles = useRoleNames();
@@ -132,22 +134,24 @@ export function TemplateSettings({ headerEnd }: { headerEnd?: React.ReactNode })
   const titleId = useId();
   return (
     <div className="atlas-te-insp__content">
-      <div className="atlas-te-insp__header">
-        <Settings2 className="atlas-te-insp__glyph" aria-hidden="true" />
-        <span id={titleId} className="atlas-te-insp__name">Template</span>
-        {headerEnd}
-      </div>
-      <section className="atlas-te-group" aria-labelledby={titleId}>
+      {header && (
+        <div className="atlas-te-insp__header">
+          <Settings2 className="atlas-te-insp__glyph" aria-hidden="true" />
+          <span id={titleId} className="atlas-te-insp__name">Template</span>
+          {headerEnd}
+        </div>
+      )}
+      <section className="atlas-te-group" aria-labelledby={header ? titleId : undefined} aria-label={header ? undefined : 'Template'}>
         <TextSetting label="Description" value={template.description ?? ''} placeholder="What it is for" session={session} disabled={readOnly} multiline
           onText={(text) => session.apply((current) => withDescription(current, text))} />
         <ChoiceSetting label="Columns" value={String(template.layout.maxColumns) as '1' | '2' | '3'} disabled={readOnly}
           options={[{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }]}
           onChange={(count) => session.apply((current) => withMaxColumns(current, Number(count) as 1 | 2 | 3))} />
         <ColumnWidth template={template} disabled={readOnly} />
-        <Setting label="Roles" wide>
+        <Setting label="Starts new statblocks for" wide>
           {() => (roles.length > 0
             ? <ul className="atlas-te-setting__roles">{roles.map((role) => <li key={role}>{role}</li>)}</ul>
-            : <span className="atlas-te-setting__hint">No role starts from it.</span>)}
+            : <span className="atlas-te-setting__hint">Nothing yet. A collection's settings choose which template a new statblock starts from.</span>)}
         </Setting>
         {basedOn && <SettingNote>{basedOn}</SettingNote>}
         {template.source && (

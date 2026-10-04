@@ -25,7 +25,8 @@ describe('block catalogue', () => {
     for (const type of ALL_TYPES) {
       const spec = blockSpec(type);
       expect(spec.type).toBe(type);
-      expect(spec.label).toMatch(/^[A-Z][a-z ]*$/);
+      // Sentence case; only proper names (Fantasy Statblocks, Atlas) keep their capitals.
+      expect(spec.label.replace(/Fantasy Statblocks|Atlas/, '')).toMatch(/^[A-Z]?[a-z ]*$/);
       expect(lucideIcon(spec.icon), `${type}: ${spec.icon}`).toBe(true);
     }
     for (const recipe of BLOCK_RECIPES) expect(lucideIcon(recipe.icon), recipe.icon).toBe(true);

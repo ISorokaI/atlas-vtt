@@ -1,13 +1,16 @@
-import React, { useId, useMemo } from 'react';
-import { RotateCcw } from 'lucide-react';
+import React, { useId, useMemo, useState } from 'react';
+import { RotateCcw, Trash2 } from 'lucide-react';
+import { SegmentedControl } from '../../../packages/components/primitives/SegmentedControl';
 import { ToolButton } from '../../../packages/components/primitives/ToolButton';
-import { blocksReadingField, fieldsNotShown } from '../../model/fieldOps';
+import { blocksReadingField, fieldsNotShown, removeField } from '../../model/fieldOps';
 import { sampleRecord } from '../../model/sampleValues';
 import type { TemplateField } from '../../model/templateTypes';
 import { useFieldDrag } from '../dnd/useDragSources';
 import { useTemplateEditor } from './editorContext';
 import { fieldTypeGlyph, FIELD_TYPE_LABELS, MEANING_LABELS } from './editorGlyphs';
 import { useGestureText } from './inspector/useGestureText';
+import { NewPropertyForm } from './properties/NewPropertyForm';
+import { TablesTab } from './properties/TablesTab';
 import { hasOwnSample, sampleIsTyped, sampleToText, textToSample, withSample } from './sampleText';
 
 /** The sample a field previews with, typed as one line; typing it is one undo step. */
@@ -32,22 +35,22 @@ function SampleInput({ field, labelledBy }: { field: TemplateField; labelledBy: 
   );
 }
 
-/** A field's glyph, label, type, key and meaning; the drag carries the same face. */
-export function FieldFace({ field, labelId }: { field: TemplateField; labelId?: string | undefined }): React.JSX.Element {
+/** A property's glyph, label, kind and what Atlas reads it as; the drag carries the same face. Its name in notes stays in Settings. */
+export function FieldFace({ field, labelId, used }: { field: TemplateField; labelId?: string | undefined; used?: number | undefined }): React.JSX.Element {
   const Glyph = fieldTypeGlyph(field.type);
   return (
     <>
       <Glyph className="atlas-te-fields__glyph" aria-hidden="true" />
       <span id={labelId} className="atlas-te-fields__label">{field.label || field.key}</span>
       <span className="atlas-te-fields__type">{FIELD_TYPE_LABELS[field.type]}</span>
-      <code className="atlas-te-fields__key">{field.key}</code>
+      {used !== undefined && <span className="atlas-te-fields__used">in {used === 1 ? '1 statblock' : `${used} statblocks`}</span>}
       {field.meaning && <span className="atlas-te-fields__badge">{MEANING_LABELS[field.meaning]}</span>}
     </>
   );
 }
 
-function FieldRow({ field }: { field: TemplateField }): React.JSX.Element {
-  const { snapshot, select, announce } = useTemplateEditor();
+function FieldRow({ field, removable }: { field: TemplateField; removable?: boolean | undefined }): React.JSX.Element {
+  const { snapshot, session, select, announce, collectionKeys } = useTemplateEditor();
   const labelId = useId();
   const drag = useFieldDrag(field, snapshot.readOnly);
   const goToBlock = (): void => {
@@ -70,37 +73,59 @@ function FieldRow({ field }: { field: TemplateField }): React.JSX.Element {
           goToBlock();
         }}
       >
-        <FieldFace field={field} labelId={labelId} />
+        <FieldFace field={field} labelId={labelId} used={collectionKeys.get(field.key)} />
       </div>
       {sampleIsTyped(field) && <SampleInput field={field} labelledBy={labelId} />}
+      {removable && (
+        <ToolButton icon={Trash2} label={`Delete ${field.label || field.key}: statblocks keep their values`} isActive={false} disabled={snapshot.readOnly}
+          onClick={() => {
+            session.apply((current) => removeField(current, field.key));
+            announce(`Deleted the ${field.label || field.key} property. Statblocks keep their values.`);
+          }} />
+      )}
     </li>
   );
 }
 
+type PropertiesTab = 'card' | 'off-card' | 'tables';
+
 /**
- * The Fields tab (§7.4, §7.9): every field of the template in form order, its
- * type, label, key and meaning, and the sample the canvas previews it with.
- * Fields no block shows stand apart under "Not shown". A field's name selects
- * the first block that shows it; dragged onto the canvas, it gets the natural
- * block for its type there.
+ * The Properties panel (spec §10.7): the properties the card shows, in form
+ * order (the order Tab walks in a statblock), each with its kind, how many
+ * statblocks of the collection hold it and its sample; the ones no block
+ * shows, which conditions and formulas may read, with "New property"; and
+ * the lookup tables patterns turn one value into another with. A property's
+ * name selects the first block that shows it; dragged onto the card, it gets
+ * the natural block for its kind there.
  */
-export function FieldsList(): React.JSX.Element {
+export function PropertiesPanel(): React.JSX.Element {
   const { snapshot } = useTemplateEditor();
   const { template } = snapshot;
-  const apartId = useId();
+  const [tab, setTab] = useState<PropertiesTab>('card');
   const hidden = useMemo(() => new Set(fieldsNotShown(template).map((field) => field.key)), [template]);
   const shown = template.fields.filter((field) => !hidden.has(field.key));
   const apart = template.fields.filter((field) => hidden.has(field.key));
-  if (template.fields.length === 0) return <p className="atlas-te-fields__empty">Fields appear here as you add blocks.</p>;
   return (
     <div className="atlas-te-fields">
-      {shown.length > 0 && <ul className="atlas-te-fields__list">{shown.map((field) => <FieldRow key={field.key} field={field} />)}</ul>}
-      {apart.length > 0 && (
+      <SegmentedControl<PropertiesTab>
+        ariaLabel="Properties"
+        value={tab}
+        onChange={setTab}
+        className="atlas-te-fields__tabs"
+        options={[{ value: 'card', label: 'On the card' }, { value: 'off-card', label: 'Not on the card' }, { value: 'tables', label: 'Tables' }]}
+      />
+      {tab === 'card' && (shown.length > 0
+        ? <ul className="atlas-te-fields__list" aria-label="On the card">{shown.map((field) => <FieldRow key={field.key} field={field} />)}</ul>
+        : <p className="atlas-te-fields__empty">Properties appear here as you name blocks.</p>)}
+      {tab === 'off-card' && (
         <>
-          <div id={apartId} className="atlas-te-fields__group-label">Not shown</div>
-          <ul className="atlas-te-fields__list" aria-labelledby={apartId}>{apart.map((field) => <FieldRow key={field.key} field={field} />)}</ul>
+          {apart.length > 0
+            ? <ul className="atlas-te-fields__list" aria-label="Not on the card">{apart.map((field) => <FieldRow key={field.key} field={field} removable />)}</ul>
+            : <p className="atlas-te-fields__empty">Every property is on the card. A property that is not can still decide when a block shows, or feed a formula.</p>}
+          <NewPropertyForm />
         </>
       )}
+      {tab === 'tables' && <TablesTab />}
     </div>
   );
 }

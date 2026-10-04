@@ -19,7 +19,7 @@ export type PaletteGroup = 'basics' | 'lists' | 'numbers' | 'layout' | 'media';
 
 export interface BlockSpec {
   type: BlockType;
-  /** Sentence case, as the palette and the inspector show it. */
+  /** Sentence case, in plain words (spec §1), as the Add panel, the toolbar, Structure and Settings show it. Type ids never change. */
   label: string;
   icon: BlockIcon;
   /** Field types the block's own field (each of a Line's fields) may have; empty where it binds none. */
@@ -44,22 +44,22 @@ function spec(
 
 export const BLOCK_CATALOGUE: Readonly<Record<BlockType, BlockSpec>> = {
   section: spec('section', 'Section', 'square-stack', [], 'group', 'fill', 'layout'),
-  row: spec('row', 'Row', 'columns-3', [], 'inline', 'fill', 'layout'),
-  title: spec('title', 'Title', 'heading', ['text'], 'heading', 'fill', 'basics'),
-  line: spec('line', 'Line', 'subtitles', SCALAR_FIELDS, 'subheading', 'fill', 'basics'),
+  row: spec('row', 'Side by side', 'columns-3', [], 'inline', 'fill', 'layout'),
+  title: spec('title', 'Name', 'heading', ['text'], 'heading', 'fill', 'basics'),
+  line: spec('line', 'Stats on one line', 'subtitles', SCALAR_FIELDS, 'subheading', 'fill', 'basics'),
   stat: spec('stat', 'Stat', 'hash', SCALAR_FIELDS, 'property', 'fit', 'basics'),
-  scores: spec('scores', 'Scores', 'table', ['scores'], 'table', 'fill', 'numbers'),
+  scores: spec('scores', 'Score table', 'table', ['scores'], 'table', 'fill', 'numbers'),
   tags: spec('tags', 'Tags', 'tags', ['list'], 'property', 'fill', 'lists'),
   text: spec('text', 'Text', 'text', ['markdown'], 'text', 'fill', 'basics'),
-  entries: spec('entries', 'Entries', 'swords', ['entries'], 'traits', 'fill', 'lists'),
-  pairs: spec('pairs', 'Pairs', 'list', ['pairs'], 'saves', 'fill', 'lists'),
+  entries: spec('entries', 'Abilities', 'swords', ['entries'], 'traits', 'fill', 'lists'),
+  pairs: spec('pairs', 'Labelled values', 'list', ['pairs'], 'saves', 'fill', 'lists'),
   track: spec('track', 'Track', 'gauge', ['number'], 'property', 'fit', 'numbers'),
-  image: spec('image', 'Image', 'image', ['image'], 'image', 'fit', 'media'),
+  image: spec('image', 'Picture', 'image', ['image'], 'image', 'fit', 'media'),
   spells: spec('spells', 'Spells', 'sparkles', ['spells'], 'spells', 'fill', 'lists'),
   heading: spec('heading', 'Heading', 'heading-2', [], 'text', 'fill', 'basics'),
   divider: spec('divider', 'Divider', 'minus', [], null, 'fill', 'layout'),
-  script: spec('script', 'Script', 'code', [], 'javascript', 'fill', null),
-  opaque: spec('opaque', 'Unknown block', 'circle-help', [], null, 'fill', null),
+  script: spec('script', 'Kept from Fantasy Statblocks', 'code', [], 'javascript', 'fill', null),
+  opaque: spec('opaque', 'From a newer Atlas', 'circle-help', [], null, 'fill', null),
 };
 
 export const BLOCK_TYPES: readonly BlockType[] = Object.keys(BLOCK_CATALOGUE) as BlockType[];

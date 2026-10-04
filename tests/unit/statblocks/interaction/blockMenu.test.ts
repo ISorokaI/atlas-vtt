@@ -83,7 +83,7 @@ describe('blockMenu', () => {
     const moveInto = vi.fn();
     const menu = blockMenu(context(layout.blocks, 'title001', { moveInto }));
     const into = submenu(submenu(menu, 'move'), 'move-into');
-    expect(labels(into)).toEqual(['Defenses', 'Row']);
+    expect(labels(into)).toEqual(['Defenses', 'Side by side']);
     findAction(into, 'into-section1')?.run();
     expect(moveInto).toHaveBeenCalledWith('section1');
     expect(findAction(blockMenu(context(layout.blocks, 'title001')), 'ungroup')).toBeNull();

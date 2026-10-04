@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { fieldChoiceGroups, newFieldKey, withChosenField } from '../../../../src/app/statblocks/editor/template-editor/inspector/fieldChoices';
 import { withMeaning } from '../../../../src/app/statblocks/editor/template-editor/inspector/blockEdits';
 import { conditionFor } from '../../../../src/app/statblocks/editor/template-editor/inspector/ConditionBuilder';
-import { ContentGroup } from '../../../../src/app/statblocks/editor/template-editor/inspector/ContentGroup';
+import { BasicsGroup } from '../../../../src/app/statblocks/editor/template-editor/inspector/BasicsGroup';
 import { useTemplateEditor } from '../../../../src/app/statblocks/editor/template-editor/editorContext';
 import { findBlock } from '../../../../src/app/statblocks/model/treeQueries';
 import type { StatblockTemplate } from '../../../../src/app/statblocks/model/templateTypes';
@@ -67,19 +67,19 @@ function mountContent(session: FakeSession, id: string): void {
   function Content(): React.JSX.Element | null {
     const current = useTemplateEditor().snapshot.template;
     const block = findBlock(current.layout.blocks, id)?.block;
-    return block ? <ContentGroup block={block} template={current} session={session} readOnly={false} parent={null} /> : null;
+    return block ? <BasicsGroup block={block} template={current} session={session} readOnly={false} parent={null} /> : null;
   }
   renderInEditor(session, <Content />, { collectionKeys: USED });
 }
 
-describe('the field picker in the inspector', () => {
+describe('the property picker in Settings', () => {
   it('opens its three groups and binds a block to a key the collection uses, in one step', () => {
     const session = new FakeSession(unbound());
     mountContent(session, 'stat-new');
-    const picker = screen.getByRole('combobox', { name: 'Field' });
+    const picker = screen.getByRole('combobox', { name: 'Shows' });
     fireEvent.change(picker, { target: { value: 's' } });
-    const list = screen.getByRole('listbox', { name: 'Fields' });
-    expect(within(list).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['This template', 'Used in this collection', 'New field']);
+    const list = screen.getByRole('listbox', { name: 'Properties' });
+    expect(within(list).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['This template', 'Used in this collection', 'New property']);
     expect(within(list).getByText('Speed', { selector: '.atlas-te-choices__label' }).closest('[role="group"]')?.getAttribute('aria-label')).toBe('This template');
     expect(within(list).getByText('Senses', { selector: '.atlas-te-choices__label' }).closest('[role="group"]')?.getAttribute('aria-label')).toBe('Used in this collection');
     fireEvent.change(picker, { target: { value: 'sen' } });
@@ -87,15 +87,15 @@ describe('the field picker in the inspector', () => {
     expect(findBlock(session.template.layout.blocks, 'stat-new')?.block).toMatchObject({ field: 'senses' });
     expect(session.template.fields.at(-1)).toEqual({ key: 'senses', label: 'Senses', type: 'text' });
     expect(session.steps).toBe(1);
-    expect(screen.getByText(/found in 12 statblocks/).textContent).toBe('Uses senses, found in 12 statblocks.');
+    expect(screen.getByText(/In 12 statblocks/).textContent).toBe('In 12 statblocks of this collection.');
   });
 
-  it('makes a new field as typed', () => {
+  it('makes a new property as typed', () => {
     const session = new FakeSession(unbound());
     mountContent(session, 'stat-new');
-    const picker = screen.getByRole('combobox', { name: 'Field' });
+    const picker = screen.getByRole('combobox', { name: 'Shows' });
     fireEvent.change(picker, { target: { value: 'Swim speed' } });
-    fireEvent.click(screen.getByText('New field “Swim speed”'));
+    fireEvent.click(screen.getByText('New property “Swim speed”'));
     expect(findBlock(session.template.layout.blocks, 'stat-new')?.block).toMatchObject({ field: 'swim_speed' });
     expect(session.template.fields.at(-1)).toEqual({ key: 'swim_speed', label: 'Swim speed', type: 'text' });
     expect((picker as HTMLInputElement).value).toBe('Swim speed');
@@ -104,14 +104,14 @@ describe('the field picker in the inspector', () => {
   it('closes with Escape and shows the bound field again', () => {
     const session = new FakeSession(sampleTemplate());
     mountContent(session, 'stat-ac1');
-    const picker = screen.getByRole<HTMLInputElement>('combobox', { name: 'Field' });
+    const picker = screen.getByRole<HTMLInputElement>('combobox', { name: 'Shows' });
     expect(picker.value).toBe('Armor class');
     key(picker, 'ArrowDown');
-    expect(screen.getByRole('listbox', { name: 'Fields' })).toBeTruthy();
+    expect(screen.getByRole('listbox', { name: 'Properties' })).toBeTruthy();
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
     act(() => { picker.dispatchEvent(escape); });
     expect(escape.defaultPrevented).toBe(true);
-    expect(screen.queryByRole('listbox', { name: 'Fields' })).toBeNull();
+    expect(screen.queryByRole('listbox', { name: 'Properties' })).toBeNull();
     expect(picker.value).toBe('Armor class');
     expect(session.steps).toBe(0);
   });

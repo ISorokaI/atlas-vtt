@@ -1,14 +1,10 @@
-// The Blocks tab: "Find a block", then the palette's live miniatures (§7.4).
-// Padding equals the gap: the tiles 8/8.
+// The Add panel: "Find a block or part", then rows by book part, each with
+// one line of what it makes and a preview beside the panel (§10.7).
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
 $pane-space: $spacing-s;
-// Tiles draw the real card at this width and scale it once, statically.
-$tile-render-width: 220px;
-$tile-scale: 0.46;
-$tile-preview-height: 64px;
 
 .atlas-vtt-plugin {
   // ── Blocks ──────────────────────────────────────────────────────────────
@@ -31,84 +27,95 @@ $tile-preview-height: 64px;
     text-transform: uppercase;
   }
 
-  .atlas-te-palette__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: $pane-space;
+  .atlas-te-palette__group {
+    @include atlas-flex-col(var(--size-2-1));
+    align-items: stretch;
   }
 
-  .atlas-te-tile {
-    @include atlas-flex-col($pane-space);
+  // A row: the glyph, the plain name and one line of what it makes (§10.7). 40 px, a capsule of the menu's look.
+  .atlas-te-palette__row {
+    @include atlas-flex-row($spacing-s);
     @include atlas-corner-shape;
-    align-items: stretch;
-    min-width: 0;
-    padding: $pane-space;
-    border: $border-width-s solid var(--background-modifier-border);
+    align-items: center;
+    min-height: 40px;
+    padding: $spacing-xs $spacing-s;
     border-radius: $radius-l;
-    background: var(--background-primary);
     cursor: pointer;
     user-select: none;
-    transition: transform $transition-press $transition-ease-out;
 
-    &:hover {
-      border-color: var(--background-modifier-border-hover);
-    }
-
+    &:hover,
+    &[data-active],
     &:focus-visible {
-      outline: 2px solid var(--interactive-accent);
-      outline-offset: 1px;
+      background: var(--background-modifier-hover);
+      outline: none;
     }
 
     &:active {
-      transform: scale(0.97);
-    }
-
-    &[aria-disabled='true'] {
-      cursor: default;
+      transform: scale(0.99);
     }
   }
 
-  .atlas-te-tile__preview {
-    position: relative;
-    display: block;
-    height: $tile-preview-height;
-    overflow: hidden;
-    pointer-events: none;
-    mask-image: linear-gradient(to bottom, #000 70%, transparent);
-  }
-
-  .atlas-te-tile__scale {
-    display: block;
-    width: $tile-render-width;
-    transform: scale($tile-scale);
-    transform-origin: top left;
-
-    // The tile is the card's frame: the miniature draws the blocks alone.
-    .atlas-statblock {
-      padding: 0;
-      border: none;
-      background: transparent;
-      box-shadow: none;
-    }
-  }
-
-  .atlas-te-tile__label {
-    @include atlas-flex-row($spacing-xs);
-    min-width: 0;
-    color: var(--text-normal);
-    font-size: $font-ui-smaller;
-  }
-
-  .atlas-te-tile__glyph,
-  .atlas-te-palette__result-glyph {
+  .atlas-te-palette__row-glyph {
     flex-shrink: 0;
-    width: $icon-xs;
-    height: $icon-xs;
+    width: $icon-s;
+    height: $icon-s;
     color: var(--text-muted);
   }
 
-  .atlas-te-tile__name {
+  .atlas-te-palette__row-text {
+    @include atlas-flex-col(0);
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  .atlas-te-palette__row-name {
     @include atlas-truncate;
+    color: var(--text-normal);
+    font-size: $font-ui-small;
+  }
+
+  .atlas-te-palette__row-example {
+    @include atlas-truncate;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  // The row's preview, beside the panel, drawn by the card's own renderer.
+  .atlas-te-palette__preview {
+    @include atlas-elevated-surface;
+    position: absolute;
+    left: calc(var(--atlas-te-preview-x) + #{$spacing-s});
+    top: var(--atlas-te-preview-y);
+    z-index: 3;
+    width: 280px;
+    padding: $spacing-s;
+    border-radius: $radius-xl;
+    box-shadow: $shadow-md;
+    pointer-events: none;
+  }
+
+  .atlas-te-item-preview .atlas-statblock,
+  .atlas-te-drag-face--item .atlas-statblock {
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .atlas-te-drag-face--item {
+    width: 260px;
+  }
+
+  button.atlas-te-palette__make {
+    display: inline;
+    height: auto;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: var(--text-accent);
+    font: inherit;
+    cursor: pointer;
   }
 
   .atlas-te-palette__results {

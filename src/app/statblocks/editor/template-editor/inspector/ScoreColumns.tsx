@@ -17,7 +17,7 @@ type ColumnKind = 'modifier' | 'field' | 'formula';
 
 const KINDS: Array<{ value: ColumnKind; label: string }> = [
   { value: 'modifier', label: 'Modifier' },
-  { value: 'field', label: 'Field, else modifier' },
+  { value: 'field', label: 'A property, else modifier' },
   { value: 'formula', label: 'Formula' },
 ];
 

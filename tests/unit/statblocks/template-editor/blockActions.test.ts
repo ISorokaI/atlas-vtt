@@ -31,7 +31,7 @@ describe('moving blocks without a drag', () => {
 
   it('puts a block into the container before it, and out of its own', () => {
     const s = session();
-    expect(moveIntoPrevious(s, 'row00001').announce).toBe('Moved Row to section Defenses, position 3 of 3.');
+    expect(moveIntoPrevious(s, 'row00001').announce).toBe('Moved Side by side to section Defenses, position 3 of 3.');
     expect(layoutShape(s)).toBe('title001 section1(stat-ac1 stat-hp1 row00001(stat-sp1 stat-cr1)) divider1');
     expect(moveIntoPrevious(s, 'title001').announce).toBe('There is no section or row before it.');
     moveOutOfParent(s, 'stat-ac1');
@@ -77,7 +77,7 @@ describe('inserting', () => {
     const outcome = insertRecipe(s, 'stat-strip', { after: null });
     expect(s.steps).toBe(1);
     expect(s.template.fields.map((field) => field.key)).toEqual(['ac', 'hp', 'speed']);
-    expect(outcome.announce).toBe('Added Stat strip.');
+    expect(outcome.announce).toBe('Added Armor, hit points and speed.');
   });
 
   it('inserts a recipe into a template that has its fields without making copies of them', () => {

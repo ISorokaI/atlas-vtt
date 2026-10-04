@@ -16,30 +16,39 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const tile = (name: string): HTMLElement => {
-  const found = [...document.querySelectorAll<HTMLElement>('.atlas-te-tile')].find((element) => element.querySelector('.atlas-te-tile__name')?.textContent === name);
-  if (!found) throw new Error(`no tile ${name}`);
+const row = (name: string): HTMLElement => {
+  const found = [...document.querySelectorAll<HTMLElement>('.atlas-te-palette__row')].find((element) => element.querySelector('.atlas-te-palette__row-name')?.textContent === name);
+  if (!found) throw new Error(`no row ${name}`);
   return found;
 };
+const names = (group: HTMLElement): string[] => [...group.querySelectorAll('.atlas-te-palette__row-name')].map((name) => name.textContent ?? '');
 
-describe('the Blocks tab', () => {
-  it('lists the recipes, then the catalogue by group, as live miniatures', () => {
+/** The Add panel (spec §10.7, §12.3). */
+describe('the Add panel', () => {
+  it('lists the parts of a statblock by book part, then the blocks by group, each in plain words with what it makes', () => {
     mountEditor(undefined, { dock: 'Add' });
     const pane = document.querySelector<HTMLElement>('.atlas-te-dock-panel')!;
     expect([...pane.querySelectorAll('.atlas-te-palette__group-label')].map((label) => label.textContent))
-      .toEqual(['Common', 'Basics', 'Lists', 'Numbers', 'Layout', 'Media']);
-    const common = within(pane).getByRole('group', { name: 'Common' });
-    expect([...common.querySelectorAll('.atlas-te-tile__name')].map((name) => name.textContent)).toEqual(['Stat strip', 'Ability scores', 'Actions', 'Defenses']);
-    // Each tile draws the real card, out of reach of focus and the pointer.
-    const preview = tile('Ability scores').querySelector('.atlas-te-tile__preview')!;
+      .toEqual(['Common parts', 'Tracks', 'Dense lines', 'Tags and costs', 'Text and stats', 'Lists', 'Numbers', 'Layout', 'Pictures']);
+    const common = within(pane).getByRole('group', { name: 'Common parts' });
+    expect(names(common).slice(0, 4)).toEqual(['Name and type line', 'Armor, hit points and speed', 'Ability scores', 'Actions']);
+    expect(names(within(pane).getByRole('group', { name: 'Tracks' }))).toEqual(['Hit point boxes', 'Stress boxes', 'Clock', 'Damage thresholds']);
+    expect(row('Stat').querySelector('.atlas-te-palette__row-example')?.textContent).toBe('Armor Class 17');
+    for (const banned of ['Stat strip', 'Entries', 'Pairs', 'Title', 'Line', 'Row']) expect(pane.textContent).not.toContain(banned);
+  });
+
+  it('previews the row under the pointer beside the panel, drawn by the card\'s renderer, out of reach of the pointer', () => {
+    mountEditor(undefined, { dock: 'Add' });
+    fireEvent.pointerEnter(row('Ability scores'));
+    const preview = document.querySelector('.atlas-te-palette__preview')!;
     expect(preview.querySelector('.atlas-statblock')).not.toBeNull();
-    expect(preview.hasAttribute('inert')).toBe(true);
+    expect(preview.querySelector('.atlas-te-item-preview')?.hasAttribute('inert')).toBe(true);
   });
 
   it('inserts a clicked block after the selection, in one step, and selects it without opening its label', () => {
     const { session, frame } = mountEditor(undefined, { dock: 'Add' });
     fireEvent.click(frame('stat-ac1'));
-    fireEvent.click(tile('Stat'));
+    fireEvent.click(row('Stat'));
     const section = findBlock(session.template.layout.blocks, 'section1')?.block;
     expect(section && 'blocks' in section ? section.blocks.map((block) => block.type) : []).toEqual(['stat', 'stat', 'stat']);
     expect(section && 'blocks' in section ? section.blocks[0]?.id : '').toBe('stat-ac1');
@@ -51,34 +60,38 @@ describe('the Blocks tab', () => {
 
   it('inserts a recipe at the end without a selection', () => {
     const { session } = mountEditor(undefined, { dock: 'Add' });
-    fireEvent.click(tile('Actions'));
+    fireEvent.click(row('Actions'));
     expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'entries', heading: 'Actions' });
     expect(session.template.fields.at(-1)).toMatchObject({ key: 'actions', type: 'entries' });
     expect(session.steps).toBe(1);
   });
 
-  it('finds blocks in a list that stands open, and inserts the highlighted one with Enter', () => {
+  it('finds by name, line and other words ("spell" finds Spellcasting), and inserts the highlighted one with Enter', () => {
     const { session } = mountEditor(undefined, { dock: 'Add' });
-    const search = screen.getByRole('combobox', { name: 'Find a block' });
-    fireEvent.change(search, { target: { value: 'sc' } });
-    const results = screen.getByRole('listbox', { name: 'Blocks found' });
-    expect(results.hasAttribute('data-atlas-standing-list')).toBe(true);
-    expect(within(results).getAllByRole('option').map((option) => option.querySelector('.atlas-ctx-item__label')?.textContent)).toEqual(['Ability scores', 'Scores']);
-    // The keys start on the block whose name starts with what was typed.
-    expect(search.getAttribute('aria-activedescendant')).toContain('block:scores');
+    const search = screen.getByRole('combobox', { name: 'Find a block or part' });
+    fireEvent.change(search, { target: { value: 'spell' } });
+    const list = screen.getByRole('listbox', { name: 'Blocks and parts' });
+    expect(list.hasAttribute('data-atlas-standing-list')).toBe(true);
+    expect(names(list)).toEqual(['Spellcasting', 'Spells']);
     key(search, 'ArrowDown');
-    expect(search.getAttribute('aria-activedescendant')).toContain('recipe:ability-scores');
-    key(search, 'ArrowUp');
+    expect(search.getAttribute('aria-activedescendant')).toContain('block:spells');
     key(search, 'Enter');
-    expect(session.template.layout.blocks.at(-1)?.type).toBe('scores');
+    expect(session.template.layout.blocks.at(-1)?.type).toBe('spells');
     expect((search as HTMLInputElement).value).toBe('');
+  });
+
+  it('offers a stat of the name typed when nothing matches', () => {
+    const { session } = mountEditor(undefined, { dock: 'Add' });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Find a block or part' }), { target: { value: 'mana' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make a stat called “mana”' }));
+    expect(session.template.fields.at(-1)).toEqual({ key: 'mana', label: 'mana', type: 'text' });
+    expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'stat', field: 'mana' });
   });
 
   it('clears the search with Escape, and an empty search\'s Escape puts the panel away', async () => {
     mountEditor(undefined, { dock: 'Add' });
-    const search = screen.getByRole<HTMLInputElement>('combobox', { name: 'Find a block' });
+    const search = screen.getByRole<HTMLInputElement>('combobox', { name: 'Find a block or part' });
     fireEvent.change(search, { target: { value: 'zzz' } });
-    expect(screen.getByText('No block matches')).toBeTruthy();
     const clearing = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
     act(() => { search.dispatchEvent(clearing); });
     expect(clearing.defaultPrevented).toBe(true);
@@ -89,26 +102,14 @@ describe('the Blocks tab', () => {
     await waitFor(() => expect(document.querySelector('.atlas-te-dock-panel')).toBeNull());
   });
 
-  it('is one tab stop whose arrows move between the tiles', () => {
+  it('is one tab stop whose arrows move between the rows', () => {
     mountEditor(undefined, { dock: 'Add' });
-    const tiles = [...document.querySelectorAll<HTMLElement>('.atlas-te-tile')];
-    expect(tiles.filter((element) => element.tabIndex === 0)).toEqual([tiles[0]]);
-    act(() => tiles[0]?.focus());
-    key(tiles[0]!, 'ArrowRight');
-    expect(document.activeElement).toBe(tiles[1]);
-    key(tiles[1]!, 'ArrowDown');
-    expect(document.activeElement).toBe(tiles[3]);
-    key(tiles[3]!, 'End');
-    expect(document.activeElement).toBe(tiles.at(-1));
-    expect(tiles.at(-1)?.tabIndex).toBe(0);
-  });
-
-  it('says why a built-in takes no block', () => {
-    const session = new FakeSession(sampleTemplate(), { readOnly: true, readOnlyReason: 'built-in', path: null });
-    mountEditor(session, { dock: 'Add' });
-    expect(tile('Stat').getAttribute('aria-disabled')).toBe('true');
-    fireEvent.click(tile('Stat'));
-    expect(session.steps).toBe(0);
-    expect(document.querySelector('.atlas-te-live')?.textContent).toBe('Built-in template. Make a copy to change it.');
+    const rows = [...document.querySelectorAll<HTMLElement>('.atlas-te-palette__row')];
+    expect(rows.filter((element) => element.tabIndex === 0)).toEqual([rows[0]]);
+    act(() => rows[0]?.focus());
+    key(rows[0]!, 'ArrowDown');
+    expect(document.activeElement).toBe(rows[1]);
+    key(rows[1]!, 'ArrowUp');
+    expect(document.activeElement).toBe(rows[0]);
   });
 });

@@ -45,9 +45,9 @@ function labelledNeighbour(template: StatblockTemplate, id: string, step: 1 | -1
 function boundMessage(bound: { key: string; created: boolean; fromCollection: boolean }, keys: CollectionFieldKeys): string {
   if (bound.fromCollection) {
     const count = keys.get(bound.key) ?? 0;
-    return `Uses ${bound.key}, found in ${count} ${count === 1 ? 'statblock' : 'statblocks'}.`;
+    return `Shows the property ${count} ${count === 1 ? 'statblock' : 'statblocks'} of this collection hold.`;
   }
-  return bound.created ? `New field ${bound.key}.` : `Uses the field ${bound.key}.`;
+  return bound.created ? 'Made a new property for it.' : 'Shows a property this template has.';
 }
 
 /**

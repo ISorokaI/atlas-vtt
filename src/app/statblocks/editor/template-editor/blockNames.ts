@@ -24,23 +24,23 @@ export function blockTitle(block: TemplateBlock, fields: readonly TemplateField[
   }
 }
 
-/** "Armor class", or the type's name where the block says nothing ("Divider", "Row"). */
+/** "Armor class", or the type's name where the block says nothing ("Divider", "Side by side"). */
 export function blockName(block: TemplateBlock, fields: readonly TemplateField[]): string {
   return blockTitle(block, fields) || blockSpec(block.type).label;
 }
 
-/** The tag a container shows: "Row", "Section · Defenses". */
+/** The tag a container shows: "Side by side", "Section · Defenses". */
 export function containerTag(block: TemplateBlock, fields: readonly TemplateField[]): string {
   const type = blockSpec(block.type).label;
   const title = block.type === 'section' ? blockTitle(block, fields) : '';
   return title ? `${type} · ${title}` : type;
 }
 
-/** "Stat: Armor class", for the block's accessible name. */
+/** "Armor class, stat", for the block's accessible name (spec §15). */
 export function blockDescription(block: TemplateBlock, fields: readonly TemplateField[]): string {
   const type = blockSpec(block.type).label;
   const title = blockTitle(block, fields);
-  return title && title !== type ? `${type}: ${title}` : type;
+  return title && title !== type ? `${title}, ${type.toLowerCase()}` : type;
 }
 
 /** Where a block stands, for "Moved Armor class to section Defenses, position 2 of 3". */

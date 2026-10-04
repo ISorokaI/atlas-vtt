@@ -49,6 +49,17 @@
     }
   }
 
+  .atlas-te-credit__line {
+    @include atlas-flex-row($spacing-s);
+    justify-content: space-between;
+    color: var(--text-muted);
+  }
+
+  .atlas-te-credit__detail {
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+  }
+
   .atlas-te-credit__remove.btn {
     align-self: flex-start;
     padding-inline: $spacing-s;

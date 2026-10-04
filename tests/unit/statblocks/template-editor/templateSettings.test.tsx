@@ -93,20 +93,24 @@ describe('the template\'s settings', () => {
 
   it('says that no role starts from a template, and what a copy is based on', () => {
     mountEditor(new FakeSession({ ...sampleTemplate(), derivedFrom: { templateId: 'builtin:5e-2024-monster', revision: 1 } }));
-    expect(within(settings()).getByText('No role starts from it.')).toBeTruthy();
+    expect(within(settings()).getByText(/^Nothing yet\./)).toBeTruthy();
     expect(within(settings()).getByText(/^Based on /).textContent).toMatch(/^Based on .+\.$/);
   });
 
   it('removes a licensed template\'s credit only after asking', () => {
     const session = new FakeSession({ ...sampleTemplate(), source: SRD_5_2_1_SOURCE });
     mountEditor(session);
+    // One quiet line, which opens to the full credit; removing it is in there and asks first.
+    expect(within(settings()).getByText(`Includes ${SRD_5_2_1_SOURCE.label}`)).toBeTruthy();
+    expect(within(settings()).queryByText(SRD_5_2_1_SOURCE.attribution)).toBeNull();
+    fireEvent.click(within(settings()).getByRole('button', { name: 'Read' }));
     expect(within(settings()).getByText(SRD_5_2_1_SOURCE.attribution)).toBeTruthy();
-    fireEvent.click(within(settings()).getByRole('button', { name: 'Remove attribution' }));
+    fireEvent.click(within(settings()).getByRole('button', { name: 'Remove attribution…' }));
     const dialog = screen.getByRole('dialog', { name: 'Remove attribution?' });
-    expect(within(dialog).getByText('The licence may require this credit wherever you share the template.')).toBeTruthy();
+    expect(within(dialog).getByText(/asks for this credit wherever you share the template/)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(session.template.source).toEqual(SRD_5_2_1_SOURCE);
-    fireEvent.click(within(settings()).getByRole('button', { name: 'Remove attribution' }));
+    fireEvent.click(within(settings()).getByRole('button', { name: 'Remove attribution…' }));
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove attribution?' })).getByRole('button', { name: 'Remove' }));
     expect(session.template).not.toHaveProperty('source');
     expect(session.steps).toBe(1);

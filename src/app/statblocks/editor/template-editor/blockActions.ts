@@ -7,7 +7,7 @@ import { removedMessage } from '../statblock-pane/announcements';
 import { blockSpec, createBlock, type AuthorableBlockType } from '../../model/blockCatalogue';
 import { recipeById, type RecipeId } from '../../model/blockRecipes';
 import { addField } from '../../model/fieldOps';
-import { fieldKeysOf } from '../../model/fieldKeys';
+import { fieldKeysOf, labelToKey } from '../../model/fieldKeys';
 import { blockIdSource, type BlockIdSource } from '../../model/templateIds';
 import { duplicateBlock, insertBlock, removeBlock } from '../../model/treeOps';
 import { putSideBySide, unwrap, wrapInSection } from '../../model/treeGrouping';
@@ -83,9 +83,35 @@ export function insertCatalogueBlock(session: EditorSession, type: AuthorableBlo
 
 /** A recipe's blocks and the fields they show (§7.5). */
 export function insertRecipe(session: EditorSession, id: RecipeId, place: InsertPlace): EditOutcome & { inserted?: string } {
-  const recipe = recipeById(id);
-  if (!recipe) return {};
-  return insertParts(session, place, (template, nextId) => recipe.create(nextId, template.fields), recipe.label);
+  return insertRecipes(session, [id], place);
+}
+
+/**
+ * Several recipes one after the other, as one step (a blank template's "Start
+ * like…"): each sees the properties the ones before it made, so they share them.
+ */
+export function insertRecipes(session: EditorSession, ids: readonly RecipeId[], place: InsertPlace, name?: string): EditOutcome & { inserted?: string } {
+  const recipes = ids.flatMap((id) => recipeById(id) ?? []);
+  if (recipes.length === 0) return {};
+  return insertParts(session, place, (template, nextId) => {
+    const parts: InsertParts = { blocks: [], fields: [] };
+    for (const recipe of recipes) {
+      const made = recipe.create(nextId, [...template.fields, ...parts.fields]);
+      parts.blocks.push(...made.blocks);
+      parts.fields.push(...made.fields);
+    }
+    return parts;
+  }, name ?? recipes[0]?.label);
+}
+
+/** A Stat showing a new property named `name` (the Add panel when nothing matched what was typed). */
+export function insertNamedStat(session: EditorSession, name: string, place: InsertPlace): EditOutcome & { inserted?: string } {
+  const label = name.trim();
+  if (!label) return {};
+  return insertParts(session, place, (template, nextId) => {
+    const key = labelToKey(label, fieldKeysOf(template.fields));
+    return { blocks: [createBlock('stat', nextId, key)], fields: [{ key, label, type: 'text' }] };
+  }, label);
 }
 
 /** Pastes copied blocks after the selection, with new ids and the fields the template lacks. */

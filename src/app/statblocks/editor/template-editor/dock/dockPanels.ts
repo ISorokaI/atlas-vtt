@@ -1,7 +1,7 @@
 import type React from 'react';
 import { LayoutTemplate, ListTree, Plus, TextCursorInput, type LucideIcon } from 'lucide-react';
 import { BlocksPalette } from '../BlocksPalette';
-import { FieldsList } from '../FieldsList';
+import { PropertiesPanel } from '../PropertiesPanel';
 import { TemplateSettings } from '../inspector/TemplateSettings';
 import { Outline } from '../Outline';
 import type { MenuDockEntry } from '../shell/capsuleMenu';
@@ -23,7 +23,7 @@ export interface DockPanelSpec {
 export const DOCK_PANELS: readonly DockPanelSpec[] = [
   { id: 'add', label: 'Add', icon: Plus, menuIcon: 'plus', digit: '1', Content: BlocksPalette },
   { id: 'structure', label: 'Structure', icon: ListTree, menuIcon: 'list-tree', digit: '2', Content: Outline },
-  { id: 'properties', label: 'Properties', icon: TextCursorInput, menuIcon: 'text-cursor-input', digit: '3', Content: FieldsList },
+  { id: 'properties', label: 'Properties', icon: TextCursorInput, menuIcon: 'text-cursor-input', digit: '3', Content: PropertiesPanel },
   { id: 'template', label: 'Template', icon: LayoutTemplate, menuIcon: 'layout-template', digit: '4', Content: TemplateSettings },
 ];
 
