@@ -62,3 +62,19 @@
     @include atlas-panel-inset-radius($spacing-s, bottom-left, bottom-right);
   }
 }
+
+// "New statblock…": the templates to start from, in Obsidian's own suggestion modal (§12.2).
+.atlas-vtt-plugin.atlas-sb-template-choice {
+  .atlas-sb-template-choice__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--size-4-3);
+  }
+
+  .atlas-sb-template-choice__detail {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    white-space: nowrap;
+  }
+}

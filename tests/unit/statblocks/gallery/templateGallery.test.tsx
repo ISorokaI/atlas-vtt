@@ -122,20 +122,20 @@ describe('the template gallery', () => {
   it('offers a role without a template of its own, starting on the one that uses the chosen card', async () => {
     const hag: StatblockRole = { id: 'hag', name: 'Hag', templateId: 'marsh-creature-k7m2qa' };
     open([MONSTER, hag]);
-    const useFor = screen.getByRole('combobox', { name: 'Use for' });
+    const useFor = screen.getByRole('combobox', { name: 'Starts new statblocks for' });
     expect(useFor.textContent).toBe('Monster');
     fireEvent.click(useFor);
-    expect(within(screen.getByRole('listbox', { name: 'Use for' })).getAllByRole('option').map((option) => option.textContent))
-      .toEqual(['No role', 'Monster']);
+    expect(within(screen.getByRole('listbox', { name: 'Starts new statblocks for' })).getAllByRole('option').map((option) => option.textContent))
+      .toEqual(['Nothing yet', 'Monster']);
     fireEvent.click(screen.getByRole('option', { name: 'Monster' }));
     await useTemplate();
     expect(onCreated.mock.calls[0]![1]).toBe('monster');
   });
 
-  it('gives the template to no role once "No role" is chosen', async () => {
+  it('gives the template to no role once "Nothing yet" is chosen', async () => {
     open();
-    fireEvent.click(screen.getByRole('combobox', { name: 'Use for' }));
-    fireEvent.click(screen.getByRole('option', { name: 'No role' }));
+    fireEvent.click(screen.getByRole('combobox', { name: 'Starts new statblocks for' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Nothing yet' }));
     await useTemplate();
     expect(onCreated.mock.calls[0]![1]).toBeNull();
   });

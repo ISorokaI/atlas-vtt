@@ -16,21 +16,31 @@ function nodesInWords(nodes: readonly PatternNode[], labelOf: LabelResolver | un
   }).join('').trim();
 }
 
-/** A pattern as a reader says it: fields by their labels, formulas written out ("floor((Dex - 10) / 2)"). */
+/** Whether a pattern reads a property or works something out, rather than being plain text ("—"). */
+function derives(nodes: readonly PatternNode[]): boolean {
+  return nodes.some((node) => node.kind === 'refs' || node.kind === 'formula' || (node.kind === 'optional' && derives(node.nodes)));
+}
+
+/**
+ * A fallback as a reader says it: properties by their labels, formulas
+ * written out ("floor((Dex - 10) / 2)"); null for plain text, which needs no
+ * saying, and for a pattern that does not parse.
+ */
 export function patternInWords(pattern: string, labelOf: LabelResolver | undefined): string | null {
   const ast = parsePatternCached(pattern);
-  if (isExpressionError(ast)) return null;
+  if (isExpressionError(ast) || !derives(ast.nodes)) return null;
   return nodesInWords(ast.nodes, labelOf) || null;
 }
 
 /**
- * The small ƒ after a value the template works out while its own field is
- * empty (§7.2); the tooltip says how. Typing a value of its own replaces it.
+ * A value the template works out while its own property is empty (§6.3): it
+ * looks as the card draws it, with no mark of its own; pointing at it says
+ * how it is worked out. Typing a value of its own replaces it.
  */
-export function DerivedMark({ words }: { words: string }): React.JSX.Element {
+export function DerivedValue({ words, children }: { words: string; children: React.ReactNode }): React.JSX.Element {
   return (
     <LabelTooltip label={`Worked out from ${words}`} multiline>
-      <span className="atlas-sb-pane-derived" role="img" tabIndex={0}>ƒ</span>
+      <span className="atlas-sb-pane-derived">{children}</span>
     </LabelTooltip>
   );
 }

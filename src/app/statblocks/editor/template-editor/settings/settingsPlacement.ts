@@ -1,7 +1,8 @@
 /**
  * Where the Settings panel stands (§2.7): over the note column, its right
  * edge `PANEL_GAP` left of the card, its top level with the selected block's,
- * kept inside the view. In a stacked view it hangs under the selected block.
+ * kept inside the view. In a stacked view it stands as a sheet at the view's
+ * foot, at most half its height, so the card stays in sight above it.
  * Pure; boxes are in the editor's own coordinates.
  */
 
@@ -40,9 +41,9 @@ export function placeSettings({ view, card, block, height, dockRight, width }: S
   const drawn = Math.min(height, maxHeight);
   const clampTop = (top: number): number => Math.max(view.top + PANEL_GAP, Math.min(top, view.bottom - PANEL_GAP - drawn));
   if (width === 'stacked') {
-    const anchor = block ?? card;
-    const left = Math.max(view.left + PANEL_GAP, Math.min(anchor.left, view.right - PANEL_GAP - SETTINGS_WIDTH));
-    return { left, top: clampTop(anchor.bottom + PANEL_GAP), maxHeight };
+    const half = Math.max(0, (view.bottom - view.top) / 2 - PANEL_GAP);
+    const left = Math.max(view.left + PANEL_GAP, Math.min((block ?? card).left, view.right - PANEL_GAP - SETTINGS_WIDTH));
+    return { left, top: view.bottom - PANEL_GAP - Math.min(height, half), maxHeight: half };
   }
   const left = Math.max(dockRight + PANEL_GAP, view.left + PANEL_GAP, card.left - PANEL_GAP - SETTINGS_WIDTH);
   return { left, top: clampTop((block ?? card).top), maxHeight };

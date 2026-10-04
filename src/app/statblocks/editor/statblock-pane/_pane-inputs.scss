@@ -121,15 +121,9 @@
     @include atlas-focus-ring;
   }
 
-  // A value the template works out while its own field is empty.
+  // A value the template works out while its own property is empty: drawn as the card draws it.
   .atlas-sb-pane-derived {
-    margin-inline-start: $spacing-xs;
-    color: var(--text-faint);
-    font-size: $font-ui-smaller;
-    font-style: italic;
-    font-weight: $font-weight-normal;
     cursor: help;
-    @include atlas-focus-ring;
   }
 
   // "Changed in the note: 14 → 18", Keep mine, Use the note's.

@@ -181,13 +181,14 @@ describe('the statblock pane over a native note', () => {
     ]);
   });
 
-  it('marks a value the template works out, and says how', async () => {
+  it('draws a value the template works out as the card draws it, and says how on hover', async () => {
     const { result } = await pane({ ...WARDEN, 'atlas-template': 'builtin:5e-2024-monster', stats: [10, 14, 12, 8, 10, 6] });
     const initiative = blockOf(result.container, 'b5init00');
     expect(initiative.textContent).toContain('+2 (12)');
-    const mark = within(initiative).getByRole('img', { name: /^Worked out from / });
-    expect(mark.textContent).toBe('ƒ');
+    expect(initiative.textContent).not.toContain('ƒ');
     expect(screen.getByText(/Worked out from .*Dex/, { selector: '[hidden]' })).toBeTruthy();
+    // A plain fallback ("None") needs no saying.
+    expect(blockOf(result.container, 'b5lang00').querySelector('.atlas-sb-pane-derived')).toBeNull();
   });
 
   it('says how to get a deleted entry back', async () => {

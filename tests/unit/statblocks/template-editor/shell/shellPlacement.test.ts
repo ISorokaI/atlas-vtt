@@ -49,11 +49,13 @@ describe('where the Settings panel stands', () => {
     expect(placeSettings({ view, card, block: null, height: 200, dockRight: 48, width: 'wide' }).top).toBe(card.top);
   });
 
-  it('never covers the dock, and hangs under the selected block in a stacked view', () => {
+  it('never covers the dock, and stands as a sheet at the foot of a stacked view, the card in sight above it', () => {
     const tight = placeSettings({ view: rect(0, 0, 800, 900), card: rect(300, 80, 780, 860), block: null, height: 100, dockRight: 48, width: 'medium' });
     expect(tight.left).toBe(48 + PANEL_GAP);
     const stacked = placeSettings({ view: rect(0, 0, 600, 900), card: rect(16, 80, 584, 500), block: rect(30, 120, 300, 150), height: 100, dockRight: 0, width: 'stacked' });
-    expect(stacked).toMatchObject({ left: 30, top: 150 + PANEL_GAP });
+    expect(stacked).toEqual({ left: 30, top: 900 - PANEL_GAP - 100, maxHeight: 450 - PANEL_GAP });
+    const tall = placeSettings({ view: rect(0, 0, 600, 900), card: rect(16, 80, 584, 500), block: null, height: 800, dockRight: 0, width: 'stacked' });
+    expect(tall.top).toBe(900 - PANEL_GAP - (450 - PANEL_GAP));
   });
 });
 

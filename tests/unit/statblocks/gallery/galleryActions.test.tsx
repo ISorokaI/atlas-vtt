@@ -114,7 +114,7 @@ describe('New statblock template…', () => {
     await act(async () => { await openTemplateGallery(vault.app); });
     expect(screen.getByRole('dialog', { name: 'New template' })).toBeTruthy();
     expect(screen.getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['5E (2024 rules)']);
-    expect(screen.getByRole('combobox', { name: 'Use for' }).textContent).toBe('Monster');
+    expect(screen.getByRole('combobox', { name: 'Starts new statblocks for' }).textContent).toBe('Monster');
     act(() => { screen.getByRole('button', { name: 'Cancel' }).click(); });
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New template' })).toBeNull());
     expect(document.querySelector('.atlas-te-gallery-host')).toBeNull();

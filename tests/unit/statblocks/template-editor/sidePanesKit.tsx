@@ -2,6 +2,7 @@ import React, { useState, useSyncExternalStore } from 'react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { vi } from 'vitest';
 import { TooltipProvider } from '../../../../src/app/packages/components/primitives/tooltip';
+import { SurfaceMenuProvider } from '../../../../src/app/statblocks/editor/interaction/SurfaceMenuProvider';
 import { TemplateEditorContext, type TemplateEditorContextValue } from '../../../../src/app/statblocks/editor/template-editor/editorContext';
 import type { BlockSelection } from '../../../../src/app/statblocks/editor/template-editor/selection';
 import { TemplateEditor, type TemplateEditorHost } from '../../../../src/app/statblocks/editor/template-editor/TemplateEditor';
@@ -16,21 +17,21 @@ export interface Mounted {
 }
 
 /** The template editor with its real dock, dock panels and Settings panel; `dock` opens one of its panels. */
-export function mountEditor(session = new FakeSession(sampleTemplate()), options: { dock?: string } = {}): Mounted {
-  render(
-    <TooltipProvider>
-      <div className="atlas-vtt-plugin">
-        <TemplateEditor
-          session={session}
-          host={host}
-          previewPath={null}
-          onShowWithChange={vi.fn()}
-          collectionId={null}
-          onCollectionChange={vi.fn()}
-        />
-      </div>
-    </TooltipProvider>,
+export function mountEditor(session = new FakeSession(sampleTemplate()), options: { dock?: string; menus?: boolean } = {}): Mounted {
+  const editor = (
+    <div className="atlas-vtt-plugin">
+      <TemplateEditor
+        session={session}
+        host={host}
+        previewPath={null}
+        onShowWithChange={vi.fn()}
+        collectionId={null}
+        onCollectionChange={vi.fn()}
+      />
+    </div>
   );
+  // Menus open through the surface's own provider, as in the view (StatblockEditorRoot).
+  render(<TooltipProvider>{options.menus ? <SurfaceMenuProvider ownerId="test">{editor}</SurfaceMenuProvider> : editor}</TooltipProvider>);
   if (options.dock) openDock(options.dock);
   const frame = (id: string): HTMLElement => {
     const element = document.querySelector<HTMLElement>(`.atlas-te-stage [data-block-id="${id}"]`);

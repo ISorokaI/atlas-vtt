@@ -6,7 +6,8 @@ import { TokenStatblockLinkService } from '../../../../src/app/services/TokenSta
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { frontmatterOfText, statblockSourceFromText } from '../../../../src/app/statblocks/notes/statblockSource';
 import { createStatblock, startStatblockCreation } from '../../../../src/app/statblocks/editor/create/createFlow';
-import { promptStatblockCreation } from '../../../../src/app/statblocks/editor/create/CreationPrompt';
+import { promptStatblockName } from '../../../../src/app/statblocks/editor/create/CreationPrompt';
+import { chooseTemplate } from '../../../../src/app/statblocks/editor/create/TemplateChoiceModal';
 import { openStatblockEditor } from '../../../../src/app/statblocks/editor/openStatblockEditor';
 import type { CollectionSettings } from '../../../../src/app/types/collectionSettingsTypes';
 import { noteHarness, type NoteHarness } from '../notes/noteHarness';
@@ -14,7 +15,8 @@ import { noteHarness, type NoteHarness } from '../notes/noteHarness';
 // The link service is tested on its own; its imports reach the canvas renderer.
 vi.mock('../../../../src/app/services/TokenStatblockLinkService', () => ({ TokenStatblockLinkService: { getInstance: vi.fn() } }));
 vi.mock('../../../../src/app/statblocks/editor/openStatblockEditor', () => ({ openStatblockEditor: vi.fn(async () => undefined) }));
-vi.mock('../../../../src/app/statblocks/editor/create/CreationPrompt', () => ({ promptStatblockCreation: vi.fn() }));
+vi.mock('../../../../src/app/statblocks/editor/create/CreationPrompt', () => ({ promptStatblockName: vi.fn() }));
+vi.mock('../../../../src/app/statblocks/editor/create/TemplateChoiceModal', () => ({ chooseTemplate: vi.fn() }));
 
 const MARSH: CollectionSettings = {
   conditions: [],
@@ -54,7 +56,8 @@ afterEach(() => {
   TemplateLibrary.release(harness.app as unknown as App);
   vi.restoreAllMocks();
   vi.mocked(openStatblockEditor).mockClear();
-  vi.mocked(promptStatblockCreation).mockReset();
+  vi.mocked(promptStatblockName).mockReset();
+  vi.mocked(chooseTemplate).mockReset();
 });
 
 const app = (): App => harness.app as unknown as App;
@@ -118,26 +121,36 @@ describe('creating a statblock for a token', () => {
   });
 });
 
-describe('creating a statblock from a command or the file menu', () => {
-  it('offers the collection when the entry point named none, and creates in the folder picked', async () => {
-    vi.mocked(promptStatblockCreation).mockResolvedValue({ roleId: 'monster', collectionId: 'marsh', name: 'Bog Hag' });
-    const path = await startStatblockCreation(app(), { collectionId: null, folder: 'World/Swamp', from: 'command' });
+describe('creating a statblock from a command or the file menu (spec §12.2)', () => {
+  it('offers the collection\'s kinds of statblock, then its templates, and creates in the role\'s folder', async () => {
+    vi.mocked(chooseTemplate).mockImplementation(async (_app, offers) => offers.find((offer) => offer.roleId === 'monster') ?? null);
+    vi.mocked(promptStatblockName).mockResolvedValue('Bog Hag');
+    const path = await startStatblockCreation(app(), { collectionId: 'marsh', from: 'command' });
 
-    expect(vi.mocked(promptStatblockCreation).mock.calls[0]![0]).toEqual(expect.objectContaining({
-      collectionId: 'default', offersCollection: true, collections: [{ id: 'default', name: 'Default' }, { id: 'marsh', name: 'Marsh campaign' }],
-    }));
-    expect(path).toBe('World/Swamp/Bog Hag.md');
+    const offers = vi.mocked(chooseTemplate).mock.calls[0]![1];
+    expect(offers.slice(0, 3).map((offer) => [offer.label, offer.detail])).toEqual([['Monster', 'Creature'], ['Beast', 'Creature'], ['NPC', 'NPC']]);
+    expect(offers.some((offer) => offer.label === '5E (2014 rules)' && offer.detail === 'Built in')).toBe(true);
+    expect(path).toBe('Bestiary/Bog Hag.md');
     expect(frontmatterOfText(harness.files.get(path!)!)).toEqual({ statblock: true, 'atlas-template': 'builtin:generic-creature', name: 'Bog Hag' });
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: path, collectionId: 'marsh', from: 'command', focusFirstEmpty: true });
   });
 
-  it('keeps a named collection without offering another, and makes nothing when the user backs out', async () => {
-    vi.mocked(promptStatblockCreation).mockResolvedValue(null);
-    expect(await startStatblockCreation(app(), { collectionId: 'marsh', from: 'command' })).toBeNull();
+  it('offers the template being edited first, and creates in the folder picked', async () => {
+    vi.mocked(chooseTemplate).mockImplementation(async (_app, offers) => offers[0] ?? null);
+    vi.mocked(promptStatblockName).mockResolvedValue('Mayor');
+    const path = await startStatblockCreation(app(), { collectionId: null, folder: 'World/Swamp', templateId: 'builtin:5e-2014-monster', from: 'command' });
 
-    expect(vi.mocked(promptStatblockCreation).mock.calls[0]![0]).toEqual(expect.objectContaining({ collectionId: 'marsh', offersCollection: false }));
-    const roles = vi.mocked(promptStatblockCreation).mock.calls[0]![0].choicesOf('marsh').map((choice) => choice.name);
-    expect(roles).toEqual(['Monster', 'Beast', 'NPC']);
+    expect(vi.mocked(chooseTemplate).mock.calls[0]![1][0]).toEqual({ templateId: 'builtin:5e-2014-monster', label: '5E (2014 rules)', detail: 'The template you are editing' });
+    expect(path).toBe('World/Swamp/Mayor.md');
+    expect(frontmatterOfText(harness.files.get(path!)!)?.['atlas-template']).toBe('builtin:5e-2014-monster');
+  });
+
+  it('makes nothing when the user backs out of the template or the name', async () => {
+    vi.mocked(chooseTemplate).mockResolvedValue(null);
+    expect(await startStatblockCreation(app(), { collectionId: 'marsh', from: 'command' })).toBeNull();
+    vi.mocked(chooseTemplate).mockImplementation(async (_app, offers) => offers[0] ?? null);
+    vi.mocked(promptStatblockName).mockResolvedValue(null);
+    expect(await startStatblockCreation(app(), { collectionId: 'marsh', from: 'command' })).toBeNull();
     expect(harness.files.size).toBe(0);
   });
 });

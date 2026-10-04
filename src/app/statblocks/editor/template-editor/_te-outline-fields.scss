@@ -80,6 +80,19 @@ $outline-indent: $spacing-m;
   }
 
   // ── Fields ──────────────────────────────────────────────────────────────
+  // Settings past the basics a block uses: small glyphs at the row's end.
+  .atlas-te-outline__badges {
+    @include atlas-flex-row(2px);
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    color: var(--text-faint);
+  }
+
+  .atlas-te-outline__badge {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
   .atlas-te-fields,
   .atlas-te-fields__list {
     @include atlas-flex-col($pane-space);

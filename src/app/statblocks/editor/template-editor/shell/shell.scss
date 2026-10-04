@@ -9,6 +9,8 @@
 @use '../../../../../../styles/mixins' as *;
 @use '../../panel-frame/panel-row' as *;
 
+// The dock's width (32 px buttons, $spacing-xs inside its border) and the room on both sides of it.
+$dock-clearance: calc(32px + 2 * #{$spacing-xs} + 2 * #{$border-width-s} + 2 * #{$spacing-s});
 // The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
 $row-height: 28px;
 $menu-inset: $spacing-xs;
@@ -45,18 +47,24 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     }
   }
 
+  // The dock floats at the column's left edge (§2.5): the note's text starts
+  // past it, so no letter of the title or the body sits under the dock.
+  .atlas-te:not([data-width='stacked']) .atlas-te-note__reader > .markdown-preview-view {
+    padding-inline-start: max(var(--file-margins, 0px), #{$dock-clearance});
+  }
+
   // What the note view draws in place of the note's own statblock fence.
   .atlas-te-fence-stub {
     color: var(--text-faint);
     font-size: $font-ui-smaller;
   }
 
-  // "Read-only preview of Aboleth · Open note": at the column's top, on hover or for a moment after a click.
+  // "Read-only preview of Aboleth · Open note": at the column's foot, never over its title, on hover or for a moment after a click.
   .atlas-te-note-chip {
     @include atlas-elevated-surface;
     @include atlas-flex-row($spacing-s);
     position: absolute;
-    top: $spacing-s;
+    bottom: $spacing-l;
     left: 50%;
     z-index: 2;
     padding: $spacing-xs;
@@ -66,7 +74,7 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-50%) translateY(-4px);
+    transform: translateX(-50%) translateY(4px);
     transition: opacity $transition-fast $transition-ease-out, transform $transition-fast $transition-ease-out;
 
     // The text stands off the capsule's round end as far as the button's label does.

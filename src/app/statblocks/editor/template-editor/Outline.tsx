@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CornerDownLeft, EyeOff, SquareFunction } from 'lucide-react';
 import { Platform } from 'obsidian';
 import { blockSpec } from '../../model/blockCatalogue';
+import type { TemplateBlock } from '../../model/templateTypes';
 import { blockName } from './blockNames';
 import { useTemplateEditor } from './editorContext';
 import { blockGlyph } from './editorGlyphs';
+import { settingBadges, type SettingBadge } from './inspector/groupSummaries';
 import type { ChromeStyle } from './LabelEditor';
 import { keyCommand, type KeyCommand } from './keyCommands';
 import { containersAround, outlineRows, outlineStep, type OutlineMove, type OutlineRow } from './outlineRows';
@@ -114,6 +116,26 @@ export function Outline(): React.JSX.Element {
   );
 }
 
+const BADGES: Readonly<Record<SettingBadge, { Glyph: typeof EyeOff; words: string }>> = {
+  condition: { Glyph: EyeOff, words: 'Shown only when another property says so' },
+  'write-as': { Glyph: SquareFunction, words: 'Writes its value its own way' },
+  fallback: { Glyph: CornerDownLeft, words: 'Shows a text when empty' },
+};
+
+/** The settings past the basics a block uses, as small glyphs at the row's end, so conditional and worked-out blocks show in the tree. */
+function SettingBadges({ block }: { block: TemplateBlock }): React.JSX.Element | null {
+  const badges = settingBadges(block);
+  if (badges.length === 0) return null;
+  return (
+    <span className="atlas-te-outline__badges" aria-label={badges.map((badge) => BADGES[badge].words).join(', ')}>
+      {badges.map((badge) => {
+        const { Glyph } = BADGES[badge];
+        return <Glyph key={badge} className="atlas-te-outline__badge" aria-hidden="true" />;
+      })}
+    </span>
+  );
+}
+
 interface OutlineItemProps {
   row: OutlineRow;
   name: string;
@@ -157,6 +179,7 @@ function OutlineItem({ row, name, selected, focusable, onSelect, onFold }: Outli
       <Glyph className="atlas-te-outline__glyph" aria-hidden="true" />
       <span className="atlas-te-outline__name">{name}</span>
       {name !== type && <span className="atlas-te-outline__type">{type}</span>}
+      <SettingBadges block={row.block} />
     </div>
   );
 }

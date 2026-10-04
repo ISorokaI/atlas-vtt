@@ -16,7 +16,8 @@ export type CardLook = { kind: 'template'; template: StatblockTemplate; values?:
 function CardRender({ app, look, name }: { app: App; look: CardLook; name: string }): React.JSX.Element {
   const template = look.kind === 'template' ? look.template : null;
   const values = look.kind === 'template' ? look.values : undefined;
-  const record = useMemo(() => values ?? (template ? sampleRecord(template) : {}), [values, template]);
+  // A template's card is titled with the template's own name, so cards tell apart at a glance.
+  const record = useMemo(() => values ?? (template ? { ...sampleRecord(template), name } : {}), [values, template, name]);
   if (!template) {
     return (
       <div className="atlas-te-gallery-card__ghost">

@@ -56,3 +56,14 @@ export function themesSummary(block: TemplateBlock): string {
 export function moreOptionsInUse(block: TemplateBlock): boolean {
   return Boolean(block.showWhen || block.className || block.whenEmpty === 'fallback' || ('pattern' in block && block.pattern) || (block.type === 'stat' && block.rollFrom));
 }
+
+/** What Structure badges a block with (spec §10.7): the settings past the basics it uses, each a glyph and its words. */
+export type SettingBadge = 'condition' | 'write-as' | 'fallback';
+
+export function settingBadges(block: TemplateBlock): SettingBadge[] {
+  const badges: SettingBadge[] = [];
+  if (block.showWhen) badges.push('condition');
+  if ('pattern' in block && typeof block.pattern === 'string' && block.pattern.trim()) badges.push('write-as');
+  if (block.whenEmpty === 'fallback') badges.push('fallback');
+  return badges;
+}

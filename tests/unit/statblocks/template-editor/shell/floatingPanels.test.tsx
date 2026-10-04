@@ -49,7 +49,7 @@ describe('the template editor as the note view', () => {
   it('keeps a pinned panel through Escape and a press outside', () => {
     mountEditor();
     const panel = openDock('Template');
-    act(() => within(panel).getByRole('button', { name: 'Pin' }).click());
+    act(() => within(panel).getByRole('button', { name: 'Pin open' }).click());
     fireEvent.keyDown(root(), { key: 'Escape' });
     fireEvent.pointerDown(document.body);
     expect(screen.getByRole('dialog', { name: 'Template' })).toBeTruthy();

@@ -34,11 +34,3 @@ export function roleChoicesOf(roles: readonly StatblockRole[], templates: Templa
     return { roleId: role.id, name: role.name, templateName: shown?.name ?? '' };
   });
 }
-
-/**
- * Whether the role menu opens: with one role it is skipped (§7.3), unless the
- * menu also offers the collection, which is then still a choice to make.
- */
-export function needsRoleMenu(choices: readonly RoleChoice[], offersCollection: boolean): boolean {
-  return choices.length !== 1 || offersCollection;
-}

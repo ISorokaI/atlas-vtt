@@ -1,6 +1,6 @@
 import React, { forwardRef, useRef } from 'react';
 import { motion, useReducedMotion, type MotionStyle, type Variants } from 'framer-motion';
-import { Pin, PinOff } from 'lucide-react';
+import { Pin } from 'lucide-react';
 import { handledByAnotherControl } from '../../../../keyboard/tooltipEscape';
 import { CloseButton } from '../../../../packages/components/primitives/CloseButton';
 import { ToolButton } from '../../../../packages/components/primitives/ToolButton';
@@ -58,7 +58,10 @@ export const FloatingPanel = forwardRef<HTMLDivElement, FloatingPanelProps>((pro
 
   const controls = (
     <span className="atlas-te-floating__controls">
-      <ToolButton icon={pinned ? PinOff : Pin} label={pinned ? 'Unpin' : 'Pin'} isActive={pinned} onClick={() => onPinnedChange(!pinned)} />
+      {/* The pin shows its state, filled while pinned; its tooltip says what a click does. */}
+      <span className="atlas-te-floating__pin" data-pinned={pinned || undefined}>
+        <ToolButton icon={Pin} label={pinned ? 'Pinned · Click to unpin' : 'Pin open'} isActive={pinned} onClick={() => onPinnedChange(!pinned)} />
+      </span>
       <CloseButton onClick={onClose} />
     </span>
   );

@@ -5,7 +5,6 @@ import { renderEntries, type ContextMenuEntry } from '../../../react/components/
 import { Button } from '../../../packages/components/primitives/button';
 import { useExclusiveDropdown } from '../../../packages/components/primitives/useExclusiveDropdown';
 import { cn } from '../../../../utils/cn';
-import type { CollectionChoice } from '../collectionContext';
 import type { RoleChoice } from './roleChoices';
 import './create-statblock.scss';
 
@@ -37,74 +36,6 @@ export function createStatblockMenuEntry(choices: readonly RoleChoice[], onChoos
 }
 
 /** The menu's collection, at its top: switching it lists the roles of the collection chosen, and the menu stays open. */
-function collectionEntry(collections: readonly CollectionChoice[], collectionId: string, onChange: (id: string) => void): ContextMenuEntry {
-  const current = collections.find((collection) => collection.id === collectionId);
-  return {
-    type: 'submenu',
-    label: current?.name ?? 'Collection',
-    icon: 'library',
-    children: collections.map((collection): ContextMenuEntry => ({
-      type: 'item',
-      label: collection.name,
-      checked: collection.id === collectionId,
-      keepOpen: true,
-      onClick: () => onChange(collection.id),
-    })),
-  };
-}
-
-export interface FloatingRoleMenuProps {
-  /** The document the menu shows in: the window the command was given in. */
-  doc: Document;
-  /** Where the menu hangs from, in the window's coordinates. */
-  at: { x: number; y: number };
-  collections: readonly CollectionChoice[];
-  /** The collection whose roles are listed first. */
-  collectionId: string;
-  /** Whether the collection can be switched at the menu's top: the entry point named none, and there are several. */
-  offersCollection: boolean;
-  choicesOf: (collectionId: string) => readonly RoleChoice[];
-  onChoose: (roleId: string, collectionId: string) => void;
-  /** Closed without a choice: Escape, a click elsewhere. */
-  onDismiss: () => void;
-}
-
-/**
- * A role menu without a control to open from (commands, the file menu): it
- * opens at a point of the window, and closing it without a choice ends the
- * creation.
- */
-export function FloatingRoleMenu(props: FloatingRoleMenuProps): React.JSX.Element {
-  const { doc, at, collections, offersCollection, choicesOf, onChoose, onDismiss } = props;
-  const [collectionId, setCollectionId] = useState(props.collectionId);
-  const entries = [
-    ...(offersCollection ? [collectionEntry(collections, collectionId, setCollectionId)] : []),
-    ...roleMenuEntries(choicesOf(collectionId), (roleId) => onChoose(roleId, collectionId)),
-  ];
-  return (
-    <DropdownMenu.Root open onOpenChange={(open) => { if (!open) onDismiss(); }}>
-      <DropdownMenu.Trigger asChild>
-        {/* The menu takes its name from its trigger, which has nothing else to name it with. */}
-        <div className="atlas-sb-create-anchor" aria-label="Choose a role" style={{ left: at.x, top: at.y }} />
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal container={doc.body}>
-        <DropdownMenu.Content
-          className="atlas-ctx-menu"
-          side="bottom"
-          align="center"
-          collisionPadding={8}
-          // The flow decides where focus goes: into the name popover, or back where it was.
-          onCloseAutoFocus={(event) => event.preventDefault()}
-          onEscapeKeyDown={(event) => event.stopPropagation()}
-        >
-          {/* A chosen role closes the menu through Radix, which the flow reads as the choice it already has. */}
-          {renderEntries(entries, () => undefined)}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
-  );
-}
-
 export interface NewStatblockButtonProps {
   choices: readonly RoleChoice[];
   onChoose: (roleId: string) => void;

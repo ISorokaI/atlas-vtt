@@ -120,9 +120,9 @@ $chrome-offset: 4px;
     border-radius: $radius-s;
   }
 
-  // The ability being dragged stays in its place, dimmed; the others slide aside.
+  // The ability being dragged leaves an empty place of its own height; the others slide aside into it, never over its text.
   .atlas-statblock [data-sb-dragging] {
-    opacity: 0.35;
+    opacity: 0;
   }
 
   .atlas-statblock [data-sb-shift] {
@@ -147,21 +147,28 @@ $chrome-offset: 4px;
   z-index: var(--layer-dragged-item, #{$z-atlas-modal});
   pointer-events: none;
 
-  .atlas-list-drag-ghost {
+  // The copy: the ability's own width and text, on a raised surface just around it.
+  // The card's and the theme's padding and borders on `.atlas-statblock` never reach it.
+  .atlas-statblock.atlas-sb-sheet.atlas-list-drag-ghost {
     @include atlas-elevated-surface;
     position: absolute;
     top: 0;
     left: 0;
     box-sizing: border-box;
     margin: 0;
-    padding: 0;
+    padding: calc(var(--atlas-list-ghost-inset) - #{$border-width-m});
     border-radius: $radius-l;
+    background: var(--background-primary);
     box-shadow: $shadow-elevated;
-    opacity: 0.95;
+    transition: scale $transition-fast $transition-ease-out;
 
     &[data-lifted] {
       scale: 1.02;
-      transform-origin: top left;
+      transform-origin: center;
+    }
+
+    > * {
+      margin: 0;
     }
   }
 

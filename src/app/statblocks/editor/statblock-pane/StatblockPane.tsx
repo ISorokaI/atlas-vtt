@@ -112,7 +112,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     const hint = writable && settings && !statblockPaneSettings(settings).hintDismissed;
     return (
       <>
-        {hint && <p className="atlas-sb-pane-hint-line">Click a value to change it. Tab moves to the next.</p>}
+        {hint && <p className="atlas-sb-pane-hint-line">Click a value to fill it in. Point at a part for its options.</p>}
         {bars}
         <PaneCanvas
           // One editing session per note: what was typed for a note is written to that note, never the next one.

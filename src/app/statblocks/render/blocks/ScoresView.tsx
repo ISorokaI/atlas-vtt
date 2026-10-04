@@ -72,8 +72,22 @@ function ScoreGroup({ slots, columns }: { slots: readonly ScoreSlot[]; columns: 
   );
 }
 
+const BLANK: ShownText = { text: '–', problems: [] };
+
+/**
+ * The grid of an empty score table while a statblock is filled in: its
+ * labels over blank cells, so the card keeps its shape and says what goes
+ * where (STR DEX CON…); a click on it types the scores.
+ */
+function blankSlots(block: ScoresBlock, labels: readonly string[]): ScoreSlot[] {
+  const columns = (block.columns ?? []).map(() => BLANK);
+  return labels.map((label) => ({ label, score: BLANK, columns }));
+}
+
 function ScoresContent({ block, display }: BlockViewProps<ScoresBlock>): React.JSX.Element {
   const { state } = useSheet();
+  const labels = state.fields.get(block.field)?.slots ?? [];
+  if (display.state === 'prompt' && labels.length > 0) return <ScoresGrid block={block} slots={blankSlots(block, labels)} />;
   if (display.state !== 'value') return <StandIn display={display} />;
   // A value that holds no scores (its field's type changed) shows as it is written.
   const field = state.fields.get(block.field);
@@ -82,9 +96,13 @@ function ScoresContent({ block, display }: BlockViewProps<ScoresBlock>): React.J
 
   const slots = scoreSlots(block, state);
   if (!slots.length) return <></>;
+  return <ScoresGrid block={block} slots={slots} />;
+}
+
+/** The slots as a row of labelled values, or a table of up to `perLine` groups side by side. */
+function ScoresGrid({ block, slots }: { block: ScoresBlock; slots: readonly ScoreSlot[] }): React.JSX.Element {
   const columns = block.columns ?? [];
   if (block.orientation === 'row') return <ScoresRow slots={slots} columns={columns} />;
-
   const style: GridStyle = { '--atlas-sb-score-columns': columns.length };
   return (
     <div className="atlas-sb-scores atlas-sb-scores--table" style={style}>

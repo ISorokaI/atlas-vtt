@@ -16,6 +16,8 @@ import type { Shift } from './siblingShifts';
 export const LIST_DRAGGING_ATTRIBUTE = 'data-sb-dragging';
 /** Marks an ability that slides aside; its stylesheet animates the transform. */
 export const LIST_SHIFT_ATTRIBUTE = 'data-sb-shift';
+/** How far the copy's surface stands out around the ability's text, so the text in it lies exactly where the ability's lies. */
+export const GHOST_INSET = 6;
 
 export interface ListDragFrame {
   /** The copy's top-left, and the fragment it is held in. */
@@ -79,15 +81,17 @@ export class ListDragView {
     const template = sheet?.getAttribute('data-template');
     if (template) this.ghost.setAttribute('data-template', template);
     if (!prefersReducedMotion(source)) this.ghost.setAttribute('data-lifted', '');
-    this.ghost.style.width = `${box.width}px`;
+    this.ghost.style.width = `${box.width + 2 * GHOST_INSET}px`;
+    this.ghost.style.setProperty('--atlas-list-ghost-inset', `${GHOST_INSET}px`);
     this.ghost.append(copyOf(source));
     source.setAttribute(LIST_DRAGGING_ATTRIBUTE, '');
   }
 
   show(frame: ListDragFrame): void {
+    // Held in its list: only its height moves, its left edge stays on the list's.
     const { bounds } = frame.ghost;
     const top = Math.min(Math.max(frame.ghost.top, bounds.top), Math.max(bounds.top, bounds.bottom - this.height));
-    this.ghost.style.transform = `translate3d(${frame.ghost.left}px, ${top}px, 0)`;
+    this.ghost.style.transform = `translate3d(${frame.ghost.left - GHOST_INSET}px, ${top - GHOST_INSET}px, 0)`;
     frame.fragments.forEach((fragment, index) => {
       const bound = this.bounds[index];
       if (bound) place(bound, fragment);

@@ -2,6 +2,7 @@ import React, { useId, useMemo, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { Skeleton, SkeletonGroup } from '../../../packages/components/primitives/Skeleton';
+import { tokenDetails } from './tokenDetails';
 import type { CardToken } from './useNoteTokens';
 
 const PLACEHOLDERS = 8;
@@ -56,6 +57,7 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, sea
     const wanted = query.trim().toLowerCase();
     return wanted ? tokens.filter((token) => token.name.toLowerCase().includes(wanted)) : tokens;
   }, [tokens, query]);
+  const details = useMemo(() => tokenDetails(tokens), [tokens]);
   const focusable = Math.min(active, Math.max(0, shown.length - 1));
 
   const buttons = (): HTMLElement[] => [...gridRef.current?.querySelectorAll<HTMLElement>('.atlas-sb-token-choice') ?? []];
@@ -134,6 +136,7 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, sea
                 {linked && <Check className="atlas-sb-token-choice__tick" aria-hidden="true" />}
               </span>
               <span className="atlas-sb-token-choice__name">{token.name}</span>
+              {details.get(token.id) && <span className="atlas-sb-token-choice__detail">{details.get(token.id)}</span>}
               {linked && <span className="atlas-sb-token-panel__hidden">, linked</span>}
             </button>
           );

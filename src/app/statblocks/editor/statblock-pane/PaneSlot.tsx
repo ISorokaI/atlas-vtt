@@ -3,7 +3,7 @@ import type { TemplateBlock, TemplateField } from '../../model/templateTypes';
 import { blockDisplay } from '../../render/blockDisplay';
 import { ChoiceValueInput } from './ChoiceValueInput';
 import { ConflictChip } from './ConflictChip';
-import { DerivedMark, patternInWords } from './DerivedMark';
+import { DerivedValue, patternInWords } from './DerivedValue';
 import { entryList, shownEntryIndexes } from './entryPatches';
 import { EntryInlineEditor } from './EntryInlineEditor';
 import { focusStaysIn } from './focusWithin';
@@ -83,8 +83,8 @@ function PaneSlot({ block, values }: { block: TemplateBlock; values: React.React
   if (editing && block.type !== 'entries') return <BlockEditor block={block} fields={fields} target={editing} values={values} />;
   const shown = editing ? <BlockEditor block={block} fields={fields} target={editing} values={values} /> : values;
   const words = editing ? null : derivedWords(block, pane);
-  if (words) marks.push(<DerivedMark key="derived" words={words} />);
-  return marks.length ? <>{shown}{marks}</> : shown;
+  const drawn = words ? <DerivedValue words={words}>{shown}</DerivedValue> : shown;
+  return marks.length ? <>{drawn}{marks}</> : drawn;
 }
 
 /** The pane's `ValueEditing.slot`: one element type, so a block's values keep their place in the tree. */

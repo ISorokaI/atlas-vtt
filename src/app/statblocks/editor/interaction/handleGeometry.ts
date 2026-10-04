@@ -54,11 +54,17 @@ export function gutterOf(columns: readonly Column[], index: number, cardLeft: nu
   return { left: before ? before.right : cardLeft, right: column.left };
 }
 
+/** How far a turned handle may reach above the card's top edge into nothing: it stays within the card's padding. */
+const ABOVE_CARD = 4;
+
 /**
  * The handle of a target whose box is `target` and whose first line spans
- * `firstLine` (top and bottom). `cardLeft` is the card's outer left edge.
+ * `firstLine` (top and bottom). `cardLeft` is the card's outer left edge,
+ * `cardTop` its top edge: a turned handle never hangs above it.
  */
-export function placeHandle(target: Box, firstLine: { top: number; bottom: number }, columns: readonly Column[], cardLeft: number): HandlePlacement {
+export function placeHandle(
+  target: Box, firstLine: { top: number; bottom: number }, columns: readonly Column[], cardLeft: number, cardTop = -Infinity,
+): HandlePlacement {
   const y = (firstLine.top + firstLine.bottom) / 2;
   // The column the target stands in: the last one starting at or before it.
   let index = -1;
@@ -67,7 +73,8 @@ export function placeHandle(target: Box, firstLine: { top: number; bottom: numbe
   });
   const column = columns[index];
   if (!column || target.left - column.left > SNAP) {
-    return { x: target.left + HANDLE_SIZE / 2, y: target.top - HANDLE_SIZE / 2, orientation: 'horizontal' };
+    const y = Math.max(target.top - HANDLE_SIZE / 2, cardTop + HANDLE_SIZE / 2 - ABOVE_CARD);
+    return { x: target.left + HANDLE_SIZE / 2, y, orientation: 'horizontal' };
   }
   const gutter = gutterOf(columns, index, cardLeft);
   return { x: (gutter.left + gutter.right) / 2, y, orientation: 'vertical' };

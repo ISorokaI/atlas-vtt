@@ -175,4 +175,10 @@ $settings-width: 300px;
     overflow-y: auto;
     @include atlas-scrollbar;
   }
+
+  // A pinned panel's pin is filled in the accent; an open one is an outline.
+  .atlas-te-floating__pin[data-pinned] svg {
+    fill: currentColor;
+    color: var(--interactive-accent);
+  }
 }

@@ -77,3 +77,15 @@ describe('the blank template', () => {
     expect(firstBlockId(MARSH_CREATURE)).toBe(MARSH_CREATURE.layout.blocks[0]!.id);
   });
 });
+
+describe('built-ins a collection names', () => {
+  it('lists the templates of the game a collection is named for (spec E2)', async () => {
+    const { builtInsNamedBy } = await import('../../../../src/app/statblocks/editor/gallery/gallerySources');
+    const { builtInEntry } = await import('../../../../src/app/statblocks/library/templateFiles');
+    const { BUILT_IN_TEMPLATES } = await import('../../../../src/app/statblocks/presets');
+    const builtIns = BUILT_IN_TEMPLATES.map(builtInEntry);
+    expect(builtInsNamedBy('5e', builtIns).sort()).toEqual(['builtin:5e-2014-monster', 'builtin:5e-2024-monster']);
+    expect(builtInsNamedBy('Cairn campaign', builtIns)).toEqual(['builtin:cairn-creature']);
+    expect(builtInsNamedBy('Daggerheart', builtIns)).toEqual([]);
+  });
+});

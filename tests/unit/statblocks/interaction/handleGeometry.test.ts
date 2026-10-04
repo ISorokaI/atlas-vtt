@@ -27,4 +27,10 @@ describe('where a handle stands (spec §3.3)', () => {
       x: 170 + HANDLE_SIZE / 2, y: 60 - HANDLE_SIZE / 2, orientation: 'horizontal',
     });
   });
+
+  it('never hangs a turned handle above the card: a picture at the card\'s top keeps it in the padding', () => {
+    const placed = placeHandle(box(170, 16, 316, 90), { top: 16, bottom: 36 }, columns, 0, 0);
+    expect(placed.orientation).toBe('horizontal');
+    expect(placed.y - HANDLE_SIZE / 2).toBeGreaterThanOrEqual(-4);
+  });
 });

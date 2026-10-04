@@ -41,6 +41,22 @@ export function systemTemplateIds(roles: readonly StatblockRole[] | undefined): 
   return [...new Set((roles ?? []).map((role) => role.templateId))];
 }
 
+const words = (text: string): string[] => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+/**
+ * The built-ins a collection's name names ("5e" names both 5E templates,
+ * "Cairn" the Cairn one), listed first under "This system": a collection
+ * named for its game finds that game's templates though it keeps another
+ * system's rules.
+ */
+export function builtInsNamedBy(collectionName: string, builtIns: readonly LibraryTemplate[]): TemplateId[] {
+  const named = new Set(words(collectionName));
+  return builtIns.filter((entry) => {
+    const [first] = words(entry.name);
+    return first !== undefined && named.has(first);
+  }).map((entry) => entry.template.id);
+}
+
 type Lookup = (id: TemplateId) => LibraryTemplate | null;
 
 /** The templates a source shows as cards; none for the sources that are no list of templates. */

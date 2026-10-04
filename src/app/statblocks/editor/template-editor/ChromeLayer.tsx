@@ -5,6 +5,7 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { observeResize } from '../../../utils/observeResize';
 import { findBlock } from '../../model/treeQueries';
 import { isContainerBlock, type StatblockTemplate } from '../../model/templateTypes';
+import { hoverStoreOf } from '../interaction/hoverStore';
 import { containerTag } from './blockNames';
 import { boxIn, type CanvasGap } from './canvasGaps';
 import { blockFrame } from './editorChrome';
@@ -130,6 +131,11 @@ export function ChromeLayer(props: ChromeLayerProps): React.JSX.Element {
             style={boxStyle(box)}
             data-selected={selection.includes(id) || undefined}
             onClick={() => onSelect(id)}
+            // A container's blocks cover it: pointing at its tag points at the container, whose handle then shows (§3.1).
+            onPointerEnter={() => {
+              const frame = stage ? blockFrame(stage, id) : null;
+              if (stage && frame) hoverStoreOf(stage).set({ kind: 'block', element: frame, blockId: id });
+            }}
           >
             {containerTag(block, template.fields)}
           </button>

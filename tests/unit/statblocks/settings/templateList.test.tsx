@@ -125,7 +125,7 @@ describe('the Statblocks tab\'s templates', () => {
     open();
     fireEvent.click(screen.getByRole('button', { name: 'New template' }));
     const gallery = screen.getByRole('dialog', { name: 'New template' });
-    expect(within(gallery).getByRole('combobox', { name: 'Use for' }).textContent).toBe('Monster');
+    expect(within(gallery).getByRole('combobox', { name: 'Starts new statblocks for' }).textContent).toBe('Monster');
     await act(async () => { fireEvent.click(within(gallery).getByRole('button', { name: 'Use template' })); });
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New template' })).toBeNull());
     const monster = latest?.find((role) => role.id === 'monster');

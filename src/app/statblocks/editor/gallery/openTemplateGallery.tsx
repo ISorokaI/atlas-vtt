@@ -13,7 +13,8 @@ import { systemPresetsOf } from '../../../services/mapCollectionRules';
 import { collectionStatblockRoles } from '../../roles/collectionStatblockRoles';
 import { showHostedDialog } from '../hostedDialog';
 import { openCreatedTemplate } from './galleryActions';
-import { systemTemplateIds } from './gallerySources';
+import { TemplateLibrary } from '../../library/TemplateLibrary';
+import { builtInsNamedBy, systemTemplateIds } from './gallerySources';
 import { TemplateGallery, type TemplateGalleryProps } from './TemplateGallery';
 
 type HostedGallery = Omit<TemplateGalleryProps, 'onClose'>;
@@ -32,11 +33,13 @@ export async function openTemplateGallery(app: App, collectionId: string | null 
   const settings = assets.getCollectionSettings(id);
   const presets = systemPresetsOf(app);
   const system = presets.find((preset) => preset.id === settings.systemPresetId)?.rules.statblockRoles;
+  const name = known.find((collection) => collection.id === id)?.name ?? id;
+  const builtIns = TemplateLibrary.forApp(app).list().filter((entry) => entry.builtIn);
   showTemplateGallery({
     app,
     doc: activeDocument,
     roles: collectionStatblockRoles(settings, presets),
-    systemTemplateIds: systemTemplateIds(system),
+    systemTemplateIds: [...new Set([...builtInsNamedBy(name, builtIns), ...systemTemplateIds(system)])],
     onCreated: (created, roleId) => openCreatedTemplate(app, created, id, roleId),
   });
 }

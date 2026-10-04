@@ -37,6 +37,6 @@ export function measureHandle(element: HTMLElement): HandlePlacement | null {
   const tops = flow ? [...flow.children].filter((child) => child.hasAttribute('data-block-id')) : [];
   const columns = columnsOf(tops.flatMap((frame) => [...frame.getClientRects()].map(boxOf)));
   const box = boxOf(first);
-  const cardLeft = sheet?.getBoundingClientRect().left ?? box.left;
-  return placeHandle(box, firstLineOf(element, box), columns, cardLeft);
+  const card = sheet?.getBoundingClientRect();
+  return placeHandle(box, firstLineOf(element, box), columns, card?.left ?? box.left, card?.top);
 }

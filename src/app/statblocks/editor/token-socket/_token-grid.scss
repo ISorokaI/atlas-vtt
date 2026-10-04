@@ -100,6 +100,15 @@
 
   // Two lines, broken between words (a word alone too long for the line breaks
   // where it must); what does not fit ends in an ellipsis.
+  // What tells same-named tokens apart: the statblock they are on, or their art's file.
+  .atlas-sb-token-choice__detail {
+    @include atlas-truncate;
+    width: 100%;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+
   .atlas-sb-token-choice__name {
     display: -webkit-box;
     width: 100%;

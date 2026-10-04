@@ -12,16 +12,16 @@ export interface UseForFieldProps {
   onChange: (roleId: string | null) => void;
 }
 
-/** "Use for: [Monster ▾]" in the gallery's footer (§7.9): the role the new template becomes the template of. */
+/** "Starts new statblocks for: [Monster ▾]" in the gallery's footer (§7.9): the kind of statblock the new template starts. */
 export function UseForField({ roles, value, onChange }: UseForFieldProps): React.JSX.Element {
   const labelId = useId();
   const options: SelectOption<string>[] = [
-    { value: NO_ROLE, label: 'No role' },
+    { value: NO_ROLE, label: 'Nothing yet' },
     ...roles.map((role) => ({ value: role.id, label: role.name })),
   ];
   return (
     <div className="atlas-te-gallery__use-for">
-      <span id={labelId} className="atlas-te-gallery__use-for-label">Use for</span>
+      <span id={labelId} className="atlas-te-gallery__use-for-label">Starts new statblocks for</span>
       <Select value={value ?? NO_ROLE} options={options} labelledBy={labelId} onChange={(next) => onChange(next === NO_ROLE ? null : next)} />
     </div>
   );
