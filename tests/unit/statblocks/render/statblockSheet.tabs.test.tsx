@@ -7,6 +7,7 @@ vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' 
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { foldedBlocks } from '../../../../src/app/statblocks/render/foldRule';
 import { StatblockSheet } from '../../../../src/app/statblocks/render/StatblockSheet';
+import { EMPTY_TAB_PROMPT } from '../../../../src/app/statblocks/render/blocks/SectionView';
 import { blockEl, renderSheet, templateOf } from './sheetTestKit';
 
 const FIELDS: TemplateField[] = [
@@ -79,6 +80,19 @@ describe('StatblockSheet: tabs', () => {
 
     const none = renderSheet(TEMPLATE, { name: 'Wisp' });
     expect(blockEl(none.container, 'tabs0001')).toBeNull();
+  });
+
+  it('says where to start in an empty tab while editing, and nothing read-only', () => {
+    const empty: TemplateBlock = { id: 'tabs0002', type: 'tabs', blocks: [
+      { id: 'tabone01', type: 'section', heading: 'Actions', blocks: [] },
+      { id: 'tabtwo01', type: 'section', heading: 'Reactions', blocks: [{ id: 'reacts02', type: 'entries', field: 'reactions' }] },
+    ] };
+    const editing = renderSheet(templateOf(FIELDS, [empty]), {}, { mode: 'editing' });
+    expect(openPanel(editing.container)?.querySelector('.atlas-sb-empty-tab')?.textContent).toBe(EMPTY_TAB_PROMPT);
+    editing.unmount();
+    const { container } = renderSheet(templateOf(FIELDS, [empty]), { reactions: PARRY });
+    expect(tabNames(container)).toEqual(['Reactions']);
+    expect(container.querySelector('.atlas-sb-empty-tab')).toBeNull();
   });
 
   it('shows every tab while editing, an unnamed one as "Tab n"', () => {

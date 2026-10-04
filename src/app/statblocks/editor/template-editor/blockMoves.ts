@@ -15,12 +15,16 @@ import { applyTree, chainTree, outcomeOf, type EditOutcome } from './sessionEdit
 import type { EditorSession } from './sessionTypes';
 
 /**
- * Where a block inserted after `anchorId` goes: right after it, or, where its
- * parent does not take that type (a Row in a Row), after the parent. Without
- * an anchor, at the end of the top level.
+ * Where a block inserted after `anchorId` goes: into it where it is an empty
+ * container that takes the type (an empty tab), else right after it, or,
+ * where its parent does not take that type (a Row in a Row), after the
+ * parent. Without an anchor, at the end of the top level.
  */
 export function insertTarget(layout: TemplateLayout, anchorId: string | null, type: BlockType): TreeTarget {
   let found = anchorId === null ? null : findBlock(layout.blocks, anchorId);
+  // An empty Section or Side by side fills first: nothing in it to add below.
+  const anchor = found?.block;
+  if (anchor && isContainerBlock(anchor) && anchor.blocks.length === 0 && canContain(anchor.type, type)) return { parentId: anchor.id, index: 0 };
   while (found) {
     const parentType = parentTypeOf(layout, found.parentId);
     if (parentType !== null && canContain(parentType, type)) return { parentId: found.parentId, index: found.index + 1 };

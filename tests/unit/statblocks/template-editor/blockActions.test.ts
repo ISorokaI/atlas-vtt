@@ -54,6 +54,16 @@ describe('moving blocks without a drag', () => {
     expect(insertTarget(layout, 'stat-sp1', 'row')).toEqual({ parentId: null, index: 3 });
     expect(insertTarget(layout, null, 'stat')).toEqual({ parentId: null, index: 4 });
   });
+
+  it('fills an empty container it is anchored on, where the container takes the type', () => {
+    const layout = { maxColumns: 1 as const, blocks: [
+      { id: 'tabs0001', type: 'tabs' as const, blocks: [{ id: 'tabempty', type: 'section' as const, heading: 'Tab 1', blocks: [] }] },
+      { id: 'rowempty', type: 'row' as const, blocks: [] },
+    ] };
+    expect(insertTarget(layout, 'tabempty', 'stat')).toEqual({ parentId: 'tabempty', index: 0 });
+    expect(insertTarget(layout, 'rowempty', 'stat')).toEqual({ parentId: 'rowempty', index: 0 });
+    expect(insertTarget(layout, 'rowempty', 'row')).toEqual({ parentId: null, index: 2 });
+  });
 });
 
 describe('inserting', () => {

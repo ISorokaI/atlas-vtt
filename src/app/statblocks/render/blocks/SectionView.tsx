@@ -15,6 +15,9 @@ interface SectionViewProps extends BlockViewProps<SectionBlock> {
   children: React.ReactNode;
 }
 
+/** What an empty tab says while a template is edited. */
+export const EMPTY_TAB_PROMPT = 'Empty tab: select it and add a block';
+
 const HEIGHT_TRANSITION = { duration: MOTION_NORMAL_MS / 1000, ease: EASE_OUT_CONTROL_POINTS };
 
 /**
@@ -82,10 +85,14 @@ export function SectionView({ block, children }: SectionViewProps): React.JSX.El
       </Collapsible>
     );
   }
+  // An empty tab has no heading of its own to point at, so the editing mode says where to start.
+  const emptyTab = inTab && state.mode === 'editing' && block.blocks.length === 0;
   return (
     <>
       {heading.trim() && <SheetHeading>{heading}</SheetHeading>}
-      <div className="atlas-sb-stack">{children}</div>
+      <div className="atlas-sb-stack">
+        {emptyTab ? <p className="atlas-sb-prompt atlas-sb-empty-tab">{EMPTY_TAB_PROMPT}</p> : children}
+      </div>
     </>
   );
 }
