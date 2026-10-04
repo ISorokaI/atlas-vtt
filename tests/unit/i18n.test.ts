@@ -41,6 +41,13 @@ describe('i18n', () => {
     expect(formatMessage({ one: 'a file', other: 'files' }, english)).toBe('files');
   });
 
+  it('translates only keys the English source has', () => {
+    for (const [language, translation] of Object.entries(TRANSLATIONS)) {
+      const orphans = Object.keys(translation).filter((key) => !(key in en));
+      expect(orphans, language).toEqual([]);
+    }
+  });
+
   it('keeps the placeholders of the English text in every translation', () => {
     for (const [language, translation] of Object.entries(TRANSLATIONS)) {
       for (const [key, message] of Object.entries(translation) as [MessageKey, Message][]) {
