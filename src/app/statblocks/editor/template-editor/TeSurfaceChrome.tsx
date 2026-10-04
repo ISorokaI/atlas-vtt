@@ -151,7 +151,6 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
           count={state.selection.length}
           editable={editable}
           revision={snapshot.template}
-          hover={store}
           settingsInUse={moreOptionsInUse(block)}
           onTurnInto={(chip) => {
             const turn = menuOf(primary).find((row) => row.kind === 'submenu' && row.id === 'turn-into');

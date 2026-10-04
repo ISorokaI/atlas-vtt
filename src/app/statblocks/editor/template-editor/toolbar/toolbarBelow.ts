@@ -49,8 +49,3 @@ export function placeBelow(block: Box, view: Box, layer: Box, size: { width: num
   const left = Math.min(Math.max(block.right - size.width, block.left, view.left), maxLeft);
   return { left: left - layer.left, top: top - layer.top, above: !fitsBelow && fitsAbove, hidden };
 }
-
-/** Whether two boxes overlap: the toolbar steps aside from a hovered block it covers. */
-export function overlaps(a: Box, b: Box): boolean {
-  return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-}

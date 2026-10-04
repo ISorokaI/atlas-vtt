@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { overlaps, placeBelow } from '../../../../src/app/statblocks/editor/template-editor/toolbar/toolbarBelow';
+import { placeBelow, type Box } from '../../../../src/app/statblocks/editor/template-editor/toolbar/toolbarBelow';
+
+const overlaps = (a: Box, b: Box): boolean => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
 /** The selected block's toolbar (spec §4.2, D1): 8 px below the outline, above only without room, inside the view. */
 describe('placeBelow', () => {

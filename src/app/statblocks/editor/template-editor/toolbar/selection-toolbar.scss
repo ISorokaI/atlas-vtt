@@ -1,7 +1,7 @@
 // The selected block's toolbar (spec §4.2): a 36 px capsule of five controls,
 // below the block; its buttons sit $spacing-xs inside the border, so their
-// outer corners run concentric with the capsule's ends. It steps aside (fades,
-// takes no pointer) while the pointer is over another block it covers.
+// outer corners run concentric with the capsule's ends. It takes the pointer
+// over its whole capsule while its block is selected.
 
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
@@ -13,11 +13,6 @@ $chip-max: 88px;
 $dot: 6px;
 
 .atlas-vtt-plugin {
-  // The editor's layer gives its children the pointer; the toolbar gives it only to its controls.
-  .atlas-te-layer > .atlas-te-toolbar {
-    pointer-events: none;
-  }
-
   .atlas-te-toolbar {
     @include atlas-elevated-surface;
     @include atlas-keep-in-view;
@@ -33,29 +28,11 @@ $dot: 6px;
     padding: $toolbar-inset;
     border-radius: $toolbar-height * 0.5;
     box-shadow: $shadow-md;
-    transition: opacity $transition-fast $transition-ease-out;
-    // Only the controls take the pointer: its edge and the gaps between them
-    // belong to the block it covers, so the pointer reaches that block there.
-    pointer-events: none;
-
-    > * {
-      pointer-events: auto;
-    }
+    pointer-events: auto;
 
     &[data-hidden] {
       visibility: hidden;
-
-      > * {
-        pointer-events: none;
-      }
-    }
-
-    &[data-stepped-aside] {
-      opacity: 0;
-
-      > * {
-        pointer-events: none;
-      }
+      pointer-events: none;
     }
 
     .atlas-tool-button button.btn,

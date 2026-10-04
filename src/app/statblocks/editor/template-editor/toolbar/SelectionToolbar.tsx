@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ellipsis, Plus, Settings2, Trash2 } from 'lucide-react';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -10,13 +10,12 @@ import { cn } from '../../../../../utils/cn';
 import { blockSpec } from '../../../model/blockCatalogue';
 import type { TemplateBlock } from '../../../model/templateTypes';
 import { CHROME_ATTRIBUTE } from '../../interaction/chrome';
-import type { HoverStore } from '../../interaction/hoverStore';
 import { PANEL_SCROLL_SELECTOR } from '../../panel-frame/panelSelectors';
 import { blockFrame } from '../editorChrome';
 import { blockGlyph } from '../editorGlyphs';
 import type { ChromeStyle } from '../LabelEditor';
 import { shortcutText } from '../shortcutText';
-import { HIDDEN_TOOLBAR, overlaps, placeBelow, type ToolbarPlacement } from './toolbarBelow';
+import { HIDDEN_TOOLBAR, placeBelow, type ToolbarPlacement } from './toolbarBelow';
 import './selection-toolbar.scss';
 
 export interface SelectionToolbarProps {
@@ -30,8 +29,6 @@ export interface SelectionToolbarProps {
   editable: boolean;
   /** Whatever changes the block's place: re-measured when it changes. */
   revision: unknown;
-  /** What the pointer is over: the toolbar steps aside from a block it covers. */
-  hover: HoverStore;
   /** Whether any of the block's further settings is in use: a dot on Settings. */
   settingsInUse: boolean;
   onTurnInto: (chip: HTMLElement) => void;
@@ -60,19 +57,18 @@ function measure(stage: HTMLElement, layer: HTMLElement, blockId: string, toolba
  * block (above it only without room), in a layer over the editor, kept in
  * view. The type chip turns the block into another, Settings opens its
  * settings (a dot while any further setting is in use), then Add below,
- * Delete and More, which opens the block's menu. It steps aside while the
- * pointer is over another block it covers (only its buttons take the pointer,
- * so moving in over its edge reaches the block below), hands a right-click to
- * the block under it, hides while the block's menu is open, and never takes
- * focus from the block, so the block's keys keep working.
+ * Delete and More, which opens the block's menu. It stays shown and takes the
+ * pointer over its whole capsule for as long as its block is selected, since
+ * the way to it leads over the block below; it hands a right-click to the
+ * block under it, hides while the block's menu is open, and never takes focus
+ * from the block, so the block's keys keep working.
  */
 export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Element {
-  const { layer, stage, block, revision, editable, hover } = props;
+  const { layer, stage, block, revision, editable } = props;
   const ref = useRef<HTMLDivElement>(null);
   const more = useRef<HTMLSpanElement>(null);
   const [placement, setPlacement] = useState<ToolbarPlacement>(HIDDEN_TOOLBAR);
   const keepInView = useKeepInView(ref, !placement.hidden, placement.above ? 'top' : 'bottom', `${placement.left},${placement.top}`);
-  const { target } = useSyncExternalStore(hover.subscribe, hover.getSnapshot);
 
   useLayoutEffect(() => {
     const update = (): void => setPlacement(measure(stage, layer, block.id, ref.current));
@@ -87,10 +83,6 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
       stop();
     };
   }, [stage, layer, block.id, revision]);
-
-  // Over another block it covers, the toolbar fades out of the pointer's way (§4.2, D2).
-  const covered = target !== null && target.blockId !== block.id && ref.current !== null
-    && overlaps(target.element.getBoundingClientRect(), ref.current.getBoundingClientRect());
 
   const style: React.CSSProperties & ChromeStyle = {
     ...keepInView.style,
@@ -111,7 +103,6 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
       {...{ [CHROME_ATTRIBUTE]: '' }}
       data-hidden={placement.hidden || props.menuOpen || undefined}
       data-above={placement.above || undefined}
-      data-stepped-aside={covered || undefined}
       // Focus stays on the block: its keys (Delete, arrows, Shift+F10) go on working after a click here.
       onMouseDown={(event) => event.preventDefault()}
       onContextMenu={(event) => {

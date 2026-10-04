@@ -141,7 +141,7 @@ describe('handles and menus in the template editor', () => {
     expect(box.width).toBeLessThanOrEqual(220);
   });
 
-  it('lets the line under the toolbar be reached: it steps aside for a line entered from its free part, and passes a right-click on to it (D2)', async () => {
+  it('keeps the toolbar shown and in reach while the pointer crosses the line below on its way there', async () => {
     mount(new FakeSession(sampleTemplate()), 1280);
     await frames(2);
     const ac = centreOf(frame('stat-ac1'));
@@ -155,18 +155,24 @@ describe('handles and menus in the template editor', () => {
     // The toolbar stands at the block's right end, over the empty end of the line below, never its label.
     expect(box.right).toBeCloseTo(frame('stat-ac1').getBoundingClientRect().right, 0);
     expect(box.left).toBeGreaterThan(hp.left + 40);
-    // Into the line below from its free part, then on under the toolbar: it steps aside and takes no pointer.
-    const under = { x: (box.left + box.right) / 2, y: Math.min(hp.bottom - 2, box.bottom - 4) };
-    await mouse.hover(hp.left + 8, under.y);
+    // Down from the block, over the line below, onto every control and the gaps between them: the toolbar stays.
+    const more = centreOf(toolbar.querySelector<HTMLElement>('.atlas-te-toolbar__more button')!);
+    await mouse.hover(more.x, hp.top + 1);
     await frames(2);
-    await mouse.hover(under.x, under.y);
+    for (let x = box.left + 2; x < box.right - 2; x += 4) {
+      await mouse.hover(x, more.y);
+      const at = document.elementFromPoint(x, more.y);
+      expect(at && toolbar.contains(at)).toBe(true);
+    }
     await frames(2);
-    expect(toolbar.hasAttribute('data-stepped-aside')).toBe(true);
+    expect(getComputedStyle(toolbar).opacity).toBe('1');
+    expect(getComputedStyle(toolbar).visibility).toBe('visible');
     await act(async () => {
-      await mouse.click(under.x, under.y);
+      await mouse.click(more.x, more.y);
       await frames(3);
     });
-    expect(document.querySelector('[data-te-selected="primary"]')?.getAttribute('data-block-id')).toBe('stat-hp1');
+    expect(menuRows().length).toBeGreaterThan(0);
+    expect(document.querySelector('[data-te-selected="primary"]')?.getAttribute('data-block-id')).toBe('stat-ac1');
   });
 
   it('opens the menu of what a toolbar button covers on a right-click there', async () => {
