@@ -14,6 +14,7 @@
 - Walls join: click a wall's end point to draw on from it, and a wall you end near another wall's end point lands exactly on it. A dragged end point joins the one you drop it on, and from then on they move together. Hold Alt to place a point freely
 - Right-click any wall of a chain to place a door in it, right where you clicked. A door is one grid cell wide, or fills a wall about that wide
 - Right-click a door to turn it back into wall, a point to remove it (the two walls meeting there become one), and a wall of a selected chain to delete just that wall
+- The undo and redo buttons can be hidden in the toolbar editor too
 
 ## Fixed
 

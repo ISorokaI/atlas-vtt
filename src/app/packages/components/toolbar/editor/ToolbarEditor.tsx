@@ -5,6 +5,7 @@ import { useContextMenu } from '../../../../react/root/ContextMenuContext'
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
 import { findAtlasLeafByViewId } from '../../../../utils/atlasLeafLookup'
 import { observeResize } from '../../../../utils/observeResize'
+import { UNDO_BAR_ID } from '../../../../toolbar/toolbarCatalog'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
 import type { ToolbarMotion } from '../useLayoutMotion'
 import { useToolbarEdit, type ToolbarEditApi } from './toolbarEditContext'
@@ -13,6 +14,7 @@ import { useToolbarEditState, useToolbarEditStore } from './toolbarEditStore'
 import { useTrayVariants } from './editorMotion'
 import { doneButtonOf, focusTargetOf, groupHandles, mainToolbarOf } from './toolbarEditDom'
 import { ToolbarEditTooltip } from './ToolbarEditTooltip'
+import { faceItemOf } from './ToolbarFace'
 import { ToolbarTray } from './ToolbarTray'
 
 interface ToolbarEditorProps {
@@ -58,7 +60,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
 
   useLayoutEffect(() => {
     const row = rootRef.current?.parentElement
-    if (focusOnEntry && row) groupHandles(row, 'bar')[0]?.focus()
+    // The main bar's first tool, not the undo/redo bar's handle before it.
+    if (focusOnEntry && row) groupHandles(row, 'bar').find(handle => handle.dataset.control !== UNDO_BAR_ID)?.focus()
   }, [focusOnEntry])
 
   // After a change is drawn, focus goes where the change asked; Done where that is gone.
@@ -105,8 +108,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
   if (!shown) return null
   const style = barHeight === null ? undefined : { '--atlas-toolbar-bar-height': `${barHeight}px` } as React.CSSProperties
   const flight = edit?.flight ?? null
-  const flying = flight ? items.find(item => item.id === flight.id) : undefined
-  const dragged = dragGhost ? items.find(item => item.id === dragGhost.id) : undefined
+  const flying = flight ? faceItemOf(flight.id, items) : undefined
+  const dragged = dragGhost ? faceItemOf(dragGhost.id, items) : undefined
   return (
     <>
       <div ref={rootRef} className="atlas-toolbar-editor" style={style} inert={!present}>
