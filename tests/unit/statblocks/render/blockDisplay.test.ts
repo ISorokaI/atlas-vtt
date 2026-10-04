@@ -35,9 +35,14 @@ describe('blockDisplay', () => {
     expect(display).toEqual({ state: 'fallback', text: { text: '+2 (12)', problems: [] } });
   });
 
+  it('prompts "Add <label>" in lower case, keeping acronyms', () => {
+    expect(blockDisplay(block('b5hp0000'), state({}, 'editing'))).toEqual({ state: 'prompt', prompt: 'Add HP' });
+    expect(blockDisplay(block('b5immu00'), state({}, 'editing'))).toEqual({ state: 'prompt', prompt: 'Add damage immunities' });
+  });
+
   it('hides an empty block, and prompts for it while editing', () => {
     expect(blockDisplay(block('b5speed0'), state({}))).toBeNull();
-    expect(blockDisplay(block('b5speed0'), state({}, 'editing'))).toEqual({ state: 'prompt', prompt: 'Speed' });
+    expect(blockDisplay(block('b5speed0'), state({}, 'editing'))).toEqual({ state: 'prompt', prompt: 'Add speed' });
   });
 
   it('shows a container while any block in it shows', () => {

@@ -55,12 +55,14 @@ $track-boxes-per-line: 12;
   }
 
   // Table: up to `perLine` groups side by side, fewer where the width does
-  // not hold them; each group is "label · score · columns" per slot.
+  // not hold them; each group is "label · score · columns" per slot. The
+  // minimum is the group's own content width, so three groups of a 5E table
+  // still sit side by side in a pane's column and do not wrap two and one.
   .atlas-sb-scores--table {
-    --atlas-sb-score-group-min: calc(5em + var(--atlas-sb-score-columns, 1) * 2.5em);
+    --atlas-sb-score-group-min: calc(3.75em + var(--atlas-sb-score-columns, 1) * 2.5em);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(var(--atlas-sb-score-group-min), 100%), 1fr));
-    gap: $spacing-s $spacing-l;
+    gap: $spacing-s $spacing-m;
   }
 
   .atlas-sb-score-group {
@@ -86,7 +88,7 @@ $track-boxes-per-line: 12;
     th + td,
     td + th,
     th + th {
-      padding-left: $spacing-s;
+      padding-left: $spacing-xs;
     }
 
     th[scope='col'] {

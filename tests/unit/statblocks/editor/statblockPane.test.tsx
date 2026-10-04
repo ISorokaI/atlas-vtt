@@ -42,7 +42,7 @@ describe('the statblock pane over a native note', () => {
   it('renders the card with prompts in place of empty values', async () => {
     const { result } = await pane();
     const speed = blockOf(result.container, 'gcspeed0');
-    expect(speed.querySelector('.atlas-sb-prompt')?.textContent).toBe('Speed');
+    expect(speed.querySelector('.atlas-sb-prompt')?.textContent).toBe('Add speed');
     expect(speed.getAttribute('role')).toBe('button');
     expect(speed.getAttribute('aria-label')).toBe('Edit Speed');
     expect(blockOf(result.container, 'gctitle0').textContent).toBe('Marsh Warden');

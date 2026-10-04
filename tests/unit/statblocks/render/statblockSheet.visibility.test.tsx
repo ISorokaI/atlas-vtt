@@ -93,10 +93,10 @@ describe('StatblockSheet: editing mode', () => {
   it('shows prompts where values are empty instead of hiding the blocks', () => {
     const { container } = renderSheet(TEMPLATE, {}, { mode: 'editing' });
     expect(blockEl(container, 'speed000')!.querySelector('.atlas-sb-prompt')?.textContent).toBe('Add speed');
-    expect(blockEl(container, 'armor000')!.querySelector('.atlas-sb-prompt')?.textContent).toBe('Armor');
+    expect(blockEl(container, 'armor000')!.querySelector('.atlas-sb-prompt')?.textContent).toBe('Add armor');
     expect(blockEl(container, 'speed000')!.dataset.state).toBe('prompt');
     expect(blockEl(container, 'section0')).not.toBeNull();
-    expect(blockEl(container, 'traits00')!.querySelector('.atlas-sb-prompt')?.textContent).toBe('Traits');
+    expect(blockEl(container, 'traits00')!.querySelector('.atlas-sb-prompt')?.textContent).toBe('Add traits');
   });
 
   it('still follows conditions', () => {

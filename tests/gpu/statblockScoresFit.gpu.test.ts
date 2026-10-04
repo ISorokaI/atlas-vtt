@@ -6,6 +6,8 @@ import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import { StatblockSheet } from '../../src/app/statblocks/render/StatblockSheet';
 import { TEMPLATE_FORMAT, type StatblockTemplate } from '../../src/app/statblocks/model/templateTypes';
+import { findBlock } from '../../src/app/statblocks/model/treeQueries';
+import { FIVE_E_2024_MONSTER } from '../../src/app/statblocks/presets/fiveE2024';
 
 // Dice links reach the map view, whose services need Node's `events`; nothing here rolls dice.
 vi.mock('../../src/app/services/statblockDiceLinks', () => ({
@@ -62,5 +64,37 @@ describe('a row of scores with long slot names', () => {
       if (textWidth(label) <= label.getBoundingClientRect().width + 0.5) continue;
       expect(getComputedStyle(label).overflowX, `${label.textContent} is clipped to its cell`).toBe('hidden');
     }
+  });
+});
+
+/**
+ * The 5E (2024 rules) ability table in one column of the statblock pane's
+ * two-column card (about 380 px): its three groups stay side by side rather
+ * than wrapping two and one, which left Con and Cha alone on a line.
+ */
+describe('the 5E 2024 ability table in a pane column', () => {
+  const style = document.createElement('style');
+  style.textContent = THEME + css;
+
+  beforeEach(async () => {
+    await page.viewport(1000, 700);
+    document.head.append(style);
+  });
+
+  afterEach(() => {
+    cleanup();
+    style.remove();
+  });
+
+  it('keeps its three groups on one line', () => {
+    const scores = findBlock(FIVE_E_2024_MONSTER.template.layout.blocks, 'b5stats0')?.block;
+    expect(scores?.type).toBe('scores');
+    const template: StatblockTemplate = { ...FIVE_E_2024_MONSTER.template, layout: { maxColumns: 1, blocks: scores ? [scores] : [] } };
+    render(React.createElement('div', { className: 'atlas-vtt-plugin', style: { width: 380 + 32 } },
+      React.createElement(StatblockSheet, { template, name: '5E (2024 rules)', fields: { stats: [16, 14, 15, 7, 12, 8] }, variant: 'feed' })));
+    const groups = [...document.querySelectorAll<HTMLElement>('.atlas-sb-score-group')];
+    expect(groups).toHaveLength(3);
+    const tops = new Set(groups.map((group) => Math.round(group.getBoundingClientRect().top)));
+    expect(tops.size, 'all three groups start on the same line').toBe(1);
   });
 });

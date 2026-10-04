@@ -34,11 +34,19 @@ export function visibilityFields(block: TemplateBlock): FieldKey[] {
   return fieldsShownBy(block, (pattern) => (pattern === block.fallback ? [] : patternRefs(pattern)));
 }
 
-/** What the editing mode shows for an empty block: its field's prompt, else its label. */
+/** "Damage Immunities" -> "damage immunities"; acronyms such as HP or CR keep their capitals. */
+function inPrompt(label: string): string {
+  return label.split(/(\s+)/).map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase())).join('');
+}
+
+/** What the editing mode shows for an empty block: its field's prompt, else "Add <label>" ("Add speed"). */
 function promptFor(block: TemplateBlock, sheet: SheetState): string {
   const key = boundField(block);
   const field = key ? sheet.fields.get(key) : undefined;
-  return field?.prompt?.trim() || field?.label || blockSpec(block.type).label;
+  const own = field?.prompt?.trim() || (block.type === 'entries' ? block.addLabel?.trim() : undefined);
+  if (own) return own;
+  const label = field?.label?.trim();
+  return label ? `Add ${inPrompt(label)}` : blockSpec(block.type).label;
 }
 
 /** A block whose fields are empty: its fallback where it has one that says something, else a prompt or nothing. */
