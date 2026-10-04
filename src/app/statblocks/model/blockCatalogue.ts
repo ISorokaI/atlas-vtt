@@ -12,7 +12,7 @@ export type FsBlockType =
 /** lucide-react icon names the catalogue uses. */
 export type BlockIcon =
   | 'square-stack' | 'columns-3' | 'heading' | 'subtitles' | 'hash' | 'table' | 'tags' | 'text' | 'swords'
-  | 'list' | 'gauge' | 'image' | 'sparkles' | 'heading-2' | 'minus' | 'code' | 'circle-help';
+  | 'list' | 'gauge' | 'image' | 'sparkles' | 'heading-2' | 'minus' | 'code' | 'circle-help' | 'panel-top';
 
 /** The palette group a block is listed under (§7.4); recipes are "Common". */
 export type PaletteGroup = 'basics' | 'lists' | 'numbers' | 'layout' | 'media';
@@ -45,6 +45,7 @@ function spec(
 export const BLOCK_CATALOGUE: Readonly<Record<BlockType, BlockSpec>> = {
   section: spec('section', 'Section', 'square-stack', [], 'group', 'fill', 'layout'),
   row: spec('row', 'Side by side', 'columns-3', [], 'inline', 'fill', 'layout'),
+  tabs: spec('tabs', 'Tabs', 'panel-top', [], 'group', 'fill', 'layout'),
   title: spec('title', 'Name', 'heading', ['text'], 'heading', 'fill', 'basics'),
   line: spec('line', 'Stats on one line', 'subtitles', SCALAR_FIELDS, 'subheading', 'fill', 'basics'),
   stat: spec('stat', 'Stat', 'hash', SCALAR_FIELDS, 'property', 'fit', 'basics'),
@@ -89,13 +90,20 @@ export type ParentType = 'root' | BlockType;
 
 /**
  * The root and a Section take every block, a Row every block but a Row (a Row
- * already wraps), and no other block holds children. That a block is never
- * placed inside itself is the tree's rule (`treeOps`), not the catalogue's.
+ * already wraps) and Tabs, Tabs only Sections (one per tab), and no other
+ * block holds children. That a block is never placed inside itself is the
+ * tree's rule (`treeOps`), not the catalogue's.
  */
 export function canContain(parent: ParentType, child: BlockType): boolean {
   if (parent === 'root' || parent === 'section') return true;
-  if (parent === 'row') return child !== 'row';
+  if (parent === 'row') return child !== 'row' && child !== 'tabs';
+  if (parent === 'tabs') return child === 'section';
   return false;
+}
+
+/** The label a new tab gets: "Tab 3" for the third. */
+export function tabLabel(position: number): string {
+  return `Tab ${position}`;
 }
 
 const NATURAL_BLOCKS: Readonly<Record<FieldType, AuthorableBlockType>> = {
@@ -122,6 +130,9 @@ export function createBlock(type: AuthorableBlockType, nextId: BlockIdSource, fi
   switch (type) {
     case 'section': return { id, type, blocks: [] };
     case 'row': return { id, type, blocks: [] };
+    case 'tabs': return {
+      id, type, blocks: [1, 2].map((position) => ({ id: nextId(), type: 'section', heading: tabLabel(position), blocks: [] })),
+    };
     case 'title': return { id, type, field: fieldKey ?? 'name', level: 1 };
     case 'line': return { id, type, fields: fieldKey ? [fieldKey] : [] };
     case 'stat': return { id, type, field, look: 'run-in' };

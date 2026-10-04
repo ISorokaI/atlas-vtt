@@ -93,9 +93,34 @@ describe('known blocks', () => {
   });
 });
 
+describe('tabs', () => {
+  it('reads and writes a Tabs block of Sections and a Spells block with the tabs look as they were', () => {
+    const blocks = [
+      {
+        id: 'tabs0001', type: 'tabs', className: 'kinds', blocks: [
+          { id: 'tab00001', type: 'section', heading: 'Spells', blocks: [{ id: 'spells01', type: 'spells', field: 'spells', look: 'tabs' }] },
+          { id: 'tab00002', type: 'section', headingField: 'name', blocks: [] },
+        ],
+      },
+    ];
+    const { template, problems } = read(blocks);
+    expect(problems).toEqual([]);
+    expect(template.layout.blocks).toEqual(blocks);
+    expect(writtenBlocks(template)).toEqual(blocks);
+  });
+
+  it('reads a Spells look it does not know as the lines, keeping it to write back', () => {
+    const { template, problems } = read([{ id: 'spells01', type: 'spells', field: 'spells', look: 'cards' }]);
+    expect(plain(template.layout.blocks[0])).toEqual({ id: 'spells01', type: 'spells', field: 'spells' });
+    expect(problems).toEqual([expect.stringContaining('look')]);
+    expect(writtenBlocks(template)).toEqual([{ id: 'spells01', type: 'spells', field: 'spells', look: 'cards' }]);
+  });
+});
+
 describe('blocks the editor makes', () => {
   it('reads every new block as createBlock makes it, unbound fields included', () => {
-    const blocks = AUTHORABLE_BLOCK_TYPES.map((type, index) => createBlock(type, () => `new${String(index).padStart(5, '0')}`));
+    let next = 0;
+    const blocks = AUTHORABLE_BLOCK_TYPES.map((type) => createBlock(type, () => `new${String(next++).padStart(5, '0')}`));
     expect(blocks.some((block) => 'field' in block && block.field === '')).toBe(true);
     const { template, problems } = read(blocks);
     expect(problems).toEqual([]);
@@ -148,7 +173,7 @@ describe('blocks it cannot use', () => {
 
   it('leaves out what is nested too deep to write back, and never throws', () => {
     let block: unknown = { type: 'title', field: 'name' };
-    for (let level = 0; level < 400; level += 1) block = { type: 'tabs', blocks: [block] };
+    for (let level = 0; level < 400; level += 1) block = { type: 'carousel', blocks: [block] };
     const { template, problems } = read([block]);
     expect(template.layout.blocks).toEqual([]);
     expect(problems).toEqual([expect.stringContaining('cannot be kept')]);

@@ -58,7 +58,7 @@ export function boundField(block: TemplateBlock): FieldKey | undefined {
   switch (block.type) {
     case 'line': return block.fields[0];
     case 'text': return block.field;
-    case 'section': case 'row': case 'heading': case 'divider': case 'script': case 'opaque': return undefined;
+    case 'section': case 'row': case 'tabs': case 'heading': case 'divider': case 'script': case 'opaque': return undefined;
     default: return block.field;
   }
 }

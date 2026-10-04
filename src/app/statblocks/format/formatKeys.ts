@@ -72,6 +72,7 @@ const BLOCK_BASE: Record<Exclude<keyof BlockBase, 'id'>, true> = {
 const BLOCK_PROPS: { [T in FileBlockType]: Record<OwnBlockKeys<T>, true> } = {
   section: { heading: true, headingField: true, collapsible: true, blocks: true },
   row: { align: true, blocks: true },
+  tabs: { blocks: true },
   title: { field: true, level: true, pattern: true },
   line: { fields: true, pattern: true, separator: true },
   stat: { field: true, label: true, look: true, pattern: true, display: true, rollFrom: true },
@@ -82,7 +83,7 @@ const BLOCK_PROPS: { [T in FileBlockType]: Record<OwnBlockKeys<T>, true> } = {
   pairs: { field: true, label: true, display: true },
   track: { field: true, label: true, resource: true, look: true, counts: true },
   image: { field: true, shape: true },
-  spells: { field: true, heading: true },
+  spells: { field: true, heading: true, look: true },
   heading: { text: true, level: true },
   divider: {},
   script: { summary: true, fs: true },

@@ -1,7 +1,7 @@
 /** Blocks that name a field the template does not define. They stay; the problem only says so. */
 
 import { fieldsShownBy } from '../model/treeQueries';
-import type { StatblockTemplate, TemplateBlock } from '../model/templateTypes';
+import { isContainerBlock, type StatblockTemplate, type TemplateBlock } from '../model/templateTypes';
 import { describeValue } from './jsonValues';
 
 /**
@@ -23,7 +23,7 @@ export function danglingFieldProblems(template: StatblockTemplate): string[] {
       for (const key of namedFields(block).filter((named) => !keys.has(named))) {
         problems.push(`Block ${at.join('.')} (${block.type}) names the field ${describeValue(key)}, which the template does not define.`);
       }
-      if (block.type === 'section' || block.type === 'row') visit(block.blocks, at);
+      if (isContainerBlock(block)) visit(block.blocks, at);
     });
   };
   visit(template.layout.blocks, []);

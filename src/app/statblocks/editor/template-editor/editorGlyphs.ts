@@ -6,7 +6,7 @@
 
 import {
   AlignJustify, AlignLeft, CircleDot, CircleHelp, Clock, Code, Coins, Columns3, Dices, Eye, Gauge, Hash, Heading, Heading2, Heart,
-  Image, List, ListChecks, ListOrdered, ListTree, Minus, Rows3, ScrollText, Shield, Sparkles, SquareStack, Star, Subtitles, Sword,
+  Image, List, ListChecks, ListOrdered, ListTree, Minus, PanelTop, Rows3, ScrollText, Shield, Sparkles, SquareStack, Star, Subtitles, Sword,
   Swords, Table, Table2, Tags, Text, Type, Zap, type LucideIcon,
 } from 'lucide-react';
 import { blockSpec, type BlockIcon } from '../../model/blockCatalogue';
@@ -17,7 +17,7 @@ import type { InsertItem } from './insertItems';
 const BLOCK_GLYPHS: Readonly<Record<BlockIcon, LucideIcon>> = {
   'square-stack': SquareStack, 'columns-3': Columns3, heading: Heading, subtitles: Subtitles, hash: Hash, table: Table,
   tags: Tags, text: Text, swords: Swords, list: List, gauge: Gauge, image: Image, sparkles: Sparkles,
-  'heading-2': Heading2, minus: Minus, code: Code, 'circle-help': CircleHelp,
+  'heading-2': Heading2, minus: Minus, code: Code, 'circle-help': CircleHelp, 'panel-top': PanelTop,
 };
 
 const RECIPE_GLYPHS: Readonly<Record<RecipeIcon, LucideIcon>> = {

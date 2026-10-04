@@ -124,6 +124,8 @@ export interface BlockBase {
 
 export interface SectionBlock extends BlockBase { type: 'section'; heading?: string; headingField?: FieldKey; collapsible?: 'open' | 'closed'; blocks: TemplateBlock[] }
 export interface RowBlock extends BlockBase { type: 'row'; align?: 'start' | 'center' | 'spread'; blocks: TemplateBlock[] }
+/** Sections shown one at a time; each Section's heading is its tab's label. Holds Sections only. */
+export interface TabsBlock extends BlockBase { type: 'tabs'; blocks: TemplateBlock[] }
 export interface TitleBlock extends BlockBase { type: 'title'; field: FieldKey; level: 1 | 2 | 3; pattern?: string }
 export interface LineBlock extends BlockBase { type: 'line'; fields: FieldKey[]; pattern?: string; separator?: string }
 export interface StatBlock extends BlockBase { type: 'stat'; field: FieldKey; label?: string; look: 'run-in' | 'stacked'; pattern?: string; display?: 'plain' | 'signed'; rollFrom?: FieldKey }
@@ -146,7 +148,8 @@ export interface EntriesBlock extends BlockBase { type: 'entries'; field: FieldK
 export interface PairsBlock extends BlockBase { type: 'pairs'; field: FieldKey; label?: string; display?: 'plain' | 'signed' }
 export interface TrackBlock extends BlockBase { type: 'track'; field: FieldKey; label?: string; resource?: string; look: 'boxes' | 'gauge'; counts: 'down' | 'up' }
 export interface ImageBlock extends BlockBase { type: 'image'; field: FieldKey; shape: 'token' | 'portrait' }
-export interface SpellsBlock extends BlockBase { type: 'spells'; field: FieldKey; heading?: string }
+/** `look: 'tabs'` shows each group as a tab, loose lines above the strip; unset is 'lines'. */
+export interface SpellsBlock extends BlockBase { type: 'spells'; field: FieldKey; heading?: string; look?: 'lines' | 'tabs' }
 export interface HeadingBlock extends BlockBase { type: 'heading'; text: string; level: 'section' | 'minor' }
 export interface DividerBlock extends BlockBase { type: 'divider' }
 /** FS JavaScript preserved verbatim from an import. Never authored, never run by the native renderer, never bundled. */
@@ -155,14 +158,19 @@ export interface ScriptBlock extends BlockBase { type: 'script'; summary: string
 export interface OpaqueBlock extends BlockBase { type: 'opaque'; raw: Record<string, unknown> }
 
 export type TemplateBlock =
-  | SectionBlock | RowBlock | TitleBlock | LineBlock | StatBlock | ScoresBlock | TagsBlock | TextBlock
+  | SectionBlock | RowBlock | TabsBlock | TitleBlock | LineBlock | StatBlock | ScoresBlock | TagsBlock | TextBlock
   | EntriesBlock | PairsBlock | TrackBlock | ImageBlock | SpellsBlock | HeadingBlock | DividerBlock | ScriptBlock | OpaqueBlock;
 
 export type BlockType = TemplateBlock['type'];
-export type ContainerBlock = SectionBlock | RowBlock;
+export type ContainerBlock = SectionBlock | RowBlock | TabsBlock;
+export type ContainerType = ContainerBlock['type'];
+
+export function isContainerType(type: BlockType): type is ContainerType {
+  return type === 'section' || type === 'row' || type === 'tabs';
+}
 
 export function isContainerBlock(block: TemplateBlock): block is ContainerBlock {
-  return block.type === 'section' || block.type === 'row';
+  return isContainerType(block.type);
 }
 
 export type TemplateLicence =

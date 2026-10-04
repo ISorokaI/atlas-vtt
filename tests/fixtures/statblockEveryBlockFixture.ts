@@ -78,8 +78,8 @@ const KNOWN_BLOCKS: TemplateBlock[] = [
 /** A block of a type this Atlas does not know, as a newer Atlas would write it. */
 export const NEWER_BLOCK = {
   id: 'b7newer0',
-  type: 'tabs',
-  tabs: [{ label: 'Lore', blocks: [{ type: 'text', field: 'story' }] }],
+  type: 'carousel',
+  slides: [{ label: 'Lore', blocks: [{ type: 'text', field: 'story' }] }],
   futureKey: 1,
 };
 
