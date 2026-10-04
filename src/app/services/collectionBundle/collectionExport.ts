@@ -87,6 +87,7 @@ async function publisherOf(app: App, assets: AssetService, collection: Collectio
 }
 
 export async function prepareCollectionExport(app: App, assets: AssetService, collectionId: string): Promise<ExportPreview> {
+  await assets.ensureOwnCollectionUid(collectionId);
   const collection = await assets.getCollection(collectionId);
   if (!collection) throw new Error(`Collection ${collectionId} not found`);
   const collectionAssets = (await assets.getAssets(collectionId)).filter((asset) => EXPORTED_TYPES.has(asset.type));

@@ -278,4 +278,18 @@ describe('snapshots of a map outside every collection', () => {
     await service.delete(entry!);
     expect([...vault.files.keys()].some((path) => path.includes('.snapshots'))).toBe(false);
   });
+
+  it('point their tokens at renamed artwork', async () => {
+    const loose = 'Elsewhere/Loose.atlasmap';
+    const vault = createInMemoryApp({ files: { [loose]: mapEnvelope({ ...encounterReady, mapPath: loose }) } });
+    const service = new SceneSnapshotService(vault.app);
+    const folder = legacySnapshotFolderFor(loose);
+    await service.create(folder, vault.app.vault.getFileByPath(loose), 'Ambush', null);
+
+    await new FileReferenceService(vault.app).handleFileRenamed('atlas-vtt/assets/goblin.webp', 'atlas-vtt/assets/goblin-boss.webp');
+
+    const [entry] = await service.list(folder);
+    expect(entry?.snapshot.state.objects?.tokens?.goblin?.imagePath).toBe('atlas-vtt/assets/goblin-boss.webp');
+  });
+
 });

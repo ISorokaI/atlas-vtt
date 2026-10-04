@@ -9,6 +9,7 @@ import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../d
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_SETTINGS,
+  isRecord,
   defaultInputMode,
   readStoredSettings,
   storedSettings,
@@ -74,7 +75,8 @@ export class SettingsService {
     await this.initialize();
     const local = this.settings;
     const saved = this.saved;
-    await this.loadSettings();
+    // A file a sync tool is still writing reads as nothing: the settings stay as they are.
+    if (!(await this.loadSettings(true))) return;
     // A change made here and not saved yet is newer than what arrived; it stays and is saved.
     if (this.saveTimeout !== undefined) {
       for (const key of Object.keys(local) as Array<keyof AtlasSettings>) {
@@ -88,7 +90,8 @@ export class SettingsService {
     return loadInputMode(this.app) ?? defaultInputMode();
   }
 
-  private async loadSettings(): Promise<void> {
+  /** Reads the settings; returns false, changing nothing, when `onlyRecords` is set and the data is no settings record. */
+  private async loadSettings(onlyRecords = false): Promise<boolean> {
     // A failed migration is reported by the plugin's startup; settings still load.
     await this.storageReady.catch(() => undefined);
     let stored: unknown = null;
@@ -97,11 +100,13 @@ export class SettingsService {
     } catch (error) {
       console.error('[SettingsService] Failed to read settings:', error);
     }
+    if (onlyRecords && !isRecord(stored)) return false;
     const read = readStoredSettings(stored, this.deviceInputMode());
     this.settings = read.settings;
     // A copy: setters change the settings in place.
     this.saved = structuredClone(read.settings);
     this.foreignHotkeys = read.foreignHotkeys;
+    return true;
   }
 
   private async saveSettings(): Promise<void> {

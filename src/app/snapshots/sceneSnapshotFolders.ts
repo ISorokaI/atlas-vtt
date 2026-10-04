@@ -2,6 +2,7 @@ import { TFile, TFolder, type App } from 'obsidian';
 import type { AssetService, SceneAsset } from '../services/AssetService';
 import { trashVaultItem } from '../utils/trashVaultItem';
 import { SceneSnapshotService } from './SceneSnapshotService';
+import { snapshotStorageFor } from './snapshotStorage';
 import { collectionSnapshotsFolder, isSnapshotJsonPath, legacySnapshotFolderFor, parentFolderOf, sceneSnapshotFolder } from './snapshotPaths';
 import { removeEmptyHiddenFolders } from '../utils/hiddenVaultFiles';
 import { COLLECTIONS_DIR } from '../services/assetPaths';
@@ -82,6 +83,15 @@ export function collectionSnapshotFiles(app: App, collectionId: string): string[
 /** The snapshot files of every scene in the vault. */
 export function allSnapshotFiles(app: App): string[] {
   return app.vault.getFiles().map((file) => file.path).filter(isSnapshotJsonPath);
+}
+
+/** The snapshot files in the hidden folders beside `mapPaths`: maps outside every collection, and folders still waiting for their migration. */
+export async function hiddenSnapshotFiles(app: App, mapPaths: readonly string[]): Promise<string[]> {
+  const listed = await Promise.all(mapPaths.map((mapPath) => {
+    const folder = legacySnapshotFolderFor(mapPath);
+    return snapshotStorageFor(app, folder).list(folder);
+  }));
+  return listed.flat().filter((path) => path.endsWith('.json'));
 }
 
 /** Runs `rewrite` over the snapshots of every scene of a collection (`SceneSnapshotService.rewriteFiles`). */

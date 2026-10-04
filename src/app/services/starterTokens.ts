@@ -50,7 +50,8 @@ const starterTokenId = (name: string): string => `token-starter-${name.toLowerCa
  * so the vault check never adopts an image as a second asset.
  */
 export async function addStarterTokens(app: App, assets: AssetService, settings: SettingsService): Promise<void> {
-  await assets.initialize();
+  // The flag another device set arrives with the library files, which the first vault check reads.
+  await assets.vaultChecked();
   if (await assets.starterTokensAdded()) return;
   // Versions before the flag synced kept it in Atlas' settings.
   const addedBefore = settings.getSetting('starterTokensAdded');

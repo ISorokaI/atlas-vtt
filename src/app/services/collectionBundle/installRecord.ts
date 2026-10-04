@@ -152,17 +152,24 @@ export async function deleteInstallRecord(app: App, collection: InstalledCollect
   if (await app.vault.adapter.exists(legacy)) await app.vault.adapter.remove(legacy);
 }
 
+/** Whether `record` stands for a later import than `other`: a newer release, else a later install of it. */
+const isLaterInstall = (record: InstallRecord, other: InstallRecord): boolean =>
+  record.version !== other.version ? record.version > other.version : record.installedAt > other.installedAt;
+
 /**
  * Moves install records older versions kept in the hidden data folder, which
- * no sync tool carries, into their collection's folder. Runs on every device;
- * a record another device moved already stays as it is.
+ * no sync tool carries, into their collection's folder. Runs on every device.
+ * Each device kept its own while the collection's files synced, so where
+ * another device moved its record already, the later install of the two stays.
  */
 export async function migrateInstallRecords(app: App, collections: readonly InstalledCollection[]): Promise<void> {
   for (const collection of collections) {
     const legacy = await readLegacyRecord(app, collection.uid);
     if (!legacy) continue;
     try {
-      if (!app.vault.getFileByPath(installFilePath(collection.id))) await writeInstallRecord(app, movedInstallRecord(legacy, collection.id));
+      const file = app.vault.getFileByPath(installFilePath(collection.id));
+      const moved = file ? parseInstallRecord(await app.vault.read(file), file.path) : null;
+      if (!moved || moved.uid !== collection.uid || isLaterInstall(legacy, moved)) await writeInstallRecord(app, movedInstallRecord(legacy, collection.id));
       await app.vault.adapter.remove(legacyRecordPath(collection.uid));
     } catch (error) {
       console.error(`[installRecord] Could not move the install record of ${collection.id}:`, error);

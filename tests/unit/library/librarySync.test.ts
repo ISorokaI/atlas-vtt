@@ -80,12 +80,41 @@ describe('the first start of this version', () => {
     const moved = `${FEN}/tokens/hag-moved.webp`;
     index.assets['encounter-1'].tokens = [{ id: 'token-1', name: 'Bog hag', imagePath: moved }];
     index.assets['encounter-1'].data = { description: 'At the ford', tokens: [{ id: 'token-1', name: 'Bog hag', imagePath: moved }] };
+    // Rewriting the refs stamped the record after the file was written.
+    index.assets['encounter-1'].modifiedAt = 1_000_000;
     files[CACHE] = JSON.stringify(index);
 
     const a = await device(files);
 
     expect(await a.assets.getAssetById('encounter-1')).toMatchObject({ tokens: [{ imagePath: moved }], data: { tokens: [{ imagePath: moved }] } });
     expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [{ imagePath: moved }], [RECORD_KEY]: { id: 'encounter-1' } });
+  });
+
+  it('takes the older file\'s payload where another device edited it after this index last did', async () => {
+    const files = olderVault();
+    const index = JSON.parse(files[CACHE]!);
+    // This device's index holds the encounter as it was before the other device added the hag.
+    index.assets['encounter-1'].data = { description: 'At the ford', tokens: [] };
+    index.assets['encounter-1'].tokens = [];
+    files[CACHE] = JSON.stringify(index);
+
+    const a = await device(files);
+
+    expect(await a.assets.getAssetById('encounter-1')).toMatchObject({ tokens: [{ id: 'token-1' }], data: { tokens: [{ id: 'token-1' }] } });
+    expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [{ id: 'token-1' }] });
+  });
+
+  it('keeps a record this device edited after the version another device migrated, and writes it', async () => {
+    const a = await device(olderVault());
+    const files = { ...syncedFiles(a), [CACHE]: olderVault()[CACHE]! };
+    const index = JSON.parse(files[CACHE]!);
+    index.assets['token-1'] = { ...index.assets['token-1'], name: 'Renamed here', tags: ['hag', 'boss'], modifiedAt: 1_000_000 };
+    files[CACHE] = JSON.stringify(index);
+
+    const b = await device(files);
+
+    expect(await b.assets.getAssetById('token-1')).toMatchObject({ name: 'Renamed here', tags: ['hag', 'boss'] });
+    expect(JSON.parse(b.files.get(TOKEN_RECORD)!)[RECORD_KEY]).toMatchObject({ name: 'Renamed here' });
   });
 });
 
@@ -182,6 +211,24 @@ describe('a second device', () => {
 
     expect((await b.assets.getAssets('Fen', 'token')).map((token) => [token.id, token.name])).toEqual([['token-1', 'Bog hag']]);
     expect(b.files.has(copy)).toBe(true);
+  });
+});
+
+describe('a device whose older version adopted art another device has a record for', () => {
+  it('passes the user\'s edits of the adopted token to the record and points encounters at it', async () => {
+    const a = await device(olderVault());
+    const files = { ...syncedFiles(a), [CACHE]: olderVault()[CACHE]! };
+    const index = JSON.parse(files[CACHE]!);
+    delete index.assets['token-1'];
+    index.assets['token-recovered-abc'] = { id: 'token-recovered-abc', type: 'token', name: 'Swamp witch', imagePath: ART, tags: ['boss'], statblockPath: 'Bestiary/Hag.md', collection: 'Fen', createdAt: 5, modifiedAt: 1_000_000 };
+    index.assets['encounter-1'].tokens = [{ id: 'token-recovered-abc', name: 'Swamp witch', imagePath: ART }];
+    files[CACHE] = JSON.stringify(index);
+
+    const b = await device(files);
+
+    expect(await b.assets.getAssetById('token-recovered-abc')).toBeNull();
+    expect(await b.assets.getAssetById('token-1')).toMatchObject({ name: 'Swamp witch', tags: ['boss'], statblockPath: 'Bestiary/Hag.md' });
+    expect((await b.assets.getAssetById('encounter-1')) as { tokens: Array<{ id: string }> }).toMatchObject({ tokens: [{ id: 'token-1' }] });
   });
 });
 

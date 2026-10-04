@@ -291,13 +291,22 @@ export class AssetService {
     await this.reconcileOnceVaultIsListed();
   }
 
+  /** The first check of the index against the vault, which reads the library files; null until initialization starts it. */
+  private firstCheck: Promise<void> | null = null;
+
+  /** Settles once the index was first checked against the vault and its library files, so it holds what other devices synced. */
+  async vaultChecked(): Promise<void> {
+    await this.initialize();
+    await this.firstCheck;
+  }
+
   /**
    * Checks the index against the vault's files once Obsidian has listed them all;
    * before the layout is ready `getFiles()` can miss files that exist. Resolves
    * after the check when the layout is already ready, at once otherwise.
    */
   private reconcileOnceVaultIsListed(): Promise<void> {
-    const reconciled = new Promise<void>((resolve) => {
+    const reconciled = this.firstCheck = new Promise<void>((resolve) => {
       this.app.workspace.onLayoutReady(() => {
         resolve(this.reconcileWithVault().then(
           // Install records older versions kept in the hidden data folder move into their collection folders.
@@ -1278,6 +1287,20 @@ export class AssetService {
     if (release.coverPath === undefined) delete collection.coverPath;
     else collection.coverPath = release.coverPath;
     collection.publisherId = this.vaultIdNow();
+    await this.saveMetadata();
+  }
+
+  /**
+   * Gives a collection Atlas worked out from its folder an identity of its own. Its derived uid
+   * is the same in every vault that has a folder of that name, so a bundle carrying it would
+   * be taken for an update of an unrelated collection elsewhere. Saved to its file at once.
+   */
+  async ensureOwnCollectionUid(collectionId: string): Promise<void> {
+    await this.ensureLoaded();
+    const collection = this.metadata!.collections[collectionId];
+    if (!collection || collection.uid !== derivedCollectionRecord(collectionId).uid) return;
+    collection.uid = crypto.randomUUID();
+    collection.modifiedAt = Date.now();
     await this.saveMetadata();
   }
 

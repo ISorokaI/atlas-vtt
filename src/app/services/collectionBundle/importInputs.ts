@@ -9,7 +9,7 @@ import { hashHere, mayRewrite, rewriteContent } from './bundleContent';
 import { importedSettings, withPresetId } from './bundleSettings';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
 import { sha256 } from './hashing';
-import { COLLECTION_FIELDS, type InstallRecord } from './installRecord';
+import { COLLECTION_FIELDS, type InstallRecord, type InstalledItem } from './installRecord';
 import type { PlanItemInput } from './importPlan';
 import { planImportPaths, remapPaths } from './pathRemap';
 import { isHiddenVaultPath, listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
@@ -101,6 +101,19 @@ export function referencedStrings(values: readonly unknown[], into: Set<string> 
 export async function vaultFileHash(app: App, path: string): Promise<string | null> {
   const content = await readVaultBinary(app, path);
   return content ? sha256(comparedBytes(path, content)) : null;
+}
+
+/**
+ * The vault file's fingerprint for comparing it with what an install recorded. Versions before
+ * record files fingerprinted a map's JSON with the collection it names, so a file that still
+ * matches such a record is unchanged.
+ */
+export async function installedFileHash(app: App, path: string, base: InstalledItem | null): Promise<string | null> {
+  const content = await readVaultBinary(app, path);
+  if (!content) return null;
+  const mine = await sha256(comparedBytes(path, content));
+  if (!base || base.installed === mine) return mine;
+  return await sha256(payloadBytes(path, content)) === base.installed ? base.installed : mine;
 }
 
 /** The vault's record with `localId` when it belongs to the collection being updated; one in another collection is the user's own. */
@@ -239,17 +252,17 @@ export async function gatherImportInputs(
     if (theirs !== null && entry && mayRewrite(file, targets.rewrites, targets.templateIds)) {
       theirsInstalled = await sha256(comparedBytes(target, rewriteContent(file, payloadBytes(file.vaultPath, await entry.async('arraybuffer')), targets.rewrites, targets.templateIds)));
     }
+    const base = record?.files[file.vaultPath] ?? (previousPath ? record?.files[previousPath] : undefined) ?? null;
     items.push({
       key: `file:${file.vaultPath}`, kind: 'file', unit: fileUnit(file),
-      theirs, base: record?.files[file.vaultPath] ?? (previousPath ? record?.files[previousPath] : undefined) ?? null,
-      mine: await vaultFileHash(app, target), theirsInstalled,
+      theirs, base, mine: await installedFileHash(app, target, base), theirsInstalled,
     });
   }
   for (const [path, installed] of Object.entries(record?.files ?? {})) {
     if (moved.has(path)) continue;
     // Only the collection's own folder is the import's to clean up: shared artwork and the user's notes stay.
     if (bundledPaths.has(path) || !installed.target.startsWith(`${COLLECTIONS_DIR}/${targets.collectionId}/`)) continue;
-    items.push({ key: `file:${path}`, kind: 'file', unit: installed.unit ?? `file:${path}`, theirs: null, base: installed, mine: await vaultFileHash(app, installed.target) });
+    items.push({ key: `file:${path}`, kind: 'file', unit: installed.unit ?? `file:${path}`, theirs: null, base: installed, mine: await installedFileHash(app, installed.target, installed) });
   }
 
   for (const asset of manifest.assets) {

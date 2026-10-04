@@ -49,9 +49,10 @@ describe('carrying the settings over into the plugin data', () => {
 
     expect(data.stored()).toEqual({ diceColour: 'dark', hotkeys: { assets: 'q' }, futureKey: 1 });
     expect(app.loadLocalStorage(INPUT_MODE_STORAGE_KEY)).toBe('mouse');
-    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen.json`, `${SYSTEM_PRESET_FOLDER}/Homebrew.json`]);
+    // Named apart, since another device may carry a preset of the same name over at the same moment.
+    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen (p2).json`, `${SYSTEM_PRESET_FOLDER}/Homebrew (p1).json`]);
     expect(new SystemPresetService(presets).list().find((preset) => preset.id === 'p1')).toMatchObject({ name: 'Homebrew' });
-    expect(JSON.parse(files.get(HIDDEN_SETTINGS)!)).toEqual({ ...JSON.parse(old), systemPresetsMovedToFiles: true });
+    expect(JSON.parse(files.get(HIDDEN_SETTINGS)!)).toEqual({ ...JSON.parse(old), systemPresetsMovedIds: ['p1', 'p2'] });
     expect(app.loadLocalStorage(SETTINGS_MIGRATED_KEY)).toBe(true);
 
     const settings = new SettingsService(app, undefined, data);
@@ -73,6 +74,19 @@ describe('carrying the settings over into the plugin data', () => {
     expect(presetFiles(second.files)).toEqual([]);
   });
 
+  it('carries over a preset an older Atlas added to the old file after another device carried its presets over', async () => {
+    const first = device({ [HIDDEN_SETTINGS]: JSON.stringify({ systemPresets: [homebrew] }) });
+    await first.migrate();
+    const marked = JSON.parse(first.files.get(HIDDEN_SETTINGS)!);
+    // A device still on an older Atlas shares the file (a sync tool that carries dot folders) and adds a preset.
+    marked.systemPresets.push(fen);
+
+    const later = device({ [HIDDEN_SETTINGS]: JSON.stringify(marked) });
+    await later.migrate();
+    expect(presetFiles(later.files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen (p2).json`]);
+    expect(JSON.parse(later.files.get(HIDDEN_SETTINGS)!).systemPresetsMovedIds).toEqual(['p1', 'p2']);
+  });
+
   it('drops bindings older versions saved at their default, keeping actions this Atlas does not have', async () => {
     const old = JSON.stringify({ hotkeys: { help: DEFAULT_MAP_HOTKEYS.help, assets: 'q', laterAction: 'k' } });
     const { data, migrate } = device({ [HIDDEN_SETTINGS]: old });
@@ -84,7 +98,7 @@ describe('carrying the settings over into the plugin data', () => {
     const { data, files, migrate } = device({ [LEGACY_SETTINGS]: JSON.stringify({ diceDisplay: 'card', systemPresets: [homebrew] }) });
     await migrate();
     expect(data.stored()).toEqual({ diceDisplay: 'card' });
-    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Homebrew.json`]);
+    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Homebrew (p1).json`]);
   });
 
   it('starts a fresh vault with nothing to carry over', async () => {
@@ -114,7 +128,7 @@ describe('carrying the settings over into the plugin data', () => {
     expect(data.stored()).toEqual(synced);
     expect(data.saveData).not.toHaveBeenCalled();
     expect(app.loadLocalStorage(INPUT_MODE_STORAGE_KEY)).toBe('trackpad');
-    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen.json`, `${SYSTEM_PRESET_FOLDER}/Homebrew.json`]);
+    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen (p2).json`, `${SYSTEM_PRESET_FOLDER}/Homebrew.json`]);
     expect(JSON.parse(files.get(`${SYSTEM_PRESET_FOLDER}/Homebrew.json`)!)).toMatchObject({ name: 'Homebrew' });
   });
 
@@ -128,7 +142,7 @@ describe('carrying the settings over into the plugin data', () => {
   it('turns presets left in the plugin data into files and takes them out of it', async () => {
     const { data, files, migrate } = device({}, { diceColour: 'dark', systemPresets: [fen] });
     await migrate();
-    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen.json`]);
+    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen (p2).json`]);
     expect(data.stored()).toEqual({ diceColour: 'dark' });
   });
 
@@ -154,7 +168,7 @@ describe('carrying the settings over into the plugin data', () => {
 
     SystemPresetFiles.release(app);
     await migrateSettingsToPluginData(app, memoryPluginData(), SystemPresetFiles.open(app));
-    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Homebrew.json`]);
+    expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Homebrew (p1).json`]);
     expect(app.loadLocalStorage(SETTINGS_MIGRATED_KEY)).toBe(true);
   });
 });

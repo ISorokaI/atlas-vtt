@@ -5,7 +5,7 @@ import { normalizeImagePath } from '../utils/pathUtils';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
 import { movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
 import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
-import { allSnapshotFiles } from '../snapshots/sceneSnapshotFolders';
+import { allSnapshotFiles, hiddenSnapshotFiles } from '../snapshots/sceneSnapshotFolders';
 import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
 import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
 import type { NotePatch } from '../statblocks/notes/patchTypes';
@@ -164,7 +164,8 @@ export class FileReferenceService {
       }
     }
     // Scene snapshots hold the same map state, so they follow renamed files too.
-    if (await snapshots.rewriteFiles(allSnapshotFiles(this.app), rewriteMap)) anyChanged = true;
+    const snapshotFiles = [...allSnapshotFiles(this.app), ...await hiddenSnapshotFiles(this.app, mapFiles.map((file) => file.path))];
+    if (await snapshots.rewriteFiles(snapshotFiles, rewriteMap)) anyChanged = true;
 
     return anyChanged;
   }

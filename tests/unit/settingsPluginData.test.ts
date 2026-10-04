@@ -98,6 +98,17 @@ describe('Atlas settings in the plugin data', () => {
     }
   });
 
+  it('keeps the settings when the file reads as nothing, as while a sync tool rewrites it', async () => {
+    const { settings, data } = await loaded({ diceColour: 'dark', experimental: { dynamicLighting: true } });
+    const heard = vi.fn();
+    settings.onChange(heard);
+    data.set(null);
+    await settings.reload();
+    expect(settings.getDiceLook().colour).toBe('dark');
+    expect(settings.isExperimentalOn('dynamicLighting')).toBe(true);
+    expect(heard).not.toHaveBeenCalled();
+  });
+
   it('waits for the first load before reading a change from disk', async () => {
     let finish!: () => void;
     const data = memoryPluginData({ diceDisplay: 'card' });

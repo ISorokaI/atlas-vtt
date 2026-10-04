@@ -74,12 +74,21 @@ function mergeRecords(context: MergeContext, readings: readonly RecordReading[])
   return upserted;
 }
 
-/** Takes a record in from the file it lives in; a file that stood for a copy until now hands it back to its record. */
+/**
+ * Takes a record in from the file it lives in; a file that stood for a copy until now hands it back to its record.
+ * Before this device has written its library files, its index was its own copy of the library, so an entry
+ * edited here after the file's version stays and is written over the file at the first save.
+ */
 function takeIn(context: MergeContext, record: Asset, reading: RecordReading, upserted: Set<string>): void {
   const { metadata, state, result } = context;
   const formerCopy = idOfKey(state.files[reading.path]?.key ?? '', 'copy');
   stamp(state, reading, assetKey(record.id));
   delete state.derived[assetKey(record.id)];
+  const indexed = metadata.assets[record.id];
+  if (!context.migrated && indexed && indexed.modifiedAt > record.modifiedAt) {
+    upserted.add(record.id);
+    return;
+  }
   upsert(context, record, upserted);
   if (formerCopy && formerCopy !== record.id && !hasOwnFile(state, formerCopy) && metadata.assets[formerCopy]) {
     delete metadata.assets[formerCopy];
@@ -97,10 +106,12 @@ function upsert(context: MergeContext, record: Asset, upserted: Set<string>): vo
 
 /**
  * Payloads older versions wrote into the JSON of records the index knows. Until
- * this device has written its library files, its index is what older versions
- * kept current (they rewrote token refs of encounters and parties in the index
- * alone), so a payload the index holds stays and is written over the file; one
- * it lacks comes from the file. Once migrated, the file's payload wins, as records do.
+ * this device has written its library files, the later of the two wins: older
+ * versions rewrote token refs of encounters and parties in the index alone
+ * (stamping the record's `modifiedAt`), while another device's edit reached
+ * this one only as the file. A payload the index keeps is written over the
+ * file; one it lacks comes from the file. Once migrated, the file's payload
+ * wins, as records do.
  */
 function mergePayloads(context: MergeContext, readings: readonly PayloadReading[]): void {
   if (readings.length === 0) return;
@@ -113,7 +124,7 @@ function mergePayloads(context: MergeContext, readings: readonly PayloadReading[
     const asset = byPath.get(reading.path);
     if (!asset) continue;
     stamp(state, reading, assetKey(asset.id));
-    if (!migrated && !isPayloadUnread(asset)) continue;
+    if (!migrated && !isPayloadUnread(asset) && asset.modifiedAt >= reading.mtime) continue;
     if (sameJson('data' in asset ? asset.data : undefined, reading.payload)) continue;
     const updated: Record<string, unknown> = { ...asset, data: reading.payload };
     for (const key of MIRRORED_FIELDS[asset.type] ?? []) {

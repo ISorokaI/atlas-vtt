@@ -1,4 +1,4 @@
-import type { AssetMetadata, TokenAsset } from '../AssetService';
+import type { Asset, AssetMetadata, GroupTokenRef, TokenAsset } from '../AssetService';
 import { GLOBAL_ASSETS_DIR } from '../assetPaths';
 import { defaultCollectionIdOf } from '../collectionRecords';
 import { groupTokenRefs, ownedPaths, primaryPath } from './assetFiles';
@@ -52,20 +52,49 @@ export function tidyRecoveredTokens(metadata: AssetMetadata, now: number): boole
   return changed;
 }
 
+/** Fields a record keeps whoever edited it last: who it is and where it lives. */
+const IDENTITY_FIELDS = new Set(['id', 'type', 'collection', 'createdAt', 'filePath']);
+
+/** Points every encounter and player group at `to` where it names `from`. */
+function moveGroupRefs(metadata: AssetMetadata, from: string, to: string, now: number): void {
+  for (const asset of Object.values(metadata.assets)) {
+    if (asset.type !== 'encounter' && asset.type !== 'player') continue;
+    const lists = [asset.tokens, asset.data?.tokens].filter((list): list is GroupTokenRef[] => Array.isArray(list));
+    let moved = false;
+    for (const list of lists) {
+      for (const [index, ref] of list.entries()) {
+        if (ref?.id !== from) continue;
+        list[index] = { ...ref, id: to };
+        moved = true;
+      }
+    }
+    if (moved) asset.modifiedAt = now;
+  }
+}
+
 /**
  * Removes records an earlier check rebuilt from a file that a real record now
  * owns: a sync tool delivered the art or map before the record that goes with
- * it. Returns whether any was removed.
+ * it, or an older version on another device adopted the same art. What the user
+ * did with the rebuilt record is kept: an edit newer than the real record's
+ * passes to it, and encounters and player groups that name it name the real
+ * record instead. Returns whether anything changed.
  */
-export function dropShadowedRecoveries(metadata: AssetMetadata): boolean {
-  const ownedByRecords = new Set<string>();
+export function dropShadowedRecoveries(metadata: AssetMetadata, now: number): boolean {
+  const owners = new Map<string, Asset>();
   for (const asset of Object.values(metadata.assets)) {
-    if (!isRecoveredId(asset.id)) for (const path of ownedPaths(asset)) ownedByRecords.add(path);
+    if (!isRecoveredId(asset.id)) for (const path of ownedPaths(asset)) owners.set(path, asset);
   }
   let changed = false;
   for (const [id, asset] of Object.entries(metadata.assets)) {
     const primary = primaryPath(asset);
-    if (!isRecoveredId(id) || !primary || !ownedByRecords.has(primary)) continue;
+    const owner = primary ? owners.get(primary) : undefined;
+    if (!isRecoveredId(id) || !owner) continue;
+    if (owner.type === asset.type && asset.modifiedAt !== asset.createdAt && asset.modifiedAt > owner.modifiedAt) {
+      const edits = Object.fromEntries(Object.entries(asset).filter(([key]) => !IDENTITY_FIELDS.has(key)));
+      Object.assign(owner, edits);
+    }
+    if (asset.type === 'token') moveGroupRefs(metadata, id, owner.id, now);
     delete metadata.assets[id];
     changed = true;
   }

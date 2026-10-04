@@ -74,7 +74,7 @@ export function reconcileIndex(metadata: AssetMetadata, listing: VaultListing, n
   const relinked = files.size > 0 ? relinkAssets(metadata, files, deleted, owned, ops, listing.recorded) : { changed: false, fileMoves: [] };
   changed = relinked.changed || changed;
   if (collectionFolders.size > 0) changed = forgetCollectionsWithoutFolder(metadata, collectionFolders, now) || changed;
-  changed = dropShadowedRecoveries(metadata) || changed;
+  changed = dropShadowedRecoveries(metadata, now) || changed;
   changed = tidyRecoveredTokens(metadata, now) || changed;
   changed = adoptUnindexedFiles(metadata, files, listing.json, owned, now) || changed;
   changed = adoptTokenArtwork(metadata, files, owned, now) || changed;

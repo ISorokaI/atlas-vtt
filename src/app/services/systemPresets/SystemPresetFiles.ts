@@ -92,8 +92,14 @@ export class SystemPresetFiles implements PresetStorage {
     return [...this.files.keys()].sort().find((path) => this.files.get(path)?.preset?.id === id) ?? null;
   }
 
-  create(entry: StoredPreset): void {
-    const path = freePresetPath(entry.name, (candidate) => this.isTaken(candidate));
+  /**
+   * Writes a new preset file. `apart` names it with a piece of its id: devices that carry their
+   * presets over at once could otherwise each write a file of the same name, of which sync keeps
+   * one. Its next edit gives it the plain name when that is free.
+   */
+  create(entry: StoredPreset, apart = false): void {
+    const name = apart ? `${typeof entry.name === 'string' ? entry.name : ''} (${entry.id.slice(-6)})` : entry.name;
+    const path = freePresetPath(name, (candidate) => this.isTaken(candidate));
     this.bump(path);
     this.files.set(path, { text: presetText(entry), preset: entry });
     this.changed();

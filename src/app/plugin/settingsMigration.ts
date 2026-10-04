@@ -50,16 +50,28 @@ function oldPreferencesOf(stored: Record<string, unknown>): Record<string, unkno
   return preferences;
 }
 
-/** Written into the old settings file once its presets became files, so no device brings back a preset deleted since. */
-const PRESETS_MOVED_KEY = 'systemPresetsMovedToFiles';
+/**
+ * Written into the old settings file: the ids of the presets carried over to files, so no device
+ * brings back one deleted since, while a preset an older Atlas added to the file later still moves.
+ */
+const PRESETS_MOVED_KEY = 'systemPresetsMovedIds';
 
-const presetsIn = (stored: Record<string, unknown> | null): unknown[] =>
-  Array.isArray(stored?.systemPresets) && stored[PRESETS_MOVED_KEY] !== true ? stored.systemPresets : [];
+const movedIds = (stored: Record<string, unknown> | null): Set<string> =>
+  new Set(Array.isArray(stored?.[PRESETS_MOVED_KEY]) ? stored[PRESETS_MOVED_KEY].filter((id): id is string => typeof id === 'string') : []);
 
-/** Marks the old settings file as carried over; another device that shares it, or a reinstall, then skips its presets. */
+const presetsIn = (stored: Record<string, unknown> | null): unknown[] => {
+  if (!Array.isArray(stored?.systemPresets)) return [];
+  const moved = movedIds(stored);
+  return stored.systemPresets.filter((entry) => !isStoredPreset(entry) || !moved.has(entry.id));
+};
+
+/** Records the presets of the old settings file as carried over; another device that shares it, or a reinstall, then skips them. */
 async function markPresetsMoved(app: App, old: { path: string; settings: Record<string, unknown> } | null): Promise<void> {
-  if (!old || old.settings[PRESETS_MOVED_KEY] === true || !Array.isArray(old.settings.systemPresets)) return;
-  await app.vault.adapter.write(old.path, JSON.stringify({ ...old.settings, [PRESETS_MOVED_KEY]: true }, null, 2));
+  if (!old || !Array.isArray(old.settings.systemPresets)) return;
+  const moved = movedIds(old.settings);
+  const ids = old.settings.systemPresets.filter(isStoredPreset).map((entry) => entry.id).filter((id) => !moved.has(id));
+  if (ids.length === 0) return;
+  await app.vault.adapter.write(old.path, JSON.stringify({ ...old.settings, [PRESETS_MOVED_KEY]: [...moved, ...ids] }, null, 2));
 }
 
 function migrated(storage: DeviceStorage): boolean {
@@ -94,7 +106,7 @@ export async function migrateSettingsToPluginData(app: App, data: PluginDataStor
   const created: string[] = [];
   for (const entry of [...presetsIn(old), ...presetsIn(current)]) {
     if (!isStoredPreset(entry) || presets.pathOf(entry.id) !== null) continue;
-    presets.create(entry);
+    presets.create(entry, true);
     created.push(entry.id);
   }
   await presets.flush();

@@ -30,6 +30,9 @@ export function mergeCollectionFiles(context: MergeContext, readings: readonly C
     }
     stamp(state, reading, collectionKey(id));
     delete state.derived[collectionIdentity(collection.uid)];
+    // Before this device wrote its library files, its own collection record edited after the file's stays, as records do.
+    const indexed = metadata.collections[id];
+    if (!context.migrated && indexed?.uid === collection.uid && indexed.modifiedAt > collection.modifiedAt) continue;
     if (sameJson(metadata.collections[id], collection)) continue;
     metadata.collections[id] = collection;
     result.changedCollections.push(id);
