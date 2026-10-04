@@ -7,7 +7,7 @@ export const grid: Translation = {
   'grid.line.solid': 'Сплошная',
   'grid.lineStyle': 'Стиль линий',
   'grid.lineWidth': 'Толщина линий',
-  'grid.numberOpacity': 'Прозрачность номеров',
+  'grid.numberOpacity': 'Непрозрачность номеров',
   'grid.numbers.columnRow': 'Столбец и строка (0101)',
   'grid.numbers.off': 'Выкл.',
   'grid.numbers.sequential': 'По порядку (1, 2, 3)',

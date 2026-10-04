@@ -71,7 +71,7 @@ export const creator: Translation = {
   'creator.zoomOutSelected': 'Уменьшить выбранные',
   'creator.token.saveFailedCount': { one: 'Не удалось сохранить {count} токен: {error}', few: 'Не удалось сохранить {count} токена: {error}', many: 'Не удалось сохранить {count} токенов: {error}', other: 'Не удалось сохранить {count} токена: {error}' },
   'creator.map.saveFailedCount': { one: 'Не удалось сохранить {count} карту: {error}', few: 'Не удалось сохранить {count} карты: {error}', many: 'Не удалось сохранить {count} карт: {error}', other: 'Не удалось сохранить {count} карты: {error}' },
-  'creator.indexWriteFailed': 'не удалось записать индекс ассетов.',
+  'creator.indexWriteFailed': 'не удалось записать индекс ресурсов.',
   'creator.saving.updateMap': 'Обновление карты',
   'creator.saving.updateToken': 'Обновление токена',
   'creator.saving.addMaps': 'Добавление карт',

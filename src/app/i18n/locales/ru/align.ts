@@ -30,7 +30,7 @@ export const align: Translation = {
   'align.pointyHexes': 'гексы с острой вершиной',
   'align.pointyTip': 'Гексы с острой вершиной, рядами',
   'align.preview': 'Проверьте выравнивание. Стрелки сдвигают сетку (с Shift — на доли пикселя).',
-  'align.square': 'Квадрат',
+  'align.square': 'Квадраты',
   'align.squareTip': 'Квадратная сетка',
   'align.squares': 'квадраты',
   'align.tab.freehand': 'Вручную',

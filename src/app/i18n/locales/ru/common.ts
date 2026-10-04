@@ -12,7 +12,7 @@ export const common: Translation = {
   'common.delete': 'Удалить',
   'common.moveDown': 'Ниже',
   'common.moveUp': 'Выше',
-  'common.opacity': 'Прозрачность',
+  'common.opacity': 'Непрозрачность',
   'common.open': 'Открыть',
   'common.overwrite': 'Заменить',
   'common.quoted': '«{name}»',

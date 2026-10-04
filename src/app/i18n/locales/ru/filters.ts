@@ -17,7 +17,7 @@ export const filters: Translation = {
   'filters.statblock': 'Статблок',
   'filters.layout': 'Макет',
   'filters.tag': 'Тег',
-  'filters.linkHint': 'Привяжите статблоки к персонажам, чтобы фильтровать по сложности, типу и не только.',
+  'filters.linkHint': 'Привяжите статблоки к персонажам, чтобы фильтровать по показателю опасности, типу и не только.',
   'filters.showFewer': 'Свернуть',
   'filters.showAll': 'Показать все ({count})',
   'filters.lowest': '{label}: минимум',

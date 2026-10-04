@@ -2,7 +2,7 @@ import type { Translation } from '../../types';
 
 export const gridModal: Translation = {
   'gridModal.apply': 'Применить',
-  'gridModal.opacity': 'Прозрачность сетки',
+  'gridModal.opacity': 'Непрозрачность сетки',
   'gridModal.perHex': 'на гекс',
   'gridModal.perSquare': 'на клетку',
   'gridModal.show': 'Показывать сетку',
