@@ -164,15 +164,15 @@ describe('the template editor as the note view', () => {
     }
   });
 
-  it('pads the dock panel, the palette tiles and the Settings groups as much as they space their children', async () => {
+  it('pads the dock panel and the Settings groups as much as they space their children, and gives the Add panel\'s rows room', async () => {
     mount(new FakeSession(sampleTemplate()), 1400);
     await frames(2);
     const panel = await openDock('Add');
     expect(panel.getBoundingClientRect().width).toBeCloseTo(280, 0);
     expectUniform(panel.querySelector('.atlas-te-floating__content')!, 'dock panel');
-    const grid = panel.querySelector('.atlas-te-palette__grid')!;
-    const tilePadding = expectUniform(panel.querySelector('.atlas-te-tile')!, 'palette tile');
-    expect(spacing(grid).columnGap, 'tiles stand as far apart as their padding').toBeCloseTo(tilePadding, 1);
+    for (const row of [...panel.querySelectorAll<HTMLElement>('.atlas-te-palette__row')].slice(0, 6)) {
+      expect(row.getBoundingClientRect().height, 'an Add panel row').toBeGreaterThanOrEqual(40 - TOLERANCE);
+    }
     expectConcentricClose(panel, 'dock panel');
 
     const settings = await openSettings('stat-ac1');
@@ -241,8 +241,8 @@ describe('the template editor as the note view', () => {
     mount(new FakeSession(sampleTemplate()), 1400);
     await frames(3);
     const settings = await openSettings('stat-hp1');
-    for (const name of ['Look', 'When empty', 'Format', 'Advanced']) {
-      const header = [...settings.querySelectorAll<HTMLElement>('.atlas-te-group__header')].find((element) => element.textContent === name);
+    for (const name of ['Visibility', 'Write as', 'Property', 'For themes']) {
+      const header = [...settings.querySelectorAll<HTMLElement>('.atlas-te-group__header')].find((element) => element.querySelector('span')?.textContent === name);
       if (header?.getAttribute('aria-expanded') !== 'true') await act(async () => { header?.click(); });
     }
     await wait(400);
@@ -261,8 +261,8 @@ describe('the template editor as the note view', () => {
       frame('stat-ac1').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
     }), 'Settings opening').toEqual([]);
     expect(await animatedWhile(() => frame('stat-hp1').click()), 'Settings following the selection').toEqual([]);
-    const look = [...document.querySelectorAll<HTMLElement>('.atlas-te-settings .atlas-te-group__header')].find((header) => header.textContent === 'Look')!;
-    expect(await animatedWhile(() => look.click()), 'opening a group').toEqual([]);
+    const visibility = [...document.querySelectorAll<HTMLElement>('.atlas-te-settings .atlas-te-group__header')].find((header) => header.querySelector('span')?.textContent === 'Visibility')!;
+    expect(await animatedWhile(() => visibility.click()), 'opening a group').toEqual([]);
   });
 
   it('keeps the dialogs\' close buttons concentric', async () => {
@@ -271,7 +271,7 @@ describe('the template editor as the note view', () => {
     await wait(300);
     // The content shown now: the one before fades out beside it.
     const content = (): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-te-settings .atlas-te-insp__fade')].at(-1)!;
-    const advanced = [...content().querySelectorAll<HTMLElement>('.atlas-te-group__header')].find((header) => header.textContent === 'Advanced')!;
+    const advanced = [...content().querySelectorAll<HTMLElement>('.atlas-te-group__header')].find((header) => header.querySelector('span')?.textContent === 'Property')!;
     if (advanced.getAttribute('aria-expanded') !== 'true') await act(async () => { advanced.click(); });
     await wait(300);
     const rename = [...content().querySelectorAll<HTMLButtonElement>('button')].find((element) => element.textContent === 'Rename…')!;

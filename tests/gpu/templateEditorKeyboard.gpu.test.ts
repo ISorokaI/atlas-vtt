@@ -133,7 +133,7 @@ describe('the template editor by keyboard', () => {
     await userEvent.click(document.querySelector('[data-block-id="row00001"]')!);
     await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
     expect(session.template.layout.blocks.map((block) => block.id)).toEqual(['title001', 'section1', 'divider1']);
-    expect(document.querySelector('.atlas-te-live')?.textContent).toBe('Moved Row to section Defenses, position 3 of 3.');
+    expect(document.querySelector('.atlas-te-live')?.textContent).toBe('Moved Side by side to section Defenses, position 3 of 3.');
     await userEvent.keyboard('{Alt>}{ArrowLeft}{/Alt}');
     expect(session.template.layout.blocks.map((block) => block.id)).toEqual(['title001', 'section1', 'row00001', 'divider1']);
     expect(document.activeElement?.getAttribute('data-block-id')).toBe('row00001');

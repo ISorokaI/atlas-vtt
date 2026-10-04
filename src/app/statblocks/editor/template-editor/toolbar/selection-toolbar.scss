@@ -13,6 +13,11 @@ $chip-max: 88px;
 $dot: 6px;
 
 .atlas-vtt-plugin {
+  // The editor's layer gives its children the pointer; the toolbar gives it only to its controls.
+  .atlas-te-layer > .atlas-te-toolbar {
+    pointer-events: none;
+  }
+
   .atlas-te-toolbar {
     @include atlas-elevated-surface;
     @include atlas-keep-in-view;

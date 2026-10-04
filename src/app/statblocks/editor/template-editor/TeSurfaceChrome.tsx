@@ -126,6 +126,7 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
     const under = stage.ownerDocument.elementsFromPoint(point.x, point.y).find((element) => stage.contains(element));
     const found = under ? targetAt(stage, under, false) : null;
     if (found) open(menuOf(found.blockId), { at: point }, found.element, null);
+    else open(emptyMenu(), { at: point }, null, null);
   };
 
   const primary = primaryOf(state.selection);

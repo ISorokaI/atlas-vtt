@@ -114,8 +114,9 @@ describe('dragging an ability by its handle', () => {
     await userEvent.keyboard('{End} whip');
     expect(input.value).toBe('Lash whip');
 
+    // One ability is typed at a time: the others stay drawn as the card draws them (§6.3).
     const rows = abilities(harness);
-    expect(rows.every((row) => row.classList.contains('atlas-sb-pane-entry'))).toBe(true);
+    expect(rows.map((row) => row.classList.contains('atlas-sb-pane-entry-editor'))).toEqual([false, true, false]);
     const handle = await handleOf(rows[2]!);
     const to = { x: centreOf(handle).x, y: rows[0]!.getBoundingClientRect().top + 2 };
     const focus: boolean[] = [];
@@ -144,7 +145,8 @@ describe('dragging an ability by its handle', () => {
       if (ghost) ghostTops.push(ghost.getBoundingClientRect().top);
     });
     expect(ghostTops.length).toBeGreaterThan(0);
-    expect(Math.min(...ghostTops)).toBeGreaterThanOrEqual(list.top - 2);
+    // The copy's surface stands its inset around the ability's own text.
+    expect(Math.min(...ghostTops)).toBeGreaterThanOrEqual(list.top - 8);
     expect(document.querySelector('.atlas-sb-drag-hint')?.textContent).toMatch(/^Abilities stay in their list\./);
     await act(async () => {
       await mouse.up(to.x, to.y);

@@ -140,4 +140,59 @@ describe('handles and menus in the template editor', () => {
     expect(intersects(box, block)).toBe(false);
     expect(box.width).toBeLessThanOrEqual(220);
   });
+
+  it('lets the line under the toolbar be reached: it steps aside for a line entered from its free part, and passes a right-click on to it (D2)', async () => {
+    mount(new FakeSession(sampleTemplate()), 1280);
+    await frames(2);
+    const ac = centreOf(frame('stat-ac1'));
+    await act(async () => {
+      await mouse.click(ac.x, ac.y);
+      await frames(3);
+    });
+    const toolbar = document.querySelector<HTMLElement>('.atlas-te-toolbar')!;
+    const box = toolbar.getBoundingClientRect();
+    const hp = frame('stat-hp1').getBoundingClientRect();
+    // The toolbar stands at the block's right end, over the empty end of the line below, never its label.
+    expect(box.right).toBeCloseTo(frame('stat-ac1').getBoundingClientRect().right, 0);
+    expect(box.left).toBeGreaterThan(hp.left + 40);
+    // Into the line below from its free part, then on under the toolbar: it steps aside and takes no pointer.
+    const under = { x: (box.left + box.right) / 2, y: Math.min(hp.bottom - 2, box.bottom - 4) };
+    await mouse.hover(hp.left + 8, under.y);
+    await frames(2);
+    await mouse.hover(under.x, under.y);
+    await frames(2);
+    expect(toolbar.hasAttribute('data-stepped-aside')).toBe(true);
+    await act(async () => {
+      await mouse.click(under.x, under.y);
+      await frames(3);
+    });
+    expect(document.querySelector('[data-te-selected="primary"]')?.getAttribute('data-block-id')).toBe('stat-hp1');
+  });
+
+  it('opens the menu of what a toolbar button covers on a right-click there', async () => {
+    mount(new FakeSession(sampleTemplate()), 1280);
+    await frames(2);
+    const ac = centreOf(frame('stat-ac1'));
+    await act(async () => {
+      await mouse.click(ac.x, ac.y);
+      await frames(3);
+    });
+    const blockUnder = (at: { x: number; y: number }): string | null | undefined => document.elementsFromPoint(at.x, at.y)
+      .find((element) => element.closest('.atlas-te-stage [data-block-id]'))?.closest('[data-block-id]')?.getAttribute('data-block-id');
+    const button = document.querySelector<HTMLElement>('.atlas-te-toolbar button')!;
+    const at = centreOf(button);
+    const id = blockUnder(at);
+    await act(async () => {
+      await mouse.rightClick(at.x, at.y);
+      await frames(3);
+    });
+    // A line under the button gets its own menu; the card's gaps get the card's.
+    expect(menuRows().length).toBeGreaterThan(0);
+    if (id) {
+      expect(document.querySelector('[data-te-selected="primary"]')?.getAttribute('data-block-id')).toBe(id);
+      expect(menuRows().at(-1)).toMatch(/^Delete/);
+    }
+    // While a block's menu is open the toolbar keeps out of its way (§4.2).
+    expect(document.querySelector('.atlas-te-toolbar')?.hasAttribute('data-hidden')).toBe(true);
+  });
 });

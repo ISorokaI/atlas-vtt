@@ -145,7 +145,7 @@ describe('dragging blocks in the template editor', () => {
     expect(document.activeElement?.getAttribute('data-block-id')).toBe('divider1');
   });
 
-  it('inserts a palette tile where it is dropped and selects it, without opening its label', async () => {
+  it('inserts an Add panel row where it is dropped and selects it, without opening its label', async () => {
     const session = new FakeSession(sampleTemplate());
     mount(session, 1280);
     await frames(2);
@@ -153,11 +153,14 @@ describe('dragging blocks in the template editor', () => {
     const add = [...document.querySelectorAll<HTMLButtonElement>('.atlas-te-dock button')].find((element) => element.textContent === 'Add')!;
     await act(async () => { add.click(); });
     await act(() => wait(300));
-    const tile = document.querySelector<HTMLElement>('.atlas-te-tile[data-item="block:stat"]')!;
+    const tile = document.querySelector<HTMLElement>('.atlas-te-palette__row[data-item="block:stat"]')!;
+    // The Add panel scrolls: the row is brought into its view before the press.
+    tile.scrollIntoView({ block: 'center' });
+    await frames(2);
     const hp = frame('stat-hp1').getBoundingClientRect();
     const at = { x: hp.left + hp.width / 2, y: hp.bottom - 2 };
     await pickUpAndMove(window, pointIn(tile), at);
-    expect(document.querySelector('.atlas-te-drag-overlay .atlas-te-tile')).not.toBeNull();
+    expect(document.querySelector('.atlas-te-drag-overlay .atlas-te-drag-face--item .atlas-statblock')).not.toBeNull();
     await drop(window, at);
     await act(() => wait(SETTLED_MS));
     const section = session.template.layout.blocks[1];
