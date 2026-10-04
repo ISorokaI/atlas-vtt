@@ -76,7 +76,7 @@ export function quickChoices(session: EditorSession, block: TemplateBlock, openS
       ], (look) => editBlock(session, id, 'stat', { look })), ...empty];
     case 'scores':
       return [choices('layout', 'Layout', 'table', block.orientation, [
-        { value: 'row', label: 'One row' }, { value: 'table', label: 'Table' },
+        { value: 'row', label: 'Labels on top' }, { value: 'table', label: 'Labels at the side' },
       ], (orientation) => editBlock(session, id, 'scores', { orientation })), ...empty];
     case 'tags':
       return [choices('style', 'Style', 'paintbrush', block.look, TAG_LOOK_OPTIONS, (look) => editBlock(session, id, 'tags', { look })), ...empty];

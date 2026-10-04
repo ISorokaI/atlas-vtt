@@ -86,11 +86,11 @@ export function OwnLook(props: GroupProps): React.JSX.Element | null {
       return (
         <>
           <ChoiceSetting label="Layout" value={block.orientation} disabled={disabled}
-            options={[{ value: 'row', label: 'One row' }, { value: 'table', label: 'Table' }]}
+            options={[{ value: 'row', label: 'Labels on top' }, { value: 'table', label: 'Labels at the side' }]}
             onChange={(orientation) => editBlock(session, block.id, 'scores', { orientation })} />
           {block.orientation === 'table' && (
             <SelectSetting label="Per line" value={String(block.perLine ?? 1)} disabled={disabled}
-              options={PER_LINE.map((count) => ({ value: count, label: count === '1' ? '1 slot' : `${count} slots` }))}
+              options={PER_LINE.map((count) => ({ value: count, label: `${count} per line` }))}
               onChange={(count) => editBlock(session, block.id, 'scores', { perLine: count === '1' ? undefined : Number(count) })} />
           )}
           <ScoreColumns {...props} block={block} />

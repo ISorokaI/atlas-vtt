@@ -160,7 +160,7 @@ describe('the Settings panel in layers (spec §10)', () => {
     expect(session.steps).toBe(3);
   });
 
-  it('adds a score column and turns it into a save read from a property', () => {
+  it('adds a worked-out column and turns it into one read from a property', () => {
     const session = new FakeSession(template(
       [{ id: 'scores01', type: 'scores', field: 'stats', orientation: 'row' }],
       [{ key: 'stats', label: 'Abilities', type: 'scores', slots: ['STR', 'DEX'] }, { key: 'saves', label: 'Saves', type: 'pairs' }],
@@ -168,13 +168,13 @@ describe('the Settings panel in layers (spec §10)', () => {
     const { frame } = mountEditor(session);
     fireEvent.click(frame('scores01'));
     fireEvent.click(within(group('Basics')).getByText('Add column').closest('button')!);
-    expect(blockOf(session, 'scores01')).toMatchObject({ columns: [{ label: 'Mod', formula: 'floor((value - 10) / 2)', display: 'signed' }] });
-    choose(group('Basics'), 'Reads', 'A property, else modifier');
+    expect(blockOf(session, 'scores01')).toMatchObject({ columns: [{ formula: 'value' }] });
+    choose(group('Basics'), 'Reads', 'A property');
     const field = within(group('Basics')).getByRole('combobox', { name: 'Property' });
     fireEvent.change(field, { target: { value: 'sav' } });
     key(field, 'Enter');
-    expect(blockOf(session, 'scores01')).toMatchObject({ columns: [{ label: 'Mod', field: 'saves', formula: 'floor((value - 10) / 2)' }] });
-    fireEvent.click(within(group('Basics')).getByRole('radio', { name: 'Table' }));
+    expect(blockOf(session, 'scores01')).toMatchObject({ columns: [{ field: 'saves', formula: 'value' }] });
+    fireEvent.click(within(group('Basics')).getByRole('radio', { name: 'Labels at the side' }));
     expect(blockOf(session, 'scores01')).toMatchObject({ orientation: 'table' });
     expect(session.steps).toBe(3);
   });
