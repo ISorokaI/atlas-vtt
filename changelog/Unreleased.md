@@ -15,6 +15,7 @@
 - Right-click any wall of a chain to place a door in it, right where you clicked. A door is one grid cell wide, or fills a wall about that wide
 - Right-click a door to turn it back into wall, a point to remove it (the two walls meeting there become one), and a wall of a selected chain to delete just that wall
 - The undo and redo buttons can be hidden in the toolbar editor too
+- With dynamic lighting, tokens with vision explore fog of war you painted: the players see through it wherever their tokens see, and areas they have explored stay uncovered while the scene remembers explored areas. You keep seeing the fog as you painted it; switch off GM view to see it as your players do
 
 ## Fixed
 

@@ -77,6 +77,8 @@ export class CanvasLightingFallback implements SceneLightingView {
   currentSight(): Sight { return this.sight; }
   lightReaches(): LightReach[] { return this.reaches; }
   ambientLight(): AmbientLight { return FULL_DAYLIGHT; }
+  /** The fallback draws no world textures: painted fog stays as painted, so it never shows the players more. */
+  fogReveal(): null { return null; }
   refreshBounds(): void {
     this.inputs = [];
     this.update(this.deps.store.getState());
