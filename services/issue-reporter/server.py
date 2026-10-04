@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from reporter import Reporter, ReportError
 
-REPOSITORY = "ByteMirror/atlas-vtt"
+REPOSITORY = "atlas-vtt/atlas-vtt"
 MAX_BODY = 180000
 
 
