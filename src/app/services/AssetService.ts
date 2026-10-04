@@ -26,6 +26,7 @@ import type { LibraryMergeResult } from './library/mergeLibraryChanges';
 import { recordFilePath } from './library/libraryPaths';
 import { isPayloadUnread, serializeRecord } from './library/recordFile';
 import { parseLibraryState } from './library/libraryState';
+import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 
 export interface BaseAsset {
   id: string;
@@ -1126,6 +1127,11 @@ export class AssetService {
         } catch (error) {
           console.error('[AssetService] Error deleting scene map file:', error);
         }
+      }
+      try {
+        await trashSceneSnapshots(this.app, asset);
+      } catch (error) {
+        console.error('[AssetService] Error deleting scene snapshots:', error);
       }
     }
 

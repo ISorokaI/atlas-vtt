@@ -11,6 +11,10 @@ export interface InMemoryApp {
   app: App;
   files: Map<string, string>;
   folders: Set<string>;
+  /** What `app.saveLocalStorage` stored: per device, never synced. */
+  localStorage: Map<string, unknown>;
+  /** Calls the vault event handlers registered for `name`, as Obsidian does when a file changes. */
+  emit(name: string, ...args: unknown[]): void;
 }
 
 const ALREADY_EXISTS = 'File already exists.';
@@ -108,6 +112,15 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   };
 
   const app = new App();
+  const localStorage = new Map<string, unknown>();
+  Object.assign(app, {
+    loadLocalStorage: vi.fn((key: string) => localStorage.get(key) ?? null),
+    saveLocalStorage: vi.fn((key: string, value: unknown) => {
+      if (value === null || value === undefined) localStorage.delete(key);
+      else localStorage.set(key, value);
+    }),
+  });
+  const handlers = new Set<{ name: string; callback: (...args: unknown[]) => void }>();
 
   app.vault = {
     adapter: {
@@ -137,8 +150,12 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
         return folders.has(path) ? { type: 'folder', size: 0, ctime: 0, mtime: 0 } : null;
       }),
     },
-    on: vi.fn(() => ({})),
-    offref: vi.fn(),
+    on: vi.fn((name: string, callback: (...args: unknown[]) => void) => {
+      const ref = { name, callback };
+      handlers.add(ref);
+      return ref;
+    }),
+    offref: vi.fn((ref: { name: string; callback: (...args: unknown[]) => void }) => { handlers.delete(ref); }),
     getFiles: vi.fn(() => Array.from(files.keys()).filter((path) => !isHiddenPath(path)).map(fileAt)),
     getMarkdownFiles: vi.fn(() => Array.from(files.keys()).filter((path) => path.endsWith('.md') && !isHiddenPath(path)).map(fileAt)),
     getAbstractFileByPath: vi.fn((path: string): TAbstractFile | null => {
@@ -232,7 +249,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     },
   };
 
-  return { app, files, folders };
+  const emit = (name: string, ...args: unknown[]): void => {
+    for (const handler of [...handlers]) if (handler.name === name) handler.callback(...args);
+  };
+  return { app, files, folders, localStorage, emit };
 }
 
 type VaultWrite = (path: string, content: unknown) => Promise<unknown>;

@@ -3,6 +3,7 @@ import { GLOBAL_ASSETS_DIR } from '../assetPaths';
 import { defaultCollectionIdOf } from '../collectionRecords';
 import { groupTokenRefs, ownedPaths, primaryPath } from './assetFiles';
 import { isRecoveredId, recoveredId, recoveredTokenName } from './recoveredIds';
+import { isReservedCollectionPath } from './reservedPaths';
 
 const COLLECTION_TOKEN = /^atlas-vtt\/collections\/([^/]+)\/(?:.+\/)?tokens\/.+$/i;
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
@@ -76,7 +77,7 @@ export function adoptTokenArtwork(metadata: AssetMetadata, files: ReadonlySet<st
   const groupArt = groupArtwork(metadata);
   let changed = false;
   for (const path of [...files].sort()) {
-    if (!IMAGE.test(path) || owned.has(path)) continue;
+    if (!IMAGE.test(path) || owned.has(path) || isReservedCollectionPath(path)) continue;
     const collection = COLLECTION_TOKEN.exec(path)?.[1] ?? groupArt.get(path);
     const id = recoveredId('token', path);
     if (!collection || metadata.assets[id]) continue;

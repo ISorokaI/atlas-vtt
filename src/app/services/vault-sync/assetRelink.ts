@@ -3,6 +3,7 @@ import { collectionIdOfPath } from '../assetPaths';
 import type { PathMove } from '../renamedPaths';
 import { baseName } from '../../utils/pathUtils';
 import { defaultJsonPath, primaryPath, setPrimaryPath, sidecarPath } from './assetFiles';
+import { isReservedCollectionPath } from './reservedPaths';
 
 /** File operations that bring the collection folders in line with the index. */
 export interface VaultFileOps {
@@ -22,7 +23,7 @@ class UnownedFiles {
 
   constructor(files: ReadonlySet<string>, private readonly owned: Set<string>) {
     for (const path of files) {
-      if (owned.has(path)) continue;
+      if (owned.has(path) || isReservedCollectionPath(path)) continue;
       const name = baseName(path);
       const paths = this.byName.get(name);
       if (paths) paths.push(path);

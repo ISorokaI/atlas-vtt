@@ -15,7 +15,7 @@ interface SceneSnapshotsPanelProps {
  * one under a default name, then the snapshots newest first.
  */
 export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): React.ReactElement {
-  const { entries, isLoading, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove } = useSceneSnapshots(onRestore);
+  const { entries, isLoading, hasScene, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove } = useSceneSnapshots(onRestore);
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const finishRename = useCallback((entry: SceneSnapshotEntry, name: string | null): void => {
@@ -36,7 +36,7 @@ export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): Re
   return (
     <div className="atlas-snapshots">
       <div className="atlas-snapshots-grid">
-        <button type="button" className="atlas-snapshot-new" disabled={isBusy} onClick={() => void save()}>
+        <button type="button" className="atlas-snapshot-new" disabled={isBusy || isLoading || !hasScene} onClick={() => void save()}>
           <Plus />
           <span>New snapshot</span>
         </button>
@@ -54,9 +54,14 @@ export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): Re
           />
         ))}
       </div>
-      {entries.length === 0 && !isLoading && (
+      {entries.length === 0 && !isLoading && hasScene && (
         <p className="atlas-snapshots-hint">
           No snapshots yet. Save the map as it is now to reset it to this state later, for example before an encounter starts.
+        </p>
+      )}
+      {!isLoading && !hasScene && (
+        <p className="atlas-snapshots-hint">
+          Snapshots are kept with the scenes of a collection. Move this map into a collection to save snapshots of it.
         </p>
       )}
     </div>

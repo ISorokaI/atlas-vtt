@@ -1,7 +1,7 @@
 import type { Asset, CollectionMetadata } from '../AssetService';
 import { isLibraryOwnFile } from '../library/libraryPaths';
 import { isRecord } from '../assetMetadataGuards';
-import { SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
+import { LEGACY_SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from '../statblockImageKeys';
 
 /** Bumped when the zip layout or manifest shape changes: the newest format this version reads and writes. */
@@ -86,21 +86,31 @@ const SAFE_ID = /^[^/\\.][^/\\]{0,127}$/;
 const RESERVED_IDS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
 const isSafeId = (id: unknown): boolean => typeof id === 'string' && SAFE_ID.test(id) && !RESERVED_IDS.has(id);
 
-/** Scene snapshots live in `<folder>/.snapshots/<scene>/`, the only hidden folder a bundle may name. */
-const SNAPSHOT_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['scene-snapshot', 'scene-snapshot-thumbnail']);
+/** A scene's snapshot files, which travel with the scene and are placed by its id. */
+export const SNAPSHOT_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['scene-snapshot', 'scene-snapshot-thumbnail']);
 
 /**
  * Whether a bundled vault path is safe to plan an import for: relative, and
- * without `.`/`..` segments or hidden folders such as `.obsidian`. Snapshot
- * files may sit in their scene's `.snapshots` folder.
+ * without `.`/`..` segments or hidden folders such as `.obsidian`.
  */
-export function isSafeBundlePath(path: string, role?: BundleFileRole): boolean {
+export function isSafeBundlePath(path: string): boolean {
   if (!path || path.length > 1024 || path.startsWith('/') || path.includes('\\')) return false;
   if ([...path].some((character) => character.charCodeAt(0) < 0x20)) return false;
-  const segments = path.split('/');
-  const snapshotsIndex = role && SNAPSHOT_ROLES.has(role) ? segments.length - 3 : -1;
-  return segments.every((segment, index) => segment !== ''
-    && (!segment.startsWith('.') || (index === snapshotsIndex && segment === SNAPSHOTS_DIR)));
+  return path.split('/').every((segment) => segment !== '' && !segment.startsWith('.'));
+}
+
+/**
+ * Whether the file is a snapshot as bundles of earlier versions name it, in
+ * the hidden folder beside its scene's map (`scenes/.snapshots/Cave/<id>.json`).
+ * Such a path is never written: the import places the file by the scene that
+ * owns it (`sceneOfSnapshot`).
+ */
+export function isLegacySnapshotFile(file: Pick<BundleFile, 'vaultPath' | 'role'>): boolean {
+  if (!SNAPSHOT_FILE_ROLES.has(file.role)) return false;
+  const segments = file.vaultPath.split('/');
+  const hidden = segments.length - 3;
+  return hidden >= 0 && segments[hidden] === LEGACY_SNAPSHOTS_DIR
+    && isSafeBundlePath(segments.filter((_, index) => index !== hidden).join('/'));
 }
 
 const isStatblockImage = (value: unknown): boolean =>
@@ -145,7 +155,11 @@ export function manifestProblem(value: unknown): string | null {
   if (!isSound) return 'This collection export is damaged.';
   const { coverPath } = collection;
   if (coverPath !== undefined && !files.some((file) => file.role === 'cover' && file.vaultPath === coverPath)) return 'This collection export is damaged.';
-  const unsafe = files.find((file) => !isSafeBundlePath(file.vaultPath, file.role)
+  const sceneIds = new Set(assets.flatMap((asset) => (isRecord(asset) && asset.type === 'scene' && typeof asset.id === 'string' ? [asset.id] : [])));
+  // An earlier version's snapshot is placed by its scene, so it must name one of the bundle's scenes.
+  const isPlaceable = (file: BundleFile): boolean => isSafeBundlePath(file.vaultPath)
+    || (isLegacySnapshotFile(file) && (file.owners ?? []).some((owner) => sceneIds.has(owner)));
+  const unsafe = files.find((file) => !isPlaceable(file)
     || isLibraryOwnFile(file.vaultPath)
     || (file.statblockImage && !isSafeBundlePath(file.statblockImage.path)));
   if (unsafe) return `This collection export contains a file Atlas will not write: ${unsafe.vaultPath}`;

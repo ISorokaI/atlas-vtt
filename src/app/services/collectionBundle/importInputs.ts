@@ -1,7 +1,8 @@
 import { TFile, normalizePath, type App } from 'obsidian';
 import { payloadBytes } from './recordPayload';
 import { AssetService, ATLAS_VTT_DIR, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { SNAPSHOT_FILE_ROLES, TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { sceneOfSnapshot } from './bundleSnapshots';
 import { linkedFilePath } from '../sceneLinks';
 import type { OpenedBundle } from './bundleReader';
 import { hashHere, mayRewrite, rewriteContent } from './bundleContent';
@@ -11,7 +12,7 @@ import { sha256 } from './hashing';
 import { COLLECTION_FIELDS, type InstallRecord } from './installRecord';
 import type { PlanItemInput } from './importPlan';
 import { planImportPaths, remapPaths } from './pathRemap';
-import { listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
+import { isHiddenVaultPath, listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { systemPresetsOf } from '../mapCollectionRules';
 import { templateIdMap, withRoleTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 
@@ -113,10 +114,19 @@ export async function planTargets(
 ): Promise<ImportTargets> {
   const hiddenFiles = await listHiddenFiles(app, `${COLLECTIONS_DIR}/${collectionId}`);
   const exists = (path: string): boolean => app.vault.getAbstractFileByPath(normalizePath(path)) instanceof TFile || hiddenFiles.has(path);
+  // Ids are unique only within the vault that made them: one another collection uses gets a new id here.
+  const assetIds = new Map<string, string>();
+  for (const asset of manifest.assets) {
+    const candidate = record?.assets[asset.id]?.localId ?? asset.id;
+    const local = await assets.getAssetById(candidate);
+    assetIds.set(asset.id, local && local.collection !== collectionId ? AssetService.newAssetId(asset.type) : candidate);
+  }
+
   const paths = new Map<string, string>();
   for (const file of manifest.files) {
     const target = record?.files[file.vaultPath]?.target;
-    if (target) paths.set(file.vaultPath, target);
+    // Snapshots an earlier version installed in a hidden folder are placed anew, where the startup migration put them.
+    if (target && !(SNAPSHOT_FILE_ROLES.has(file.role) && isHiddenVaultPath(target))) paths.set(file.vaultPath, target);
   }
   const unplaced = manifest.files.filter((file) => !paths.has(file.vaultPath));
   // Shared Atlas artwork is only reused when it is the same file; otherwise the bundle's copy gets its own path.
@@ -138,16 +148,15 @@ export async function planTargets(
     existsInVault: exists,
     hasSameContent: (file) => sameContent.has(file.vaultPath) || isOwnArtwork(file.vaultPath),
     recordTargets,
+    sceneOfSnapshot: (file) => {
+      const scene = sceneOfSnapshot(file, manifest.assets);
+      return scene ? assetIds.get(scene) ?? scene : null;
+    },
   });
   for (const [source, target] of planned) paths.set(source, target);
 
-  // Ids are unique only within the vault that made them: one another collection uses gets a new id here.
-  const assetIds = new Map<string, string>();
   for (const asset of manifest.assets) {
-    const candidate = record?.assets[asset.id]?.localId ?? asset.id;
-    const local = await assets.getAssetById(candidate);
-    const localId = local && local.collection !== collectionId ? AssetService.newAssetId(asset.type) : candidate;
-    assetIds.set(asset.id, localId);
+    const localId = assetIds.get(asset.id)!;
     // Records without an explicit file path find their file by id, so a renamed record takes its file along.
     const derivesFile = asset.type !== 'token' && asset.type !== 'note' && !asset.filePath;
     const bundleFile = assets.getAssetFilePath({ ...asset, collection: manifest.collection.id });

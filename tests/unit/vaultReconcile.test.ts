@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService, type SceneAsset } from '../../src/app/services/AssetService';
 import { FileReferenceService } from '../../src/app/services/FileReferenceService';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
+import { tabs } from '../../src/app/packages/components/asset-manager/types';
+import { SNAPSHOTS_FOLDER } from '../../src/app/snapshots/snapshotPaths';
+import { LOOT_HISTORY_FOLDER } from '../../src/app/loot/lootHistoryPaths';
 
 const camp = 'atlas-vtt/collections/Winter Camp';
 const keep = 'atlas-vtt/collections/Frozen Keep';
@@ -226,5 +229,34 @@ describe('an incomplete vault listing', () => {
 
     expect((await vault.service.getCollections()).map((c) => c.id).sort()).toEqual(['Default', 'Winter Camp']);
     expect(await vault.service.getAssetById(vault.sceneId)).not.toBeNull();
+  });
+});
+
+describe('Atlas\' own folders at a collection\'s root', () => {
+  it('lie outside every tab folder, so the asset manager never lists them', () => {
+    for (const folder of [SNAPSHOTS_FOLDER, LOOT_HISTORY_FOLDER]) expect(tabs).not.toContain(folder);
+  });
+
+  it('never takes snapshots or loot history for assets, nor relinks a record to them', async () => {
+    const vault = await setup();
+    const scene = (await vault.service.getAssetById(vault.sceneId)) as SceneAsset;
+    const sidecar = scene.filePath ?? `${camp}/scenes/${vault.sceneId}.json`;
+    const before = new Set((await vault.service.getAssets()).map((asset) => asset.id));
+    // Files there may look like records or token art, even by name.
+    await vault.app.vault.create(`${camp}/snapshots/${vault.sceneId}/s1.json`, JSON.stringify({ mapPath: `${camp}/scenes/Cave.atlasmap`, name: 'Cave' }));
+    await vault.app.vault.create(`${camp}/snapshots/${vault.sceneId}/${vault.sceneId}.json`, '{}');
+    await vault.app.vault.create(`${camp}/snapshots/tokens/goblin_1790000000000_abcdef.webp`, 'IMG');
+    await vault.app.vault.create(`${camp}/snapshots/x/Lost.atlasmap`, MAP);
+    await vault.app.vault.create(`${camp}/loot-history/device.json`, '{"format":1,"rolls":[]}');
+
+    vault.files.delete(sidecar);
+    vault.files.delete(`${camp}/tokens/goblin_1790000000000_abcdef.webp`);
+    await vault.service.reconcileWithVault(new Set([`${camp}/tokens/goblin_1790000000000_abcdef.webp`]));
+
+    const after = await vault.service.getAssets();
+    // Nothing refers into Atlas' own folders; the scene whose record file went is its map again.
+    expect(after.filter((asset) => /\/(snapshots|loot-history)\//.test(JSON.stringify(asset)))).toEqual([]);
+    expect(await vault.service.getAssetById(vault.tokenId)).toBeNull();
+    expect(after.filter((asset) => !before.has(asset.id)).map((asset) => [asset.type, asset.name])).toEqual([['scene', 'Cave']]);
   });
 });
