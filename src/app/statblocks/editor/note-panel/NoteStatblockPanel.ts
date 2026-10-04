@@ -7,7 +7,8 @@ import { observeResize } from '../../../utils/observeResize';
 import type { PaneServices } from '../paneServices';
 import type { PendingCommit, StatblockPaneActions } from '../statblock-pane/paneTypes';
 import { NotePanelRoot } from './NotePanelRoot';
-import { STACK_BELOW, type PanelPrefs } from './panelPrefs';
+import { measureNoteRoom, watchNoteRoom } from './noteRoom';
+import { STACK_BELOW, panelWidth, type PanelPrefs } from './panelPrefs';
 
 /** On the view's container while its statblock shows: the content becomes a row, the note's fence shrinks. */
 export const NOTE_PANEL_CLASS = STATBLOCK_NOTE_CLASS;
@@ -24,6 +25,10 @@ export interface PanelContext {
   prefs: () => PanelPrefs;
   /** A new width while dragging (`done` false) and once let go, which stores it. */
   setWidth: (width: number, done: boolean) => void;
+  /** A drag of the edge that chose no width: the panel takes the width it had. */
+  cancelResize: () => void;
+  /** Forgets the width the user chose: every view takes its default again. */
+  resetWidth: () => void;
   /** Hides or shows the statblock beside every note, on this device. */
   setHidden: (hidden: boolean) => void;
 }
@@ -103,11 +108,11 @@ export class NoteStatblockPanel {
 
   /** Brings the panel in line with the device's choices: shown or hidden, and its width. */
   update(): void {
-    const { hidden, width } = this.context.prefs();
+    const { hidden } = this.context.prefs();
     this.updateAction(hidden);
     if (hidden) this.removeHost();
     else this.ensureHost();
-    this.host?.style.setProperty('--atlas-sb-panel-width', `${width}px`);
+    this.applyWidth();
     const { containerEl } = this.view;
     containerEl.toggleClass(NOTE_PANEL_CLASS, this.host !== null);
     containerEl.toggleClass(HIDE_PROPERTIES_CLASS, this.host !== null && !this.propertiesShown);
@@ -152,14 +157,39 @@ export class NoteStatblockPanel {
       this.stacked = stacked;
       this.update();
     };
-    const stopObserving = observeResize([contentEl], measure);
+    const stopObserving = observeResize([contentEl], () => {
+      measure();
+      this.resizeWithView();
+    });
+    const stopWatching = watchNoteRoom(this.view, () => this.resizeWithView());
     this.teardown.push(() => {
       host.removeEventListener('focusin', onFocusIn);
       host.removeEventListener('focusout', onFocusOut);
       releasePending();
       stopObserving();
+      stopWatching();
     });
     measure();
+  }
+
+  /** The width this view gives the panel: the chosen one, else its default for the room the note leaves. */
+  private width(): number {
+    return panelWidth(this.context.prefs(), measureNoteRoom(this.view));
+  }
+
+  /** Sets the panel's width; true when it changed. */
+  private applyWidth(): boolean {
+    const { host } = this;
+    if (!host) return false;
+    const width = `${this.width()}px`;
+    if (host.style.getPropertyValue('--atlas-sb-panel-width') === width) return false;
+    host.style.setProperty('--atlas-sb-panel-width', width);
+    return true;
+  }
+
+  /** The view was resized or readable line width switched: the default follows, and the handle says so. */
+  private resizeWithView(): void {
+    if (this.applyWidth()) this.render();
   }
 
   private removeHost(): void {
@@ -234,13 +264,15 @@ export class NoteStatblockPanel {
         pendingCommit: this.pendingCommit,
         actions: this.paneActions,
       },
-      width: this.context.prefs().width,
+      width: this.width(),
       stacked: this.stacked,
       availableWidth: () => this.view.contentEl.clientWidth,
       onResize: (width, done) => {
         this.host?.style.setProperty('--atlas-sb-panel-width', `${width}px`);
         this.context.setWidth(width, done);
       },
+      onCancelResize: () => this.context.cancelResize(),
+      onResetWidth: () => this.context.resetWidth(),
     }));
   }
 }

@@ -5,8 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import panelCss from '../../src/app/statblocks/editor/note-panel/note-statblock-panel.scss?inline';
+import sheetCss from '../../src/app/statblocks/render/statblock-sheet.scss?inline';
 import { PanelResizeHandle } from '../../src/app/statblocks/editor/note-panel/PanelResizeHandle';
-import { DEFAULT_PANEL_WIDTH, MIN_PANEL_WIDTH, NOTE_MIN_WIDTH } from '../../src/app/statblocks/editor/note-panel/panelPrefs';
+import { DEFAULT_MAX_WIDTH, MIN_PANEL_WIDTH, NOTE_MIN_WIDTH, defaultPanelWidth } from '../../src/app/statblocks/editor/note-panel/panelPrefs';
+
+/** What a readable line takes in Obsidian's default theme: 700 px and 32 px on either side. */
+const READABLE_LINE = 764;
+const DEFAULT_PANEL_WIDTH = defaultPanelWidth({ available: 1200, readableLine: null });
 
 /**
  * The statblock beside its note with the real stylesheet (§7.2): a Markdown
@@ -68,7 +73,7 @@ const frame = (): Promise<void> => new Promise((resolve) => requestAnimationFram
 
 describe('the statblock beside its note', () => {
   const style = document.createElement('style');
-  style.textContent = OBSIDIAN + css + panelCss;
+  style.textContent = OBSIDIAN + css + panelCss + sheetCss;
 
   beforeEach(async () => {
     await page.viewport(1400, 900);
@@ -93,6 +98,40 @@ describe('the statblock beside its note', () => {
       expect(rect(element).top).toBeCloseTo(box.top, 1);
       expect(rect(element).height).toBeCloseTo(box.height, 1);
     }
+  });
+
+  it('takes half the view, or what a readable line leaves empty, up to its widest default', () => {
+    for (const [width, readable, expected] of [
+      [1200, false, 600], [1600, false, 800], [1900, false, 950], [2560, false, DEFAULT_MAX_WIDTH],
+      [1200, true, 600], [1600, true, 1600 - READABLE_LINE], [1900, true, DEFAULT_MAX_WIDTH], [2560, true, DEFAULT_MAX_WIDTH],
+    ] as const) {
+      const panelWidth = defaultPanelWidth({ available: width, readableLine: readable ? READABLE_LINE : null });
+      expect(panelWidth).toBe(expected);
+      const { source, panel } = mount(width, { panelWidth });
+      expect(rect(panel).width).toBeCloseTo(expected, 1);
+      expect(rect(source).width).toBeCloseTo(width - expected, 1);
+      if (readable) expect(rect(source).width).toBeGreaterThanOrEqual(Math.min(READABLE_LINE, width / 2));
+      document.body.replaceChildren();
+    }
+  });
+
+  it('lays the card out in two columns at the wide default, one at the narrow', () => {
+    const columnsAt = (width: number): number => {
+      const { scroll } = mount(width, { panelWidth: defaultPanelWidth({ available: width, readableLine: READABLE_LINE }) });
+      scroll.replaceChildren();
+      // The pane's padding around the card, as statblock-pane.scss sets it.
+      const card = scroll.createDiv({ cls: ['atlas-statblock', 'atlas-sb-sheet'] });
+      card.style.padding = '16px';
+      const columns = card.createDiv({ cls: 'atlas-sb-columns' });
+      columns.style.setProperty('--atlas-sb-column-width', '22em');
+      columns.style.setProperty('--atlas-sb-max-columns', '2');
+      for (let index = 0; index < 6; index += 1) columns.createDiv({ cls: 'atlas-sb-item' }).style.height = '200px';
+      const lefts = new Set([...columns.children].map((child) => Math.round(rect(child).left)));
+      document.body.replaceChildren();
+      return lefts.size;
+    };
+    expect(columnsAt(1900)).toBe(2);
+    expect(columnsAt(1200)).toBe(1);
   });
 
   it('never takes the note below its minimum width, nor itself below its own', () => {
@@ -130,7 +169,7 @@ describe('the statblock beside its note', () => {
       widths.push([width, done]);
       panel.style.setProperty('--atlas-sb-panel-width', `${width}px`);
     };
-    render(h(PanelResizeHandle, { width: DEFAULT_PANEL_WIDTH, availableWidth: () => content.clientWidth, onResize }), { container: handleHost });
+    render(h(PanelResizeHandle, { width: DEFAULT_PANEL_WIDTH, availableWidth: () => content.clientWidth, onResize, onCancel: () => undefined, onReset: () => undefined }), { container: handleHost });
     const handle = panel.querySelector<HTMLElement>('.atlas-sb-note-panel__handle')!;
     // The hit area starts inside the panel's border, so the editor's scrollbar beside it keeps its clicks.
     expect(rect(handle).left).toBeCloseTo(rect(panel).left + parseFloat(getComputedStyle(panel).borderLeftWidth), 1);

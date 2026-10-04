@@ -1,8 +1,10 @@
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback, useContext, useLayoutEffect, useRef } from 'react';
 import type { App } from 'obsidian';
-import { attachDiceRolling, type DiceRollSource } from '../../../services/statblockDiceLinks';
+import { attachDiceRolling } from '../../../services/statblockDiceLinks';
 import { rollHitPoints } from '../../../services/statblockHitPoints';
+import type { DiceRollSource } from '../../../services/statblockRolls';
 import type { TokenVitals } from '../../../services/statblockVitalsSync';
+import { OffMapRollsContext } from './offMapRolls';
 
 export interface StatblockDiceRolling {
   app: App | undefined;
@@ -29,14 +31,16 @@ function rollSource({ notePath, tokens, name }: StatblockDiceRolling): DiceRollS
 
 /**
  * Click-to-roll for a statblock: a ref for its container, which then rolls the
- * dice links inside it through the open map's dice tool. Dice on the hit point
+ * dice links inside it through the open map's dice tool, or shows them where
+ * `OffMapRollsContext` says when no map on screen does. Dice on the hit point
  * line put rolled hit points on the tokens. Only listens, so it is safe on DOM
  * React owns; the options are read at the moment of a roll.
  */
 export function useStatblockDiceRolling(options: StatblockDiceRolling): StatblockDiceRef {
-  const latest = useRef(options);
+  const offMap = useContext(OffMapRollsContext);
+  const latest = useRef({ options, offMap });
   useLayoutEffect(() => {
-    latest.current = options;
+    latest.current = { options, offMap };
   });
 
   const { app } = options;
@@ -45,11 +49,12 @@ export function useStatblockDiceRolling(options: StatblockDiceRolling): Statbloc
     return attachDiceRolling(
       el,
       app,
-      () => rollSource(latest.current),
+      () => rollSource(latest.current.options),
       (formula, abilityName) => {
-        const { notePath, tokens } = latest.current;
-        rollHitPoints(app, formula, notePath ?? '', tokens, abilityName);
+        const { options: { notePath, tokens }, offMap: shownOn } = latest.current;
+        rollHitPoints(app, formula, notePath ?? '', tokens, abilityName, shownOn);
       },
+      () => latest.current.offMap,
     );
   }, [app]);
 }

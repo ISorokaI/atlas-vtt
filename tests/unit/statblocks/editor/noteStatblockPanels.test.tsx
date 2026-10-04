@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownView, TFile, type App, type Scope, type WorkspaceLeaf } from 'obsidian';
 import { SettingsService } from '../../../../src/app/services/SettingsService';
 import { NoteStatblockPanels } from '../../../../src/app/statblocks/editor/note-panel/noteStatblockPanels';
-import { DEFAULT_PANEL_WIDTH, MIN_PANEL_WIDTH, clampPanelWidth, loadPanelPrefs } from '../../../../src/app/statblocks/editor/note-panel/panelPrefs';
+import {
+  DEFAULT_MAX_WIDTH, MIN_PANEL_WIDTH, NOTE_MIN_WIDTH, clampPanelWidth, defaultPanelWidth, loadPanelPrefs, panelWidth,
+} from '../../../../src/app/statblocks/editor/note-panel/panelPrefs';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
 import { FakeSource, FakeWriter } from './paneKit';
@@ -258,20 +260,65 @@ describe('the statblock beside its note', () => {
     expect(loadPanelPrefs(harness.app).hidden).toBe(false);
   });
 
-  it('resizes from its edge and remembers the width on the device', async () => {
+  it('resizes from its edge, remembers the width on the device, and takes the default again on a double click', async () => {
     const harness = await setup();
     const view = harness.open(WARDEN);
     Object.defineProperty(view.contentEl, 'clientWidth', { value: 1200, configurable: true });
     await start(harness);
     const panel = panelOf(view)!;
-    expect(panel.style.getPropertyValue('--atlas-sb-panel-width')).toBe(`${DEFAULT_PANEL_WIDTH}px`);
+    // Half of the view, as nobody chose a width.
+    expect(panel.style.getPropertyValue('--atlas-sb-panel-width')).toBe('600px');
 
     const handle = within(panel).getByRole('separator', { name: 'Statblock width' });
     fireEvent.keyDown(handle, { key: 'ArrowLeft' });
     fireEvent.keyDown(handle, { key: 'ArrowLeft', shiftKey: true });
-    expect(panel.style.getPropertyValue('--atlas-sb-panel-width')).toBe(`${DEFAULT_PANEL_WIDTH + 80}px`);
-    expect(handle.getAttribute('aria-valuenow')).toBe(String(DEFAULT_PANEL_WIDTH + 80));
-    expect(loadPanelPrefs(harness.app).width).toBe(DEFAULT_PANEL_WIDTH + 80);
+    expect(panel.style.getPropertyValue('--atlas-sb-panel-width')).toBe('680px');
+    expect(handle.getAttribute('aria-valuenow')).toBe('680');
+    expect(loadPanelPrefs(harness.app).width).toBe(680);
+
+    await act(async () => { fireEvent.doubleClick(handle); });
+    expect(loadPanelPrefs(harness.app).width).toBeNull();
+    expect(panel.style.getPropertyValue('--atlas-sb-panel-width')).toBe('600px');
+    expect(handle.getAttribute('aria-valuenow')).toBe('600');
+  });
+
+  it('chooses no width when the edge is only clicked', async () => {
+    const harness = await setup();
+    const view = harness.open(WARDEN);
+    Object.defineProperty(view.contentEl, 'clientWidth', { value: 1200, configurable: true });
+    await start(harness);
+    const handle = within(panelOf(view)!).getByRole('separator', { name: 'Statblock width' });
+    // jsdom has no PointerEvent: a mouse event carrying a pointer id stands in.
+    const pointer = (type: string): MouseEvent => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: 600 });
+      Object.defineProperty(event, 'pointerId', { value: 1 });
+      return event;
+    };
+    await act(async () => {
+      handle.dispatchEvent(pointer('pointerdown'));
+      window.dispatchEvent(pointer('pointerup'));
+    });
+    expect(loadPanelPrefs(harness.app).width).toBeNull();
+  });
+
+  it('gives the room a readable line leaves empty to the statblock', async () => {
+    const harness = await setup();
+    const view = harness.open(WARDEN);
+    Object.defineProperty(view.contentEl, 'clientWidth', { value: 1600, configurable: true });
+    const source = view.contentEl.querySelector<HTMLElement>('.markdown-source-view')!;
+    source.addClass('is-readable-line-width');
+    source.style.setProperty('--file-line-width', '700px');
+    source.style.setProperty('--file-margins', '32px');
+    await start(harness);
+    // 1600 - (700 + 2 × 32): more than half the view.
+    expect(panelOf(view)!.style.getPropertyValue('--atlas-sb-panel-width')).toBe('836px');
+
+    // Switching readable line width off gives the note back its half.
+    await act(async () => {
+      source.removeClass('is-readable-line-width');
+      await Promise.resolve();
+    });
+    expect(panelOf(view)!.style.getPropertyValue('--atlas-sb-panel-width')).toBe('800px');
   });
 
   it('stands above the note in a narrow view', async () => {
@@ -287,14 +334,32 @@ describe('the statblock beside its note', () => {
 describe('the panel\'s width', () => {
   it('keeps the panel and the note their minimum widths', () => {
     expect(clampPanelWidth(100, 1200)).toBe(MIN_PANEL_WIDTH);
-    expect(clampPanelWidth(1000, 1200)).toBe(840);
+    expect(clampPanelWidth(1000, 1200)).toBe(1200 - NOTE_MIN_WIDTH);
     expect(clampPanelWidth(500, 500)).toBe(MIN_PANEL_WIDTH);
   });
 
   it('reads what this version did not store as the defaults', () => {
     const { app } = createInMemoryApp();
-    expect(loadPanelPrefs(app)).toEqual({ width: DEFAULT_PANEL_WIDTH, hidden: false });
-    app.saveLocalStorage('atlas-vtt-statblock-panel', { width: 'wide', hidden: 'yes' });
-    expect(loadPanelPrefs(app)).toEqual({ width: DEFAULT_PANEL_WIDTH, hidden: false });
+    expect(loadPanelPrefs(app)).toEqual({ width: null, hidden: false });
+    app.saveLocalStorage('atlas-vtt-statblock-panel', { chosenWidth: 'wide', hidden: 'yes' });
+    expect(loadPanelPrefs(app)).toEqual({ width: null, hidden: false });
+    // Earlier builds stored their default as `width` whether or not anybody dragged.
+    app.saveLocalStorage('atlas-vtt-statblock-panel', { width: 440, hidden: false });
+    expect(loadPanelPrefs(app)).toEqual({ width: null, hidden: false });
+  });
+
+  it('starts at half the view or what a readable line leaves, within its bounds', () => {
+    expect(defaultPanelWidth({ available: 1200, readableLine: null })).toBe(600);
+    expect(defaultPanelWidth({ available: 1200, readableLine: 764 })).toBe(600);
+    expect(defaultPanelWidth({ available: 1600, readableLine: 764 })).toBe(836);
+    expect(defaultPanelWidth({ available: 1900, readableLine: 764 })).toBe(DEFAULT_MAX_WIDTH);
+    expect(defaultPanelWidth({ available: 2560, readableLine: null })).toBe(DEFAULT_MAX_WIDTH);
+    expect(defaultPanelWidth({ available: 700, readableLine: null })).toBe(MIN_PANEL_WIDTH);
+  });
+
+  it('lets a chosen width win over the default, clamped to the room', () => {
+    expect(panelWidth({ width: 500 }, { available: 1900, readableLine: 764 })).toBe(500);
+    expect(panelWidth({ width: 5000 }, { available: 1900, readableLine: 764 })).toBe(1900 - NOTE_MIN_WIDTH);
+    expect(panelWidth({ width: null }, { available: 1900, readableLine: null })).toBe(950);
   });
 });

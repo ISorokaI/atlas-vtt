@@ -35,6 +35,8 @@ export class NoteStatblockPanels {
   private readonly stops: Array<() => void> = [];
   private readonly context: PanelContext;
   private prefs: PanelPrefs;
+  /** The width of the edge being dragged; stored only once it is let go. */
+  private dragWidth: number | null = null;
 
   constructor(private readonly app: App, deps: NoteStatblockPanelsDeps) {
     this.prefs = loadPanelPrefs(app);
@@ -42,8 +44,10 @@ export class NoteStatblockPanels {
       app,
       services: deps.services(app),
       actions: deps.actions,
-      prefs: () => this.prefs,
+      prefs: () => (this.dragWidth === null ? this.prefs : { ...this.prefs, width: this.dragWidth }),
       setWidth: (width, done) => this.setWidth(width, done),
+      cancelResize: () => this.cancelResize(),
+      resetWidth: () => this.store({ ...this.prefs, width: null }),
       setHidden: (hidden) => this.setHidden(hidden),
     };
   }
@@ -126,10 +130,16 @@ export class NoteStatblockPanels {
 
   private setWidth(width: number, done: boolean): void {
     if (done) this.store({ ...this.prefs, width });
-    else this.prefs = { ...this.prefs, width };
+    else this.dragWidth = width;
+  }
+
+  private cancelResize(): void {
+    this.dragWidth = null;
+    for (const panel of this.panels.values()) panel.update();
   }
 
   private store(prefs: PanelPrefs): void {
+    this.dragWidth = null;
     this.prefs = prefs;
     savePanelPrefs(this.app, prefs);
     for (const panel of this.panels.values()) panel.update();

@@ -89,9 +89,10 @@ describe('the statblock pane over a native note', () => {
       await act(async () => { fireEvent.keyDown(document.activeElement!, { key: 'Tab' }); });
       order.push(focusedLabel());
     }
-    expect(order).toEqual(['Portrait', 'Size', 'Type', 'Level']);
+    // The portrait is the token socket's: Tab passes it by.
+    expect(order).toEqual(['Size', 'Type', 'Level', 'Armor']);
     await act(async () => { fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true }); });
-    expect(focusedLabel()).toBe('Type');
+    expect(focusedLabel()).toBe('Level');
   });
 
   it('shows a conflict when the note changed meanwhile, and keeps mine on request', async () => {

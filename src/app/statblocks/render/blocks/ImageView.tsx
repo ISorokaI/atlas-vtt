@@ -2,7 +2,7 @@ import React from 'react';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import type { ImageBlock } from '../../model/templateTypes';
 import { valueText } from '../../values/valueText';
-import { statblockImageSrc } from '../shared/statblockImage';
+import { statblockImageSrc, statblockImageToken } from '../shared/statblockImage';
 import { useSheet } from '../sheetContext';
 import { StandIn } from '../values/ValueText';
 import { ValueSlot } from '../valueSlot';
@@ -18,9 +18,14 @@ function ImageContent({ block, display }: BlockViewProps<ImageBlock>): React.JSX
     return <TokenPortrait className="atlas-sb-token-image" src={art.src} alt={name} ringColor={art.ringColor} showRing={art.showRing} />;
   }
 
-  const src = statblockImageSrc(app, valueText(state.reader(block.field)), sourcePath);
+  const raw = valueText(state.reader(block.field));
+  const src = statblockImageSrc(app, raw, sourcePath);
   if (!src) return null;
-  if (block.shape === 'token') return <TokenPortrait className="atlas-sb-token-image" src={src} alt={name} />;
+  if (block.shape === 'token') {
+    // Art that is a token's is framed as that token is, so the statblock and the map agree.
+    const token = app ? statblockImageToken(app, raw, sourcePath) : null;
+    return <TokenPortrait className="atlas-sb-token-image" src={src} alt={name} showRing={token?.showRing !== false} />;
+  }
   return <img className="atlas-sb-portrait-image" src={src} alt={name} draggable={false} decoding="async" />;
 }
 

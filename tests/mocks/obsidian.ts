@@ -312,6 +312,22 @@ export class Modal {
   onClose(): void {}
 }
 
+/** Obsidian's prompt of suggestions: a modal with a search field; the tests choose items directly. */
+export class SuggestModal<T> extends Modal {
+  emptyStateText = '';
+  inputEl: HTMLInputElement = document.createElement('input');
+  /** Never read: present so a subclass's item type is used. */
+  protected readonly item?: T;
+  setPlaceholder(placeholder: string): void { this.inputEl.placeholder = placeholder; }
+}
+
+export interface FuzzyMatch<T> {
+  item: T;
+  match: { score: number; matches: Array<[number, number]> };
+}
+
+export class FuzzySuggestModal<T> extends SuggestModal<FuzzyMatch<T>> {}
+
 export const Platform = {
   isMacOS: false,
   isWin: false,

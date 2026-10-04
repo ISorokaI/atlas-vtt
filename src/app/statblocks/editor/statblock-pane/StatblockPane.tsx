@@ -4,6 +4,7 @@ import { SettingsService } from '../../../services/SettingsService';
 import { StatblockSkeleton } from '../../../react/components/statblock/StatblockSkeleton';
 import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import type { TemplateId } from '../../model/templateTypes';
+import { flattenReadingOrder } from '../../model/treeQueries';
 import { setStatblockPaneSettings, statblockPaneSettings } from '../paneSettings';
 import { templateKeyPatch } from './addFieldFlow';
 import { AddFieldRow } from './AddFieldRow';
@@ -11,6 +12,7 @@ import { ChangeTemplateDialog } from './ChangeTemplateDialog';
 import { noteKeyChoice } from './fieldChoices';
 import { MorePropertiesTray } from './MorePropertiesTray';
 import { PaneCanvas } from './PaneCanvas';
+import { PaneDiceRolls } from './PaneDiceRolls';
 import { PaneHeader } from './PaneHeader';
 import { headerTemplate } from './paneHeaderTemplate';
 import { NewerTemplateBar, NoteDeletedBar, NotNativeState, TemplateMissingBar, UnreadableState, WriteProblemBar } from './PaneStates';
@@ -66,6 +68,21 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     app, notePath, record: note.record, collectionId, writer: services.writer, announce: setSaid, openTemplate: actions.openTemplateAt,
     entry: writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null,
   });
+  const hasSocket = writable && paneTemplate.status === 'ok'
+    && flattenReadingOrder(paneTemplate.template.layout.blocks).some((block) => block.type === 'image');
+  // "Link to a token…" opens the card's token socket; a template without one keeps the token picker.
+  const linkToToken = (): void => {
+    const socket = rootRef.current?.querySelector<HTMLButtonElement>('.atlas-sb-token-socket');
+    if (socket) {
+      // After the menu has closed and handed focus back to its trigger.
+      socket.win.requestAnimationFrame(() => {
+        socket.scrollIntoView({ block: 'nearest' });
+        socket.click();
+      });
+    } else if (actions.linkToToken && collectionId) {
+      actions.linkToToken(notePath, collectionId);
+    }
+  };
   const header = headerTemplate({
     note, paneTemplate, roles: collection.roles, collectionId, actions, app,
     choose: () => setChoosing(true),
@@ -97,6 +114,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           app={app}
           services={services}
           notePath={notePath}
+          collectionId={collectionId}
           template={paneTemplate.template}
           templateName={paneTemplate.name}
           record={note.record}
@@ -135,19 +153,21 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
 
   return (
     <div ref={rootRef} className="atlas-sb-pane">
-      <PaneHeader
-        ref={templateRef}
-        collection={collection.context}
-        onCollectionChange={actions.changeCollection}
-        template={header}
-        showProperties={note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
-        linkToToken={actions.linkToToken && collectionId ? () => actions.linkToToken?.(notePath, collectionId) : undefined}
-        hide={actions.hide}
-      />
-      <div className="atlas-sb-pane-body">
-        {body}
-      </div>
-      <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
+      <PaneDiceRolls app={app} collectionId={collectionId}>
+        <PaneHeader
+          ref={templateRef}
+          collection={collection.context}
+          onCollectionChange={actions.changeCollection}
+          template={header}
+          showProperties={note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
+          linkToToken={note.kind === 'atlas' && (hasSocket || (actions.linkToToken && collectionId)) ? linkToToken : undefined}
+          hide={actions.hide}
+        />
+        <div className="atlas-sb-pane-body">
+          {body}
+        </div>
+        <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
+      </PaneDiceRolls>
       {choosing && note.kind === 'atlas' && rootRef.current && library && (
         <ChangeTemplateDialog
           app={app}

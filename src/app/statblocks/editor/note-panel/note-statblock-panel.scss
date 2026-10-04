@@ -10,9 +10,11 @@
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// panelPrefs.ts holds the same numbers for the drag handle's clamp.
-$panel-min-width: 300px;
-$panel-default-width: 440px;
+// panelPrefs.ts holds the same numbers for the drag handle's clamp. The
+// panel's width comes from `--atlas-sb-panel-width`, which NoteStatblockPanel
+// works out for each view (`defaultPanelWidth`); half the view stands in until then.
+$panel-min-width: 360px;
+$panel-default-width: 50%;
 $note-min-width: 360px;
 $handle-width: 6px;
 

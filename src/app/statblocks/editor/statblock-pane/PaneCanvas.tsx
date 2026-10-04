@@ -15,6 +15,8 @@ export interface PaneCanvasProps {
   app: App;
   services: PaneServices;
   notePath: string;
+  /** The pane's collection, whose tokens the token socket links. */
+  collectionId: string | null;
   template: StatblockTemplate;
   /** The template's name: `data-template` on the card. */
   templateName: string;

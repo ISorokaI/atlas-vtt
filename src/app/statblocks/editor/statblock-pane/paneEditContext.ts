@@ -26,6 +26,8 @@ export interface FieldConflict {
 export interface PaneEditController {
   app: App;
   notePath: string;
+  /** The collection the pane works for: the token socket links its tokens. Null until resolved. */
+  collectionId: string | null;
   spots: EditableSpots;
   /** The card's state as the pane reads it: which blocks show a fallback in place of their values. */
   sheet: SheetState;

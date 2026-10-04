@@ -76,6 +76,8 @@ export function editableSpots(template: StatblockTemplate, sheet: SheetState): E
         visit(block.blocks);
         continue;
       }
+      // The token socket edits an Image block's art (token-socket/), never a text input.
+      if (block.type === 'image') continue;
       const fields = editableFields(block, sheet.fields);
       if (!fields.length) continue;
       byBlock.set(block.id, fields);

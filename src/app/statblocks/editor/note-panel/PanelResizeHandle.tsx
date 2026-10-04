@@ -1,12 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { MIN_PANEL_WIDTH, clampPanelWidth } from './panelPrefs';
 
 export interface PanelResizeHandleProps {
   width: number;
   /** The width of the view's content, which the panel shares with the note. */
   availableWidth: () => number;
-  /** A new width while dragging (`done` false) and once let go or set by key. */
+  /** A new width while dragging (`done` false) and once let go or set by key, which keeps it. */
   onResize: (width: number, done: boolean) => void;
+  /** A drag that ends where it began or that the browser takes away: the width is what it was. */
+  onCancel: () => void;
+  /** A double click: the panel takes its default width again. */
+  onReset: () => void;
 }
 
 const KEY_STEP = 16;
@@ -16,10 +21,11 @@ const RESIZING_CLASS = 'atlas-sb-panel-resizing';
 
 /**
  * The line on the panel's left edge: dragging it or pressing the arrow keys
- * while it has focus sets the panel's width. The panel is on the right, so
- * moving the line left makes it wider.
+ * while it has focus sets the panel's width, and a double click gives the
+ * width back to the view's default. The panel is on the right, so moving the
+ * line left makes it wider. A click alone chooses no width.
  */
-export function PanelResizeHandle({ width, availableWidth, onResize }: PanelResizeHandleProps): React.JSX.Element {
+export function PanelResizeHandle({ width, availableWidth, onResize, onCancel, onReset }: PanelResizeHandleProps): React.JSX.Element {
   const [shown, setShown] = useState(width);
   const stopDrag = useRef<(() => void) | null>(null);
   useEffect(() => setShown(width), [width]);
@@ -39,33 +45,41 @@ export function PanelResizeHandle({ width, availableWidth, onResize }: PanelResi
     const win = event.currentTarget.win;
     const { pointerId, clientX: startX } = event;
     const startWidth = shown;
+    let moved = false;
     const widthAt = (x: number): number => startWidth + startX - x;
+    const cancel = (): void => {
+      setShown(startWidth);
+      onCancel();
+    };
     const onMove = (move: PointerEvent): void => {
-      if (move.pointerId === pointerId) resize(widthAt(move.clientX), false);
+      if (move.pointerId !== pointerId || move.clientX === startX) return;
+      moved = true;
+      resize(widthAt(move.clientX), false);
     };
     const onUp = (up: PointerEvent): void => {
       if (up.pointerId !== pointerId) return;
       stop();
-      resize(widthAt(up.clientX), true);
+      if (moved && up.clientX !== startX) resize(widthAt(up.clientX), true);
+      else cancel();
     };
     // A drag the browser takes away puts the width back.
-    const onCancel = (cancel: PointerEvent): void => {
-      if (cancel.pointerId !== pointerId) return;
+    const onPointerCancel = (event: PointerEvent): void => {
+      if (event.pointerId !== pointerId) return;
       stop();
-      resize(startWidth, true);
+      cancel();
     };
     const { body } = win.document;
     const stop = (): void => {
       body.removeClass(RESIZING_CLASS);
       win.removeEventListener('pointermove', onMove);
       win.removeEventListener('pointerup', onUp);
-      win.removeEventListener('pointercancel', onCancel);
+      win.removeEventListener('pointercancel', onPointerCancel);
       stopDrag.current = null;
     };
     body.addClass(RESIZING_CLASS);
     win.addEventListener('pointermove', onMove);
     win.addEventListener('pointerup', onUp);
-    win.addEventListener('pointercancel', onCancel);
+    win.addEventListener('pointercancel', onPointerCancel);
     stopDrag.current = stop;
   };
 
@@ -77,17 +91,20 @@ export function PanelResizeHandle({ width, availableWidth, onResize }: PanelResi
   };
 
   return (
-    <div
-      className="atlas-sb-note-panel__handle"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label="Statblock width"
-      aria-valuenow={shown}
-      aria-valuemin={MIN_PANEL_WIDTH}
-      aria-valuemax={clampPanelWidth(Number.POSITIVE_INFINITY, availableWidth())}
-      tabIndex={0}
-      onPointerDown={onPointerDown}
-      onKeyDown={onKeyDown}
-    />
+    <LabelTooltip label="Drag to resize, double-click to reset" side="left" describe>
+      <div
+        className="atlas-sb-note-panel__handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Statblock width"
+        aria-valuenow={shown}
+        aria-valuemin={MIN_PANEL_WIDTH}
+        aria-valuemax={clampPanelWidth(Number.POSITIVE_INFINITY, availableWidth())}
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onDoubleClick={onReset}
+        onKeyDown={onKeyDown}
+      />
+    </LabelTooltip>
   );
 }

@@ -11,13 +11,23 @@ export interface NotePanelRootProps {
   stacked: boolean;
   availableWidth: () => number;
   onResize: (width: number, done: boolean) => void;
+  onCancelResize: () => void;
+  onResetWidth: () => void;
 }
 
 /** What the panel beside a note draws: the line that resizes it and, scrolling on its own, the statblock pane. */
-export function NotePanelRoot({ pane, width, stacked, availableWidth, onResize }: NotePanelRootProps): React.JSX.Element {
+export function NotePanelRoot({ pane, width, stacked, availableWidth, onResize, onCancelResize, onResetWidth }: NotePanelRootProps): React.JSX.Element {
   return (
     <>
-      {!stacked && <PanelResizeHandle width={width} availableWidth={availableWidth} onResize={onResize} />}
+      {!stacked && (
+        <PanelResizeHandle
+          width={width}
+          availableWidth={availableWidth}
+          onResize={onResize}
+          onCancel={onCancelResize}
+          onReset={onResetWidth}
+        />
+      )}
       <div className="atlas-sb-note-panel__scroll">
         <StatblockEditorRoot surface={{ kind: 'statblock-pane', props: pane }} />
       </div>
