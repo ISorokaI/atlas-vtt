@@ -104,6 +104,23 @@ describe('dragging an ability by its handle', () => {
     expect(document.querySelector('.atlas-ctx-menu')).toBeNull();
   });
 
+  it('shows no handle tooltip while the ability is dragged', async () => {
+    const harness = await pane();
+    const [bite, , roar] = abilities(harness);
+    const handle = await handleOf(bite!);
+    await mouse.hover(centreOf(handle).x, centreOf(handle).y);
+    await wait(500);
+    const to = { x: centreOf(handle).x, y: roar!.getBoundingClientRect().bottom - 2 };
+    await pressAndMove(centreOf(handle), to, 20);
+    await wait(500);
+    const shown = [...document.querySelectorAll('.tooltip-label')].filter((label) => label.textContent?.includes('Drag to move'));
+    expect(shown).toEqual([]);
+    await act(async () => {
+      await mouse.up(to.x, to.y);
+      await frames(2);
+    });
+  });
+
   it('keeps the input being typed, its text and its caret through a drag, and writes the text with the move', async () => {
     const harness = await pane();
     const [, lash] = abilities(harness);

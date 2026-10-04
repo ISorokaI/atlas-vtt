@@ -147,6 +147,16 @@ describe('the template editor as the note view', () => {
     expect(root.querySelector('.atlas-te-floating')).toBeNull();
   });
 
+  it('starts the note\'s text past the dock, with Obsidian\'s file margins written as two values', async () => {
+    const root = mount(new FakeSession(sampleTemplate()), 1180);
+    root.style.setProperty('--file-margins', '32px 32px');
+    await frames(3);
+    const reader = root.querySelector<HTMLElement>('.atlas-te-note__reader > .markdown-preview-view')!;
+    const dock = root.querySelector('.atlas-te-dock')!.getBoundingClientRect();
+    const textStart = reader.getBoundingClientRect().left + px(getComputedStyle(reader).paddingInlineStart);
+    expect(textStart, 'the text starts past the dock').toBeGreaterThanOrEqual(dock.right);
+  });
+
   it('keeps the capsule on one line at every panel width from 320 px', async () => {
     const root = mount(new FakeSession(sampleTemplate(), { name: 'A template with a rather long name indeed' }), 1180);
     for (const width of [960, 600, 420, 360, 320]) {

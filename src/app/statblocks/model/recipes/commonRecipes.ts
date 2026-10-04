@@ -78,7 +78,7 @@ function defenses(nextId: BlockIdSource, existing: readonly TemplateField[]): Re
   const immunities = field('Damage immunities', 'text', 'stat');
   const section = createBlock('section', nextId);
   const blocks = [
-    createBlock('pairs', nextId, saves.field.key),
+    { ...createBlock('pairs', nextId, saves.field.key), display: 'signed' as const },
     createBlock('stat', nextId, resistances.field.key),
     createBlock('stat', nextId, immunities.field.key),
   ];

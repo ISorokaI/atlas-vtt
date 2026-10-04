@@ -48,9 +48,11 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
   }
 
   // The dock floats at the column's left edge (§2.5): the note's text starts
-  // past it, so no letter of the title or the body sits under the dock.
+  // past it, so no letter of the title or the body sits under the dock. Not
+  // max() with Obsidian's --file-margins: that is a shorthand of two values,
+  // which makes the declaration invalid.
   .atlas-te:not([data-width='stacked']) .atlas-te-note__reader > .markdown-preview-view {
-    padding-inline-start: max(var(--file-margins, 0px), #{$dock-clearance});
+    padding-inline-start: $dock-clearance;
   }
 
   // What the note view draws in place of the note's own statblock fence.

@@ -69,9 +69,9 @@ describe('TemplateEditor', () => {
     expect(findBlock(session.template.layout.blocks, 'stat-ac1')).toBeNull();
     expect(document.querySelector('.atlas-te-live')?.textContent).toMatch(/^Deleted Armor class\. Press Ctrl\+Z to undo\./);
     expect(frame('stat-hp1').getAttribute('data-te-selected')).toBe('primary');
-    fireEvent.click(within(screen.getByText('Armor class deleted').parentElement!).getByRole('button', { name: 'Undo' }));
+    fireEvent.click(within(screen.getByText('Deleted Armor class.').parentElement!).getByRole('button', { name: 'Undo' }));
     expect(shape(session.template.layout.blocks)).toBe(shape(sampleTemplate().layout.blocks));
-    await waitFor(() => expect(screen.queryByText('Armor class deleted')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Deleted Armor class.')).toBeNull());
   });
 
   it('undoes the template with Mod+Z on a block, and leaves Mod+Z to a focused input', () => {

@@ -5,7 +5,7 @@ import { diceAverage } from '../../values/diceNotation';
 import { formatNumber, parseNumberText } from '../../values/numberText';
 import { useFieldDraft } from './useFieldDraft';
 import { WarningDot } from './ValueMarks';
-import { valueProblem } from './valuePatches';
+import { valuePlaceholder, valueProblem } from './valuePatches';
 
 export interface ValueInputProps {
   field: TemplateField;
@@ -49,7 +49,7 @@ export function TextValueInput({ field, autoFocus }: ValueInputProps): React.JSX
         type="text"
         className={cn('atlas-sb-pane-input', problem && 'has-problem')}
         value={draft}
-        placeholder={field.prompt?.trim() || field.label}
+        placeholder={valuePlaceholder(field)}
         aria-label={field.label}
         aria-invalid={problem ? true : undefined}
         spellCheck={field.type === 'text'}

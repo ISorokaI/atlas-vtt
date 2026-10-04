@@ -43,6 +43,8 @@ function placeIn(layer: HTMLElement, target: HoverTarget): Placed | null {
 export function GutterHandle({ store, layer, glyphOf, labelOf, onMenu, onPress }: GutterHandleProps): React.JSX.Element | null {
   const { target } = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [placed, setPlaced] = useState<Placed | null>(null);
+  // From a press to its release the tooltip stays shut: a drag holds the pointer on the handle.
+  const [pressed, setPressed] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
@@ -71,12 +73,14 @@ export function GutterHandle({ store, layer, glyphOf, labelOf, onMenu, onPress }
   const press = (event: React.PointerEvent<HTMLButtonElement>): void => {
     if (event.button !== 0) return;
     store.freeze();
+    setPressed(true);
     store.markMenuTarget(target.element);
     const doc = event.currentTarget.doc;
     const release = (): void => {
       doc.removeEventListener('pointerup', release, true);
       doc.removeEventListener('pointercancel', release, true);
       store.thaw();
+      setPressed(false);
       // A drag ended away from the handle: nothing is pointed at any more. A click keeps the mark for its menu.
       if (!store.handleHovered && !store.markHeld) store.markMenuTarget(null);
     };
@@ -86,7 +90,7 @@ export function GutterHandle({ store, layer, glyphOf, labelOf, onMenu, onPress }
   };
 
   return (
-    <LabelTooltip label={label} side="left">
+    <LabelTooltip label={label} side="left" suppressed={pressed}>
       <button
         ref={button}
         {...chromeButtonProps()}

@@ -61,9 +61,9 @@ export interface EditorState extends LabelEditingState {
   hinted: boolean;
 }
 
-/** "Speed" → "Speed deleted"; "3 blocks" → "3 blocks deleted". */
+/** "Speed" → "Deleted Speed."; "3 blocks" → "Deleted 3 blocks.", as the note panel says it. */
 function deletedText(what: string): string {
-  return `${what.charAt(0).toUpperCase()}${what.slice(1)} deleted`;
+  return `Deleted ${what}.`;
 }
 
 export function useEditorState(input: EditorStateInput): EditorState {

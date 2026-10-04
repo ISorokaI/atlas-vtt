@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import {
-  addItemPatches, fieldPatches, removeItemPatches, valueForText, valueProblem,
+  addItemPatches, fieldPatches, removeItemPatches, valueForText, valuePlaceholder, valueProblem,
 } from '../../../../src/app/statblocks/editor/statblock-pane/valuePatches';
 import { readField } from '../../../../src/app/statblocks/values/fieldValues';
 
@@ -65,5 +65,15 @@ describe('chips', () => {
     expect(removeItemPatches(readField({ tags: 'marsh, plant' }, tags), 'tags', 1)).toEqual([
       { op: 'set', path: ['tags'], base: 'marsh, plant', next: ['marsh'] },
     ]);
+  });
+});
+
+describe('valuePlaceholder', () => {
+  it('asks for scores by their slots, in the order they are typed', () => {
+    const stats: TemplateField = { key: 'stats', label: 'Abilities', type: 'scores', slots: ['STR', 'DEX', 'CON'] };
+    expect(valuePlaceholder(stats)).toBe('STR DEX CON');
+    expect(valueForText(stats, '19 8 16')).toEqual([19, 8, 16]);
+    expect(valuePlaceholder({ ...stats, prompt: 'Six scores' })).toBe('Six scores');
+    expect(valuePlaceholder(hp)).toBe('Hit Points');
   });
 });

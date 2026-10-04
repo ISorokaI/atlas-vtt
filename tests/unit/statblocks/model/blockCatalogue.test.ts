@@ -166,14 +166,14 @@ describe('recipes', () => {
     }]);
   });
 
-  it('builds Actions and Defenses', () => {
+  it('builds Actions and Defenses, whose saving throws read as modifiers like the other saves', () => {
     expect(recipeById('actions')?.create(idsFrom('ac'), [])).toStrictEqual({
       blocks: [{ id: 'ac', type: 'entries', field: 'actions', heading: 'Actions', addLabel: 'Add action' }],
       fields: [{ key: 'actions', label: 'Actions', type: 'entries' }],
     });
     expect(recipeById('defenses')?.create(idsFrom('d', 'p', 'r', 'i'), [])).toStrictEqual({
       blocks: [{ id: 'd', type: 'section', heading: 'Defenses', blocks: [
-        { id: 'p', type: 'pairs', field: 'saves' },
+        { id: 'p', type: 'pairs', field: 'saves', display: 'signed' },
         { id: 'r', type: 'stat', field: 'damage_resistances', look: 'run-in' },
         { id: 'i', type: 'stat', field: 'damage_immunities', look: 'run-in' },
       ] }],
