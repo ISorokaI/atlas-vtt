@@ -1,8 +1,8 @@
 /**
  * Where a dragged block would land (spec §7.3), from the pointer and the
- * boxes the card draws its blocks in: between blocks of a stack or a Row, or
- * into an empty Section or Row. There are no edge zones: a drop never makes
- * a Side by side block ("Put side by side" is a menu row and a key). Every
+ * boxes the card draws its blocks in: between blocks of a stack or a Row,
+ * into an empty Section or Row, or beside a block of a stack, over the outer
+ * band of its left or right edge, which sets the two side by side. Every
  * target is checked with the catalogue's `canContain` and never lies inside
  * the block being moved; a closed tab draws nothing, so it takes no drop.
  * Pure: the boxes are measured elsewhere.
@@ -12,13 +12,15 @@ import { canContain, type ParentType } from '../../model/blockCatalogue';
 import { childrenOf, parentTypeOf } from '../../model/treeEdit';
 import { findBlock, isWithin } from '../../model/treeQueries';
 import { isContainerBlock, type BlockType, type TemplateBlock, type TemplateLayout } from '../../model/templateTypes';
-import { contains, distanceTo, gapLine, rowSpan, type Box, type DropLine, type ListFlow, type Point } from './dropGeometry';
+import { LINE_OFFSET, contains, distanceTo, gapLine, rowSpan, type Box, type DropLine, type ListFlow, type Point } from './dropGeometry';
 
 export type DropTarget =
   /** Before the block at `index` of a list (its length: at the end), counted as the list stands now. */
   | { kind: 'between'; parentId: string | null; index: number; line: DropLine }
   /** Into an empty Section or Row, or the empty card (`parentId` null). */
   | { kind: 'into'; parentId: string | null; outline: Box }
+  /** Beside a block of a stack: the two go side by side, the dropped one on the block's `side`. */
+  | { kind: 'beside'; targetId: string; side: 'start' | 'end'; line: DropLine }
   /** Over the card where the block may not go. */
   | { kind: 'refused' };
 
@@ -39,6 +41,11 @@ export interface DragSubject {
 
 /** An empty container takes a drop over at least this height, however little it draws (a Section without a heading draws nothing). */
 export const EMPTY_HEIGHT = 28;
+
+/** The band along a block's left and right edges that drops beside it: a share of its width, within these bounds in px. */
+export const BESIDE_SHARE = 0.25;
+export const BESIDE_MIN = 24;
+export const BESIDE_MAX = 96;
 
 interface Drawn {
   block: TemplateBlock;
@@ -107,6 +114,19 @@ function blockAt(scene: DropScene, point: Point, movingId: string | null): Templ
   return hit;
 }
 
+/** The side of a block whose edge band the point is in, or null in its middle. */
+export function besideSide(box: Box, point: Point): 'start' | 'end' | null {
+  const band = Math.min(Math.max((box.right - box.left) * BESIDE_SHARE, BESIDE_MIN), BESIDE_MAX);
+  if (point.x <= box.left + band) return 'start';
+  if (point.x >= box.right - band) return 'end';
+  return null;
+}
+
+function besideTarget(block: TemplateBlock, box: Box, side: 'start' | 'end'): DropTarget {
+  const x = side === 'start' ? box.left - LINE_OFFSET : box.right + LINE_OFFSET;
+  return { kind: 'beside', targetId: block.id, side, line: { orientation: 'vertical', x, y: box.top, length: box.bottom - box.top } };
+}
+
 /** The targets a point over a block suggests, best first; `settle` takes the first one allowed. */
 function candidatesIn(scene: DropScene, subject: DragSubject, block: TemplateBlock, point: Point): DropTarget[] {
   const box = scene.boxes.get(block.id);
@@ -126,7 +146,8 @@ function candidatesIn(scene: DropScene, subject: DragSubject, block: TemplateBlo
   const flow = flowOf(parentTypeOf(scene.layout, found.parentId));
   const firstHalf = flow === 'row' ? point.x < (box.left + box.right) / 2 : point.y < (box.top + box.bottom) / 2;
   const between = gapTarget(scene, found.parentId, drawn, firstHalf ? at : at + 1, point);
-  return between ? [between] : [];
+  const side = flow === 'stack' ? besideSide(box, point) : null;
+  return [...(side ? [besideTarget(block, box, side)] : []), ...(between ? [between] : [])];
 }
 
 /** Whether every block the drag brings may stand in the list `parentId`, and the moved block does not go into itself. */
@@ -136,20 +157,33 @@ export function mayHold(layout: TemplateLayout, parentId: string | null, subject
   return subject.movingId === null || parentId === null || !isWithin(layout.blocks, subject.movingId, parentId);
 }
 
+/** Whether the block a drag would land beside and the one block it brings may stand in a new Side by side there. */
+function mayStandBeside(layout: TemplateLayout, targetId: string, subject: DragSubject): boolean {
+  const found = findBlock(layout.blocks, targetId);
+  if (!found || targetId === subject.movingId || subject.types.length !== 1) return false;
+  const parentType = parentTypeOf(layout, found.parentId);
+  if (parentType === null || parentType === 'row' || !canContain(parentType, 'row')) return false;
+  return [found.block.type, ...subject.types].every((type) => canContain('row', type));
+}
+
 function allowed(scene: DropScene, subject: DragSubject, target: DropTarget): boolean {
-  return target.kind !== 'refused' && mayHold(scene.layout, target.parentId, subject);
+  if (target.kind === 'refused') return false;
+  if (target.kind === 'beside') return mayStandBeside(scene.layout, target.targetId, subject);
+  return mayHold(scene.layout, target.parentId, subject);
 }
 
 /** Whether the target leaves the moved block where it is. */
 export function isNoMove(layout: TemplateLayout, subject: DragSubject, target: DropTarget): boolean {
   const found = subject.movingId === null ? null : findBlock(layout.blocks, subject.movingId);
-  if (!found) return false;
+  if (!found || target.kind === 'beside') return false;
   if (target.kind === 'into') return found.parentId === target.parentId;
   return target.kind === 'between' && found.parentId === target.parentId && (target.index === found.index || target.index === found.index + 1);
 }
 
 /** A gap the walk takes when a list may not hold the block: right before or after that list's container. */
 function outOf(scene: DropScene, target: DropTarget, point: Point): DropTarget | null {
+  // Beside a block is a place of its own: where it is refused, the next candidate (the gap) is taken.
+  if (target.kind === 'beside') return null;
   const containerId = target.kind === 'refused' ? null : target.parentId;
   const container = containerId ? findBlock(scene.layout.blocks, containerId) : null;
   const box = containerId ? scene.boxes.get(containerId) : undefined;
@@ -190,6 +224,7 @@ export function sameTarget(a: DropTarget | null, b: DropTarget | null): boolean 
   if (a === null || b === null) return a === b;
   if (a.kind === 'between' && b.kind === 'between') return a.parentId === b.parentId && a.index === b.index && sameLine(a.line, b.line);
   if (a.kind === 'into' && b.kind === 'into') return a.parentId === b.parentId;
+  if (a.kind === 'beside' && b.kind === 'beside') return a.targetId === b.targetId && a.side === b.side && sameLine(a.line, b.line);
   return a.kind === b.kind;
 }
 

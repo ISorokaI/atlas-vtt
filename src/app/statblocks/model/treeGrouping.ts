@@ -1,6 +1,7 @@
 import { canContain } from './blockCatalogue';
 import type { BlockIdSource } from './templateIds';
 import { done, parentTypeOf, refuse, spliced, withChildren, type TreeEdit, type TreeRefusal } from './treeEdit';
+import { moveBlock } from './treeOps';
 import { collectBlockIds, findBlock, type FoundBlock } from './treeQueries';
 import { isContainerBlock, type ContainerBlock, type TemplateLayout } from './templateTypes';
 
@@ -56,6 +57,24 @@ export function wrapInSection(layout: TemplateLayout, ids: readonly string[], ne
  */
 export function putSideBySide(layout: TemplateLayout, ids: readonly string[], nextId: BlockIdSource): TreeEdit {
   return wrap(layout, ids, { id: nextId(), type: 'row', blocks: [] });
+}
+
+/**
+ * Moves block `id` next to block `targetId` (before it at `start`, after it at
+ * `end`) and sets the two side by side in a new Row in the target's place: a
+ * drop beside a block. All or nothing.
+ */
+export function placeBeside(layout: TemplateLayout, id: string, targetId: string, side: 'start' | 'end', nextId: BlockIdSource): TreeEdit {
+  const moving = findBlock(layout.blocks, id);
+  const target = findBlock(layout.blocks, targetId);
+  if (!moving || !target) return refuse(layout, 'block-not-found');
+  if (id === targetId) return refuse(layout, 'inside-itself');
+  const leaves = moving.parentId === target.parentId && moving.index < target.index;
+  const index = (leaves ? target.index - 1 : target.index) + (side === 'end' ? 1 : 0);
+  const moved = moveBlock(layout, id, { parentId: target.parentId, index });
+  if (!moved.ok) return refuse(layout, moved.reason);
+  const paired = putSideBySide(moved.layout, [targetId, id], nextId);
+  return paired.ok ? paired : refuse(layout, paired.reason);
 }
 
 /**

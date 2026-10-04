@@ -31,7 +31,8 @@ const sectionShape = (session: FakeSession): string => shape(session.template.la
 /**
  * Drag and drop in the template editor with the real stylesheet (§7.6, §14.2):
  * where the line shows is where the block lands, only a block's handle drags
- * it, no edge zones make a Row, the keyboard moves blocks too, focus and
+ * it, a block's left and right edges set blocks side by side, the keyboard
+ * moves blocks too, focus and
  * announcements follow the block.
  */
 describe('dragging blocks in the template editor', () => {
@@ -64,20 +65,32 @@ describe('dragging blocks in the template editor', () => {
     expect(document.querySelector('.atlas-te-drop-line')).toBeNull();
   });
 
-  it('never makes a row: a block dropped on the edge of another lands between blocks (no edge zones, spec §7.3)', async () => {
+  it('sets a block beside another over the band along its edge, with a line down that edge, and between them over its middle', async () => {
     const session = new FakeSession(sampleTemplate());
     mount(session, 1280);
     await frames(2);
     const ac = frame('stat-ac1').getBoundingClientRect();
-    const at = { x: ac.right - ac.width * 0.08, y: ac.top + ac.height / 2 + 1 };
+    const at = { x: ac.right - Math.min(ac.width * 0.08, 20), y: ac.top + ac.height / 2 + 1 };
     await pickUpAndMove(window, pointIn(await gripOf(frame('title001'))), at);
-    expect(document.querySelector('.atlas-te-drop-tint')).toBeNull();
-    expect(dropLine()?.orientation).toBe('horizontal');
+    const line = dropLine();
+    expect(line?.orientation).toBe('vertical');
+    expect(line!.x).toBeGreaterThanOrEqual(ac.right - 1);
+    expect(live()).toBe('Beside Armor class, on its right.');
 
     await drop(window, at);
     await wait(SETTLED_MS);
-    expect(sectionShape(session)).toBe('section1(stat-ac1 title001 stat-hp1) row00001(stat-sp1 stat-cr1) divider1');
+    expect(sectionShape(session)).toMatch(/^section1\((\w+)\(stat-ac1 title001\) stat-hp1\) row00001\(stat-sp1 stat-cr1\) divider1$/);
     expect(session.steps).toBe(1);
+    const title = frame('title001').getBoundingClientRect();
+    const placed = frame('stat-ac1').getBoundingClientRect();
+    expect(title.left).toBeGreaterThanOrEqual(placed.right - 1);
+    expect(Math.abs(title.top - placed.top)).toBeLessThan(placed.height);
+
+    const hp = frame('stat-hp1').getBoundingClientRect();
+    const middle = { x: hp.left + hp.width / 2, y: hp.top + 2 };
+    await pickUpAndMove(window, pointIn(await gripOf(frame('divider1'))), middle);
+    expect(dropLine()?.orientation).toBe('horizontal');
+    await drop(window, middle);
   });
 
   it('starts no drag from a press on a block\'s body: only its handle drags it', async () => {

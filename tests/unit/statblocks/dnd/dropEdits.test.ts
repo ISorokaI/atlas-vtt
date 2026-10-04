@@ -21,6 +21,22 @@ describe('applyDrop', () => {
     expect(shape(session.template.layout.blocks)).toBe('title001 section1(stat-ac1 stat-hp1) row00001(stat-sp1 stat-cr1) divider1');
   });
 
+  it('sets a block beside another in a new Side by side, on the side dropped, as one undo step', () => {
+    const session = new FakeSession(sampleTemplate());
+    const beside = (side: 'start' | 'end') => ({ kind: 'beside' as const, targetId: 'title001', side, line: { ...LINE, orientation: 'vertical' as const } });
+    const outcome = applyDrop(session, { kind: 'block', id: 'divider1' }, beside('end'));
+    const row = session.template.layout.blocks[0];
+    expect(row).toMatchObject({ type: 'row', blocks: [{ id: 'title001' }, { id: 'divider1' }] });
+    expect(shape(session.template.layout.blocks.slice(1))).toBe('section1(stat-ac1 stat-hp1) row00001(stat-sp1 stat-cr1)');
+    expect(session.steps).toBe(1);
+    expect(outcome).toMatchObject({ select: ['divider1'], landed: 'divider1', announce: 'Put Divider beside Name, side by side.' });
+    session.undo();
+    expect(shape(session.template.layout.blocks)).toBe('title001 section1(stat-ac1 stat-hp1) row00001(stat-sp1 stat-cr1) divider1');
+    applyDrop(session, { kind: 'item', item: insertItemFor('stat') }, beside('start'));
+    expect(session.template.layout.blocks[0]).toMatchObject({ type: 'row', blocks: [{ type: 'stat' }, { id: 'title001' }] });
+    expect(session.steps).toBe(2);
+  });
+
   it('counts a later place in the same list once the block has left it', () => {
     const session = new FakeSession(sampleTemplate());
     applyDrop(session, { kind: 'block', id: 'title001' }, { kind: 'between', parentId: null, index: 3, line: LINE });

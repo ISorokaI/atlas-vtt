@@ -63,10 +63,17 @@ describe('dropTargetAt', () => {
     expect(target).toMatchObject({ kind: 'between', parentId: 'S', index: 1, line: { orientation: 'horizontal', y: 88 } });
   });
 
-  it('never makes a row: the edges of a block of a stack are its gaps, as its middle is (no edge zones, spec §7.3)', () => {
-    for (const x of [2, 20, 150, 290, 298]) {
-      expect(dropTargetAt(scene(), moving('D', 'divider'), { x, y: 98 })).toMatchObject({ kind: 'between', parentId: 'S' });
-    }
+  it('drops beside a block of a stack over the band along its left or right edge, its middle staying a gap', () => {
+    expect(dropTargetAt(scene(), moving('D', 'divider'), { x: 290, y: 98 })).toEqual({
+      kind: 'beside', targetId: 'hp', side: 'end', line: { orientation: 'vertical', x: 304, y: 92, length: 20 },
+    });
+    expect(dropTargetAt(scene(), moving('D', 'divider'), { x: 10, y: 98 })).toMatchObject({ kind: 'beside', targetId: 'hp', side: 'start' });
+    expect(dropTargetAt(scene(), moving('D', 'divider'), { x: 150, y: 98 })).toMatchObject({ kind: 'between', parentId: 'S' });
+  });
+
+  it('offers no beside where the pair may not stand side by side: inside a Row, or for a block a Row does not take', () => {
+    expect(dropTargetAt(scene(), moving('D', 'divider'), { x: 135, y: 175 })).toMatchObject({ kind: 'between', parentId: 'R' });
+    expect(dropTargetAt(scene(), moving('R', 'row'), { x: 290, y: 15 })).toMatchObject({ kind: 'between', parentId: null });
   });
 
   it('draws a vertical line of the row\'s height between the blocks of a row', () => {

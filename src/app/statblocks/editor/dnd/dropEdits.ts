@@ -6,21 +6,25 @@
  */
 
 import { fieldByKey } from '../../model/fieldKeys';
+import { blockIdSource } from '../../model/templateIds';
+import { placeBeside, putSideBySide } from '../../model/treeGrouping';
 import { moveBlock } from '../../model/treeOps';
 import type { TreeTarget } from '../../model/treeEdit';
-import { findBlock } from '../../model/treeQueries';
+import { collectBlockIds, findBlock } from '../../model/treeQueries';
 import type { TemplateLayout } from '../../model/templateTypes';
 import { insertCatalogueBlock, insertParts, type InsertPlace } from '../template-editor/blockActions';
 import { movedMessage } from '../template-editor/blockMoves';
 import { applyTree, outcomeOf, type EditOutcome } from '../template-editor/sessionEdit';
 import type { EditorSession } from '../template-editor/sessionTypes';
 import { fieldBlock, type DragSource } from './dragSources';
+import { besideMessage } from './announcements';
 import type { DropTarget } from './dropTargets';
 
 /** What a drop leaves: the editor's outcome, and the block that landed (washed in the accent). */
 export type DropOutcome = EditOutcome & { inserted?: string; landed?: string };
 
-type Placed = Exclude<DropTarget, { kind: 'refused' }>;
+type Placed = Exclude<DropTarget, { kind: 'refused' | 'beside' }>;
+type Beside = Extract<DropTarget, { kind: 'beside' }>;
 
 /** The gap a target names, counted in the list as it stands: where the block's leading edge lands. */
 function gapOf(target: Placed): { parentId: string | null; index: number } {
@@ -61,6 +65,26 @@ function insertOnto(session: EditorSession, source: Exclude<DragSource, { kind: 
   return outcome;
 }
 
+/** Moves the block beside the target and sets the two side by side. */
+function moveBeside(session: EditorSession, id: string, target: Beside): DropOutcome {
+  const edit = applyTree(session, (layout) => placeBeside(layout, id, target.targetId, target.side, blockIdSource(collectBlockIds(layout.blocks))));
+  const snapshot = session.getSnapshot();
+  return outcomeOf(edit, snapshot, (done) => ({ select: [id], landed: id, announce: besideMessage(done.layout, id, target, snapshot.template.fields) }));
+}
+
+/** Puts a new block in right beside the target, then sets the two side by side; both in the drop's one gesture. */
+function insertBeside(session: EditorSession, source: Exclude<DragSource, { kind: 'block' }>, target: Beside): DropOutcome {
+  const found = findBlock(session.getSnapshot().template.layout.blocks, target.targetId);
+  if (!found) return {};
+  const index = found.index + (target.side === 'end' ? 1 : 0);
+  const inserted = insertOnto(session, source, { kind: 'between', parentId: found.parentId, index, line: target.line });
+  const id = inserted.inserted ?? inserted.landed;
+  if (!id) return inserted;
+  const edit = applyTree(session, (layout) => putSideBySide(layout, [target.targetId, id], blockIdSource(collectBlockIds(layout.blocks))));
+  const snapshot = session.getSnapshot();
+  return outcomeOf(edit, snapshot, () => ({ ...inserted, select: [id], landed: id }));
+}
+
 /**
  * Drops `source` at `target` as one undo step and says what happened; a
  * refused target or a read-only template changes nothing.
@@ -69,6 +93,7 @@ export function applyDrop(session: EditorSession, source: DragSource, target: Dr
   if (target.kind === 'refused') return {};
   session.beginGesture();
   try {
+    if (target.kind === 'beside') return source.kind === 'block' ? moveBeside(session, source.id, target) : insertBeside(session, source, target);
     return source.kind === 'block' ? moveOnto(session, source.id, target) : insertOnto(session, source, target);
   } finally {
     session.endGesture();

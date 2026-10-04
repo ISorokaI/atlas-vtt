@@ -7,7 +7,7 @@
 import { childrenOf } from '../../model/treeEdit';
 import { findBlock } from '../../model/treeQueries';
 import type { TemplateField, TemplateLayout } from '../../model/templateTypes';
-import { placeName } from '../template-editor/blockNames';
+import { blockName, placeName } from '../template-editor/blockNames';
 import type { DropTarget } from './dropTargets';
 
 /** dnd-kit's hidden instructions, read with a block that can be picked up. */
@@ -28,6 +28,7 @@ export function pickedUpText(name: string, keyboard: boolean): string {
  */
 export function targetText(layout: TemplateLayout, fields: readonly TemplateField[], target: DropTarget, movingId: string | null): string {
   if (target.kind === 'refused') return "Can't go here.";
+  if (target.kind === 'beside') return besideText(layout, fields, target);
   const parent = target.parentId === null ? null : findBlock(layout.blocks, target.parentId)?.block ?? null;
   if (target.kind === 'into') return target.parentId === null ? 'Into the empty template.' : `Into ${placeName(parent, fields)}.`;
   const moving = movingId === null ? null : findBlock(layout.blocks, movingId);
@@ -35,6 +36,22 @@ export function targetText(layout: TemplateLayout, fields: readonly TemplateFiel
   const staying = moving !== null && moving.parentId === target.parentId;
   const position = staying && target.index > (moving?.index ?? 0) ? target.index : target.index + 1;
   return `${capitalised(placeName(parent, fields))}, position ${position} of ${staying ? length : length + 1}.`;
+}
+
+type Beside = Extract<DropTarget, { kind: 'beside' }>;
+
+/** "Beside Name, on its right." */
+function besideText(layout: TemplateLayout, fields: readonly TemplateField[], target: Beside): string {
+  const found = findBlock(layout.blocks, target.targetId);
+  const name = found ? blockName(found.block, fields) : 'the block';
+  return `Beside ${name}, on its ${target.side === 'start' ? 'left' : 'right'}.`;
+}
+
+/** "Put Picture beside Name, side by side." */
+export function besideMessage(layout: TemplateLayout, id: string, target: Beside, fields: readonly TemplateField[]): string {
+  const moved = findBlock(layout.blocks, id);
+  const other = findBlock(layout.blocks, target.targetId);
+  return `Put ${moved ? blockName(moved.block, fields) : 'the block'} beside ${other ? blockName(other.block, fields) : 'the block'}, side by side.`;
 }
 
 /** "Cancelled. Armor class stays where it was." */

@@ -1,7 +1,8 @@
 /**
  * What the canvas shows for a drop target (§7.3): a line between blocks (in
- * the starting list, at the place its siblings slid open), an outlined empty
- * container, or nothing where the drop is refused (the cursor says so). Pure.
+ * the starting list, at the place its siblings slid open) or along the edge a
+ * block goes beside, an outlined empty container, or nothing where the drop
+ * is refused (the cursor says so). Pure.
  */
 
 import { childrenOf, parentTypeOf } from '../../model/treeEdit';
@@ -38,6 +39,7 @@ export function shiftPlanFor(scene: DropScene, subject: DragSubject, target: Dro
 export function dropView(target: DropTarget, shifted: DropLine | null): DropView {
   switch (target.kind) {
     case 'between': return { kind: 'line', line: shifted ?? target.line };
+    case 'beside': return { kind: 'line', line: target.line };
     case 'into': return { kind: 'into', outline: target.outline };
     case 'refused': return { kind: 'refused' };
   }
