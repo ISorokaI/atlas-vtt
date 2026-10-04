@@ -15,6 +15,7 @@ import { hexLattice } from './hexLattice';
 import { squareLattice } from './squareLattice';
 import { CellNumberLabels, type CellNumberView } from './cellNumberLabels';
 import { destroyTree } from '../pixi/utils/destroyTree';
+import { applyGridMark, createMarkBacking, type GridMarkColor, type UnlitGrid } from './gridLightingMark';
 
 export type GridType = 'square' | 'hex-horizontal' | 'hex-vertical';
 
@@ -62,7 +63,7 @@ export const ALIGNMENT_GRID_COLOR = 0x00ff00;
  * Manages a static grid overlay that exactly matches a background sprite,
  * staying locked under pan/zoom by the Pixi‑Viewport container.
  */
-export class GridSystem {
+export class GridSystem implements UnlitGrid {
   /** Holds the grid lines and, on a numbered grid, the cell numbers. */
   private gridSprite: Container | null = null;
   private cellNumberLabels: CellNumberLabels | null = null;
@@ -83,6 +84,10 @@ export class GridSystem {
   private isDestroying: boolean = false;
   private _isCreating: boolean = false;
   private autoColor: number | null = null;
+  /** Whether the lighting composite draws the grid (`UnlitGrid`). */
+  private marked = false;
+  private markBacking: Graphics | null = null;
+  private drawnColor: GridMarkColor = { color: 0xffffff, contrasting: true };
 
   /**
    * @param app      – the Pixi Application
@@ -219,6 +224,10 @@ export class GridSystem {
     maskGraphics.position.set(bgX - bounds.minX, bgY - bounds.minY);
     grid.addChild(maskGraphics);
     grid.mask = maskGraphics;
+    this.markBacking = createMarkBacking(bgX - bounds.minX, bgY - bounds.minY, bgSprite.width, bgSprite.height);
+    grid.addChildAt(this.markBacking, 0);
+    applyGridMark(grid, this.markBacking, this.marked);
+    this.drawnColor = { color: gridColor, contrasting: !isAligning && color === undefined };
 
     // Keep geometry ready for player capture even when the DM hides the grid.
     grid.visible = this.options.enabled !== false;
@@ -262,6 +271,7 @@ export class GridSystem {
   /** Clean up grid-only resources */
   private destroyGridResources(): void {
     this.cellNumberLabels = null;
+    this.markBacking = null;
     if (!this.gridSprite) return;
 
     this.gridSprite.visible = false;
@@ -296,6 +306,16 @@ export class GridSystem {
         // Silently ignore destruction errors
       }
     });
+  }
+
+  setMarking(on: boolean): void {
+    if (on === this.marked) return;
+    this.marked = on;
+    if (this.gridSprite && this.markBacking) applyGridMark(this.gridSprite, this.markBacking, on);
+  }
+
+  markColor(): GridMarkColor | null {
+    return this.marked && this.gridSprite?.visible ? this.drawnColor : null;
   }
 
   /** Toggle visibility */

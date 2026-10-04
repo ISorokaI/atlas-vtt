@@ -131,7 +131,7 @@ async function scene(resolution: number, type: GridType, lineType: GridLineType)
   });
   return {
     renderer, stage, viewport, grid,
-    lines: () => grid.getGridSprite()!.children[0] as Graphics,
+    lines: () => grid.getGridSprite()!.getChildByLabel('grid-lines') as Graphics,
     render: () => {
       renderer.render(stage);
       const { resolution } = renderer;

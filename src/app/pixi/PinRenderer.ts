@@ -15,6 +15,7 @@ import { getPinIconDefinition, resolvePinIcon, type PinIconId } from '../types/p
 import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
 import { dispatchPinAction } from './utils/pinActions';
 import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks';
+import { MAP_LAYER_Z } from './mapLayerOrder';
 
 /** True when anything other than the position changed, which means the pin's graphics must be rebuilt. */
 function differsBeyondPosition(pin: NotePin, prev: NotePin | undefined): boolean {
@@ -55,6 +56,7 @@ export class PinRenderer {
     
     this.pinContainer = new Container();
     this.pinContainer.label = 'pins';
+    this.pinContainer.zIndex = MAP_LAYER_Z.pins;
     this.pinContainer.sortableChildren = true;
     this.pinContainer.eventMode = 'none'; // Viewport-level dispatch handles pin interactions
     this.pinContainer.interactiveChildren = false;
