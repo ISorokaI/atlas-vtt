@@ -42,15 +42,17 @@ class UnownedFiles {
 
 /**
  * Whether a record goes when its file is gone. Art, maps and scenes are their
- * file. The index holds everything else in full, so those go only after the
- * user deleted the file, never because a file is missing at startup.
+ * file, unless their record has a file of its own: a sync tool may deliver the
+ * record before the art, so those go only once the art was seen deleted. The
+ * index holds everything else in full, so those go only after the user deleted
+ * the file, never because a file is missing at startup.
  */
-function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<string>): boolean {
+function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<string>, recorded: ReadonlySet<string>): boolean {
   switch (asset.type) {
     case 'token':
     case 'map':
     case 'scene':
-      return true;
+      return !recorded.has(asset.id) || (path !== null && deleted.has(path));
     case 'note':
       return false;
     default:
@@ -71,6 +73,7 @@ export function relinkAssets(
   deleted: ReadonlySet<string>,
   owned: Set<string>,
   ops: VaultFileOps,
+  recorded: ReadonlySet<string> = new Set(),
 ): RelinkResult {
   const unowned = new UnownedFiles(files, owned);
   const fileMoves: PathMove[] = [];
@@ -94,7 +97,7 @@ export function relinkAssets(
         setPrimaryPath(asset, found);
         fileMoves.push({ from: primary, to: found });
         changed = true;
-      } else if (isGoneWithFile(asset, primary, deleted)) {
+      } else if (isGoneWithFile(asset, primary, deleted, recorded)) {
         delete metadata.assets[id];
         if (sidecarAt) ops.trash.push(sidecarAt);
         changed = true;

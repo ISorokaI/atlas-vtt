@@ -1,4 +1,5 @@
 import type { Asset, CollectionMetadata } from '../AssetService';
+import { isLibraryOwnFile } from '../library/libraryPaths';
 import { isRecord } from '../assetMetadataGuards';
 import { SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from '../statblockImageKeys';
@@ -144,7 +145,9 @@ export function manifestProblem(value: unknown): string | null {
   if (!isSound) return 'This collection export is damaged.';
   const { coverPath } = collection;
   if (coverPath !== undefined && !files.some((file) => file.role === 'cover' && file.vaultPath === coverPath)) return 'This collection export is damaged.';
-  const unsafe = files.find((file) => !isSafeBundlePath(file.vaultPath, file.role) || (file.statblockImage && !isSafeBundlePath(file.statblockImage.path)));
+  const unsafe = files.find((file) => !isSafeBundlePath(file.vaultPath, file.role)
+    || isLibraryOwnFile(file.vaultPath)
+    || (file.statblockImage && !isSafeBundlePath(file.statblockImage.path)));
   if (unsafe) return `This collection export contains a file Atlas will not write: ${unsafe.vaultPath}`;
   return null;
 }

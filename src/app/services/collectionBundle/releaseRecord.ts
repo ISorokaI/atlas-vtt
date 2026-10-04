@@ -4,7 +4,7 @@ import { systemPresetsOf } from '../mapCollectionRules';
 import { TEMPLATE_ROLE, type CollectionBundleManifest } from './bundleFormat';
 import { storeCover, type CoverFile } from './collectionCover';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
-import { COLLECTION_FIELDS, deleteInstallRecord, moveInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord, type InstalledTemplate } from './installRecord';
+import { COLLECTION_FIELDS, deleteInstallRecord, movedInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord, type InstalledTemplate } from './installRecord';
 
 /** How a shared copy names the collection, its folder and the files and records it carries. */
 export interface OriginNames {
@@ -20,7 +20,7 @@ export interface OriginNames {
  * Files the sharer added move from their collection folder to the original's.
  */
 export async function originNames(app: App, collection: CollectionMetadata, packedPaths: readonly string[]): Promise<OriginNames> {
-  const record = await readInstallRecord(app, collection.uid);
+  const record = await readInstallRecord(app, collection);
   const collectionId = record?.sourceCollectionId ?? collection.id;
   // A name the vault had to give the copy (because another collection used the original) is not a rename by the user.
   const keptOwnName = record?.sourceName !== undefined && record.fields.name?.installed === await fieldFingerprint(collection, 'name');
@@ -65,8 +65,8 @@ export async function recordRelease(
   if (cover) await storeCover(app, cover);
   if (collection.uid !== exportedFrom.uid) {
     // A fork takes its new name, and with it a folder of that name.
+    await deleteInstallRecord(app, exportedFrom);
     collectionId = (await assets.forkCollection(collectionId, collection.name, collection.uid)).id;
-    await deleteInstallRecord(app, exportedFrom.uid);
   }
   await assets.recordCollectionRelease(collectionId, {
     version: collection.version, releasedAt: manifest.exportedAt, author: collection.author, coverPath: collection.coverPath,
@@ -101,6 +101,6 @@ export async function recordRelease(
     const source = await fieldFingerprint(collection, field, presets);
     record.fields[field] = { source, installed: local ? await fieldFingerprint(local, field, presets) : source };
   }
-  await writeInstallRecord(app, record);
-  if (collectionId !== bundleCollectionId) await moveInstallRecord(app, collection.uid, bundleCollectionId, collectionId);
+  // Its paths are the bundle's; a fork's folder took a new name, which the stored record follows.
+  await writeInstallRecord(app, movedInstallRecord(record, collectionId));
 }

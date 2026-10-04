@@ -1,8 +1,8 @@
 import type { AssetMetadata, TokenAsset } from '../AssetService';
 import { GLOBAL_ASSETS_DIR } from '../assetPaths';
 import { defaultCollectionIdOf } from '../collectionRecords';
-import { groupTokenRefs } from './assetFiles';
-import { recoveredId, recoveredTokenName } from './recoveredIds';
+import { groupTokenRefs, ownedPaths, primaryPath } from './assetFiles';
+import { isRecoveredId, recoveredId, recoveredTokenName } from './recoveredIds';
 
 const COLLECTION_TOKEN = /^atlas-vtt\/collections\/([^/]+)\/(?:.+\/)?tokens\/.+$/i;
 const IMAGE = /\.(png|jpe?g|webp|gif)$/i;
@@ -43,6 +43,26 @@ export function tidyRecoveredTokens(metadata: AssetMetadata, now: number): boole
       asset.modifiedAt = now;
       changed = true;
     }
+  }
+  return changed;
+}
+
+/**
+ * Removes records an earlier check rebuilt from a file that a real record now
+ * owns: a sync tool delivered the art or map before the record that goes with
+ * it. Returns whether any was removed.
+ */
+export function dropShadowedRecoveries(metadata: AssetMetadata): boolean {
+  const ownedByRecords = new Set<string>();
+  for (const asset of Object.values(metadata.assets)) {
+    if (!isRecoveredId(asset.id)) for (const path of ownedPaths(asset)) ownedByRecords.add(path);
+  }
+  let changed = false;
+  for (const [id, asset] of Object.entries(metadata.assets)) {
+    const primary = primaryPath(asset);
+    if (!isRecoveredId(id) || !primary || !ownedByRecords.has(primary)) continue;
+    delete metadata.assets[id];
+    changed = true;
   }
   return changed;
 }

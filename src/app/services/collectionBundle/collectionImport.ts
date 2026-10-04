@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { payloadBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { zipPathFor } from './bundleFormat';
 import { rewriteContent } from './bundleContent';
@@ -63,7 +64,7 @@ export async function openCollectionImport(
   const bundle = await openBundle(data, onProgress);
   const { manifest } = bundle;
   const existing = await assets.findCollectionByUid(manifest.collection.uid);
-  const record = existing ? await readInstallRecord(app, existing.uid) : null;
+  const record = existing ? await readInstallRecord(app, existing) : null;
   const nameTaken = await assets.isCollectionNameTaken(manifest.collection.name, existing?.id);
   const suggestedName = !existing && nameTaken ? await assets.freeCollectionName(manifest.collection.name) : undefined;
   const collectionId = existing?.id ?? await assets.freeCollectionIdFor(manifest.collection.name);
@@ -178,7 +179,8 @@ async function applyImport(
       const target = targets.targetOf(bundlePath);
       if (!target) continue;
       const file = filesByPath.get(bundlePath)!;
-      await journal.write(target, rewriteContent(file, await zip.file(zipPathFor(bundlePath))!.async('arraybuffer'), targets.rewrites, targets.templateIds));
+      const raw = payloadBytes(file.vaultPath, await zip.file(zipPathFor(bundlePath))!.async('arraybuffer'));
+      await journal.write(target, rewriteContent(file, raw, targets.rewrites, targets.templateIds));
       written += 1;
     }
     written += await writeTemplates(journal, targets.templates);

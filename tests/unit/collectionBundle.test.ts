@@ -260,7 +260,9 @@ describe('installing', () => {
     expect(token).toMatchObject({ imagePath: TOKEN_IMAGE, statblockPath: `${statblocks}/Goblin.md`, showRing: false, size: 1.5 });
     expect(JSON.parse(fan.vault.files.get(MAP_PATH)!).state.objects.tokens.t1.statblockPath).toBe(`${statblocks}/Goblin.md`);
     expect(parseFrontmatter(fan.vault.files.get(`${statblocks}/Goblin.md`)!)).toMatchObject({ image: `${statblocks}/goblin.png` });
-    expect(await readInstallRecord(fan.vault.app, collection!.uid)).toMatchObject({ version: 1, collectionId: 'source' });
+    expect(await readInstallRecord(fan.vault.app, collection!)).toMatchObject({ version: 1, collectionId: 'source' });
+    // In the collection's folder, so it syncs and moves with the collection.
+    expect(fan.vault.files.has('atlas-vtt/collections/source/install.json')).toBe(true);
   });
 
   it('carries scene snapshots with their thumbnails and artwork into the installed collection', async () => {
@@ -483,7 +485,7 @@ describe('updating', () => {
   it('treats a copy from before install records as unknown: restores what is missing and asks about the rest', async () => {
     const { creator, fan } = await installedV1();
     const collection = await fan.assets.getCollection('source');
-    await fan.vault.app.vault.adapter.remove(`atlas-vtt/.atlas-data/installs/${collection!.uid}.json`);
+    fan.vault.files.delete('atlas-vtt/collections/source/install.json');
     fan.vault.files.delete(TOKEN_IMAGE);
     fan.vault.files.set(MAP_PATH, 'PLAYED');
 
@@ -493,7 +495,7 @@ describe('updating', () => {
     await apply();
     expect(fan.vault.files.get(TOKEN_IMAGE)).toBe('IMG');
     expect(fan.vault.files.get(MAP_PATH)).toBe('PLAYED');
-    expect(await readInstallRecord(fan.vault.app, collection!.uid)).not.toBeNull();
+    expect(await readInstallRecord(fan.vault.app, collection!)).not.toBeNull();
   });
 
   it('saves and closes open views of maps it replaces before writing them', async () => {
@@ -837,7 +839,7 @@ describe('remaining findings', () => {
     const fan = await emptyVault();
     await importInto(fan, await exportFrom(creator));
     const collection = await fan.assets.getCollection('source');
-    await fan.vault.app.vault.adapter.remove(`atlas-vtt/.atlas-data/installs/${collection!.uid}.json`);
+    fan.vault.files.delete('atlas-vtt/collections/source/install.json');
     creator.vault.files.set(TOKEN_IMAGE, 'NEW IMG');
     await (await reviewImport(fan, await exportFrom(creator))).apply({ restore: true });
     expect([...fan.vault.files.keys()].filter((path) => path.includes('goblin_1-2'))).toEqual([]);
@@ -923,7 +925,8 @@ describe('final review findings', () => {
     await (await reviewImport(fan, v1)).apply({ restore: true });
     const [restored] = await fan.assets.getAssets('source', 'map');
     expect(restored?.id).not.toBe(fanMap!.id);
-    expect(fan.vault.files.get(fan.assets.getAssetFilePath(restored!))).toBe('{"name":"Region"}');
+    // The file the bundle carried, with the restored record beside it.
+    expect(JSON.parse(fan.vault.files.get(fan.assets.getAssetFilePath(restored!))!)).toMatchObject({ name: 'Region', atlasRecord: { id: restored!.id } });
   });
 });
 

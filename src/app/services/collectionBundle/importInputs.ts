@@ -1,4 +1,5 @@
 import { TFile, normalizePath, type App } from 'obsidian';
+import { payloadBytes } from './recordPayload';
 import { AssetService, ATLAS_VTT_DIR, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
 import { TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
 import { linkedFilePath } from '../sceneLinks';
@@ -90,10 +91,10 @@ export function referencedStrings(values: readonly unknown[], into: Set<string> 
   return into;
 }
 
-/** Fingerprint of the vault file at `path`, or null when there is none. */
+/** Fingerprint of the vault file at `path` as bundles compare it (a record file by its payload), or null when there is none. */
 export async function vaultFileHash(app: App, path: string): Promise<string | null> {
   const content = await readVaultBinary(app, path);
-  return content ? sha256(content) : null;
+  return content ? sha256(payloadBytes(path, content)) : null;
 }
 
 /** The vault's record with `localId` when it belongs to the collection being updated; one in another collection is the user's own. */
@@ -221,7 +222,7 @@ export async function gatherImportInputs(
     const theirs = entry && hash !== undefined ? await hashHere(file, hash, () => entry.async('arraybuffer'), targets.templateIds) : hash ?? null;
     let theirsInstalled = theirs ?? undefined;
     if (theirs !== null && entry && mayRewrite(file, targets.rewrites, targets.templateIds)) {
-      theirsInstalled = await sha256(rewriteContent(file, await entry.async('arraybuffer'), targets.rewrites, targets.templateIds));
+      theirsInstalled = await sha256(rewriteContent(file, payloadBytes(file.vaultPath, await entry.async('arraybuffer')), targets.rewrites, targets.templateIds));
     }
     items.push({
       key: `file:${file.vaultPath}`, kind: 'file', unit: fileUnit(file),

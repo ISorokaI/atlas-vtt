@@ -178,16 +178,20 @@ describe('other assets changed outside Atlas', () => {
     ]);
   });
 
-  it('removes an encounter only when its file was deleted, not when it is missing at startup', async () => {
+  it('drops an encounter whose record file is gone, never writes it back, and takes it in again when the file returns', async () => {
     const vault = await setup();
     const json = `${camp}/encounters/${vault.encounterId}.json`;
+    const content = vault.files.get(json)!;
     vault.files.delete(json);
 
     await vault.service.reconcileWithVault();
-    expect(await vault.service.getAssetById(vault.encounterId)).not.toBeNull();
-
-    await vault.service.reconcileWithVault(new Set([json]));
     expect(await vault.service.getAssetById(vault.encounterId)).toBeNull();
+    expect(vault.files.has(json)).toBe(false);
+
+    // A sync tool or a storage provider that evicted the file brings it back.
+    await vault.app.vault.create(json, content);
+    await vault.service.reconcileWithVault();
+    expect(await vault.service.getAssetById(vault.encounterId)).toMatchObject({ name: 'Ambush', collection: 'Winter Camp' });
   });
 
   it('moves an encounter whose file was moved to another collection', async () => {

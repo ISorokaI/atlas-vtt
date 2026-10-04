@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { payloadBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
 import { BUNDLE_MANIFEST, TEMPLATE_ROLE, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
@@ -81,7 +82,7 @@ export interface ExportedBundle {
 
 async function publisherOf(app: App, assets: AssetService, collection: CollectionMetadata): Promise<ExportPreview['publisher']> {
   if (collection.publisherId !== undefined) return collection.publisherId === await assets.getVaultId() ? 'self' : 'other';
-  return (await readInstallRecord(app, collection.uid)) === null ? 'unknown' : 'other';
+  return (await readInstallRecord(app, collection)) === null ? 'unknown' : 'other';
 }
 
 export async function prepareCollectionExport(app: App, assets: AssetService, collectionId: string): Promise<ExportPreview> {
@@ -186,7 +187,7 @@ export async function exportCollectionBundle(
     const template = file.role === TEMPLATE_ROLE ? await packTemplateFile(file.vaultPath, content) : null;
     if (file.role === TEMPLATE_ROLE && !template) continue;
     if (template) templates[template.installed.localId] = template.installed;
-    const data = template ? toBuffer(template.text) : rewriteContent(file, content, origin.names);
+    const data = template ? toBuffer(template.text) : rewriteContent(file, payloadBytes(file.vaultPath, content), origin.names);
     const bundlePath = named(file.vaultPath);
     files.push({
       ...file,

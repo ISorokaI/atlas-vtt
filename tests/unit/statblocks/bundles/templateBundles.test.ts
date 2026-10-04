@@ -149,7 +149,7 @@ describe('importing a collection with statblock templates', () => {
     expect(parseFrontmatter(fan.vault.files.get(INSTALLED_NOTE)!)).toMatchObject({ 'atlas-template': MARSH });
     expect(await settingsOf(fan)).toMatchObject({ statblockRoles: [ROLE], statblockRoleFolders: { monster: 'atlas-vtt/collections/Fen/Monsters' } });
     expect(session.files.templates?.map((entry) => entry.template.id)).toEqual([MARSH]);
-    const record = await readInstallRecord(fan.vault.app, (await fan.assets.getCollection('Fen'))!.uid);
+    const record = await readInstallRecord(fan.vault.app, (await fan.assets.getCollection('Fen'))!);
     expect(record?.templates?.[MARSH]).toMatchObject({ localId: MARSH, target: MARSH_PATH });
     expect(Object.keys(record?.files ?? {}).some((path) => path.endsWith('.atlastemplate'))).toBe(false);
   });

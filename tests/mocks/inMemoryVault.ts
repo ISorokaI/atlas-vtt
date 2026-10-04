@@ -49,20 +49,37 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
   const assertFree = (path: string): void => {
     if (files.has(path) || folders.has(path)) throw new Error(ALREADY_EXISTS);
   };
+  /** A modification time per file that every write moves on, as a disk's would. */
+  const mtimes = new Map<string, number>();
+  let clock = 0;
+  const touch = (path: string): void => { mtimes.set(path, ++clock); };
+  const setFile = (path: string, content: string): void => {
+    files.set(path, content);
+    touch(path);
+  };
   const writeFile = (path: string, content: string): void => {
     addParentFolders(path);
-    files.set(path, content);
+    setFile(path, content);
+  };
+  /** A file handle with the stat Obsidian keeps: size and modification time. */
+  const fileAt = (path: string): TFile => {
+    const file = new TFile(path);
+    file.stat = { ctime: 0, mtime: mtimes.get(path) ?? 0, size: (files.get(path) ?? '').length };
+    return file;
   };
   const moveFile = async (file: TAbstractFile, newPath: string): Promise<void> => move(file.path, newPath);
 
-  for (const path of files.keys()) addParentFolders(path);
+  for (const path of files.keys()) {
+    addParentFolders(path);
+    touch(path);
+  }
   /** A folder handle whose `children` list what lies directly inside it, as Obsidian's does. */
   const folderAt = (path: string): TFolder => {
     const folder = new TFolder(path);
     const inside = (candidate: string): boolean => parentOf(candidate) === path;
     folder.children = [
       ...[...folders].filter(inside).map((child) => new TFolder(child)),
-      ...[...files.keys()].filter(inside).map((child) => new TFile(child)),
+      ...[...files.keys()].filter(inside).map(fileAt),
     ];
     return folder;
   };
@@ -78,7 +95,9 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     const moved = (path: string): string => to + path.slice(from.length);
     const within = (path: string): boolean => path === from || path.startsWith(`${from}/`);
     for (const path of [...files.keys()].filter(within)) {
-      writeFile(moved(path), files.get(path) ?? '');
+      addParentFolders(moved(path));
+      files.set(moved(path), files.get(path) ?? '');
+      mtimes.set(moved(path), mtimes.get(path) ?? ++clock);
       files.delete(path);
     }
     for (const path of [...folders].filter(within)) {
@@ -120,15 +139,15 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     },
     on: vi.fn(() => ({})),
     offref: vi.fn(),
-    getFiles: vi.fn(() => Array.from(files.keys()).filter((path) => !isHiddenPath(path)).map((path) => new TFile(path))),
-    getMarkdownFiles: vi.fn(() => Array.from(files.keys()).filter((path) => path.endsWith('.md') && !isHiddenPath(path)).map((path) => new TFile(path))),
+    getFiles: vi.fn(() => Array.from(files.keys()).filter((path) => !isHiddenPath(path)).map(fileAt)),
+    getMarkdownFiles: vi.fn(() => Array.from(files.keys()).filter((path) => path.endsWith('.md') && !isHiddenPath(path)).map(fileAt)),
     getAbstractFileByPath: vi.fn((path: string): TAbstractFile | null => {
       if (isHiddenPath(path)) return null;
-      if (files.has(path)) return new TFile(path);
+      if (files.has(path)) return fileAt(path);
       if (folders.has(path)) return folderAt(path);
       return null;
     }),
-    getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? new TFile(path) : null)),
+    getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? fileAt(path) : null)),
     getFolderByPath: vi.fn((path: string): TFolder | null => (folders.has(path) && !isHiddenPath(path) ? folderAt(path) : null)),
     getAllFolders: vi.fn((includeRoot = false): TFolder[] => [
       ...(includeRoot ? [new TFolder('/')] : []),
@@ -142,9 +161,12 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     create: vi.fn(async (path: string, content: string) => {
       assertFree(path);
       writeFile(path, content);
+      return fileAt(path);
     }),
     process: vi.fn(async (file: TFile, fn: (data: string) => string) => {
-      files.set(file.path, fn(files.get(file.path) ?? ''));
+      const content = fn(files.get(file.path) ?? '');
+      setFile(file.path, content);
+      return content;
     }),
     read: vi.fn(async (file: TFile) => files.get(file.path) ?? ''),
     cachedRead: vi.fn(async (file: TFile) => files.get(file.path) ?? ''),
@@ -153,10 +175,10 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     createBinary: vi.fn(async (path: string, content: ArrayBuffer) => {
       assertFree(path);
       writeFile(path, new TextDecoder().decode(content));
-      return new TFile(path);
+      return fileAt(path);
     }),
     modifyBinary: vi.fn(async (file: TFile, content: ArrayBuffer) => {
-      files.set(file.path, new TextDecoder().decode(content));
+      setFile(file.path, new TextDecoder().decode(content));
     }),
   };
 
@@ -169,7 +191,7 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
       fn(frontmatter);
       const body = content.replace(/^---\n[\s\S]*?\n---\n?/, '');
       const yaml = Object.entries(frontmatter).map(([key, value]) => `${key}: ${String(value)}`).join('\n');
-      files.set(file.path, `---\n${yaml}\n---\n${body}`);
+      setFile(file.path, `---\n${yaml}\n---\n${body}`);
     }),
   };
 

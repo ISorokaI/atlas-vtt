@@ -221,7 +221,8 @@ describe('moving assets to another collection', () => {
 
     await expect(copy(vault, [map.id])).rejects.toThrow('Disk full. Nothing was changed.');
 
-    expect([...vault.vault.files.keys()].filter((path) => path.startsWith(`${TARGET}/`))).toEqual([]);
+    // The target collection's own record is all its folder holds.
+    expect([...vault.vault.files.keys()].filter((path) => path.startsWith(`${TARGET}/`))).toEqual([`${TARGET}/collection.json`]);
   });
 });
 
@@ -278,7 +279,10 @@ describe('copying assets to another collection', () => {
     expect(state.objects.tokens.t1!.conditions).toEqual(['poisoned']);
     expect(vault.vault.files.get(`${TARGET}/notes/Entrance.md`)).toBe('# Door');
     expect(vault.vault.files.get(`${TARGET}/scenes/.snapshots/Cave/snap1.jpg`)).toBe('SNAPJPG');
-    expect(vault.vault.files.get(copied.filePath!)).toBe(JSON.stringify({ mapPath: newMap }, null, 2));
+    expect(JSON.parse(vault.vault.files.get(copied.filePath!)!)).toEqual({
+      mapPath: newMap,
+      atlasRecord: expect.objectContaining({ id: copied.id, type: 'scene', name: 'Cave' }),
+    });
   });
 
   it('keeps the statblock link of a copy whose note lives in the collection and comes along', async () => {

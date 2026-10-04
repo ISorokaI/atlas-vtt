@@ -6,6 +6,7 @@ import type { PathMove } from '../services/renamedPaths';
 import { stemOf } from '../services/vault-sync/recoveredIds';
 import { moveSceneSnapshots, trashSceneSnapshots } from '../snapshots/snapshotFolderSync';
 import { runInBackground } from '../utils/backgroundTask';
+import { isLibraryFile } from '../services/library/libraryPaths';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
 import { closeMapTab, getLoadedAtlasView } from './atlasLeaves';
 
@@ -103,6 +104,13 @@ export function registerVaultSync(plugin: Plugin): void {
       }
       deleted.add(file.path);
       scheduleCheck();
+    })
+  );
+
+  // A sync tool rewrites library files in place: the check takes their new content into the index.
+  plugin.registerEvent(
+    app.vault.on('modify', (file) => {
+      if (isLibraryFile(file.path)) scheduleCheck();
     })
   );
 
