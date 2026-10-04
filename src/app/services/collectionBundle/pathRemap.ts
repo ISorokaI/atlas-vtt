@@ -1,8 +1,8 @@
 import { COLLECTIONS_DIR, ATLAS_VTT_DIR, GLOBAL_ASSETS_DIR } from '../AssetService';
-import { REUSABLE_FILE_ROLES, TEMPLATE_ROLE, type BundleFile, type BundleFileRole } from './bundleFormat';
+import { ID_MATCHED_ROLES, REUSABLE_FILE_ROLES, SNAPSHOT_FILE_ROLES, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { sceneThumbnailPath } from './collectionReferences';
 import { baseName, parentPath } from '../../utils/pathUtils';
-import { snapshotFolderFor } from '../../snapshots/snapshotPaths';
+import { sceneSnapshotFolder } from '../../snapshots/snapshotPaths';
 import { mapStrings } from '../../utils/mapStrings';
 import { TEMPLATE_FOLDER, templateFileName, templatePathIn } from '../../statblocks/library/templatePaths';
 
@@ -102,25 +102,13 @@ export function templatePlacer(collectionName: string, isTaken: (path: string) =
   };
 }
 
-/** The scene map among `mapPaths` that a scene thumbnail or snapshot file belongs to, found by where it lies. */
+/** The scene map among `mapPaths` that a scene thumbnail belongs to, found by where it lies. */
 export function sceneMapOf(file: BundleFile, mapPaths: readonly string[]): string | undefined {
-  switch (file.role) {
-    case 'scene-thumbnail':
-      return mapPaths.find((map) => sceneThumbnailPath(map) === file.vaultPath);
-    case 'scene-snapshot':
-    case 'scene-snapshot-thumbnail':
-      return mapPaths.find((map) => parentPath(file.vaultPath) === snapshotFolderFor(map));
-    default:
-      return undefined;
-  }
+  return file.role === 'scene-thumbnail' ? mapPaths.find((map) => sceneThumbnailPath(map) === file.vaultPath) : undefined;
 }
 
-/** Where a scene's thumbnail or snapshot file goes when its map goes to `mapTarget`. */
-export function besideMap(file: BundleFile, mapTarget: string): string {
-  return file.role === 'scene-thumbnail'
-    ? sceneThumbnailPath(mapTarget)
-    : `${snapshotFolderFor(mapTarget)}/${baseName(file.vaultPath)}`;
-}
+/** Where a scene's thumbnail goes when its map goes to `mapTarget`. */
+export const besideMap = (mapTarget: string): string => sceneThumbnailPath(mapTarget);
 
 export interface ImportPathRules {
   sourceCollectionId: string;
@@ -134,6 +122,8 @@ export interface ImportPathRules {
    * (copies from before install records), the folder's files are the earlier install.
    */
   recordTargets: ReadonlySet<string> | null;
+  /** The id in this vault of the scene a snapshot file belongs to; null when no scene of the bundle claims it. */
+  sceneOfSnapshot(file: BundleFile): string | null;
 }
 
 /**
@@ -159,17 +149,21 @@ export function planImportPaths(files: readonly BundleFile[], rules: ImportPathR
     plan.set(file.vaultPath, target);
   };
 
-  // A scene's thumbnail and snapshots are found next to its map, so they take whatever name the map gets.
+  // A scene's thumbnail is found next to its map, so it takes whatever name the map gets.
   const mapPaths = files.filter((file) => file.role === 'scene-map').map((file) => file.vaultPath);
+  // A scene's snapshots are found by its id, so they go to the folder of the id it has here.
+  const snapshots: Array<{ file: BundleFile; folder: string }> = [];
 
   const unplaced: Array<{ file: BundleFile; folder: string }> = [];
   const besideMaps: Array<{ file: BundleFile; map: string }> = [];
   for (const file of files) {
-    // Templates are placed by their id (`templatePlacer`), not by their path.
-    if (file.role === TEMPLATE_ROLE) continue;
+    // Templates and presets are placed by their id (`templatePlacer`, `planPresets`), not by their path.
+    if (ID_MATCHED_ROLES.has(file.role)) continue;
     const path = file.vaultPath;
     const map = sceneMapOf(file, mapPaths);
+    const scene = SNAPSHOT_FILE_ROLES.has(file.role) ? rules.sceneOfSnapshot(file) : null;
     if (map) besideMaps.push({ file, map });
+    else if (scene) snapshots.push({ file, folder: sceneSnapshotFolder(rules.targetCollectionId, scene) });
     else if (path.startsWith(sourcePrefix)) {
       const target = `${targetPrefix}${path.slice(sourcePrefix.length)}`;
       if (isUsersFile(target)) unplaced.push({ file, folder: parentPath(target) });
@@ -185,8 +179,10 @@ export function planImportPaths(files: readonly BundleFile[], rules: ImportPathR
   }
   for (const { file, folder } of unplaced) place(file, freePathIn(folder, baseName(file.vaultPath), isTaken));
   for (const { file, map } of besideMaps) {
-    const target = besideMap(file, plan.get(map)!);
+    const target = besideMap(plan.get(map)!);
     place(file, isTaken(target) ? freePathIn(parentPath(target), baseName(target), isTaken) : target);
   }
+  // A snapshot keeps its id as its name: a file of that name in its scene's folder is that same snapshot, installed or carried over before.
+  for (const { file, folder } of snapshots) place(file, freePathIn(folder, baseName(file.vaultPath), (path) => claimed.has(path)));
   return plan;
 }

@@ -36,7 +36,7 @@ export function SceneSnapshotsPanel({ onRestore }: SceneSnapshotsPanelProps): Re
   return (
     <div className="atlas-snapshots">
       <div className="atlas-snapshots-grid">
-        <button type="button" className="atlas-snapshot-new" disabled={isBusy} onClick={() => void save()}>
+        <button type="button" className="atlas-snapshot-new" disabled={isBusy || isLoading} onClick={() => void save()}>
           <Plus />
           <span>New snapshot</span>
         </button>

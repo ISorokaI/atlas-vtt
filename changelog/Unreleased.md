@@ -4,6 +4,12 @@
 - Statblock templates for 5E (2014 and 2024), Cairn, Draw Steel and Fate, and general ones for creatures, NPCs and hazards
 - Customize the toolbar from the command palette: drag tools to reorder them, or into the tray above it to hide them. With a contribution by oscar-eriksson
 
+## Important changes
+
+- Your library now syncs between devices with Obsidian Sync, Remotely Save and Self-hosted LiveSync. Tokens, encounters, collection settings, game system presets, scene snapshots and loot history used to sit in a hidden folder these tools skip. Each device moves its own once when Atlas starts, so update Atlas on every device before editing your library there
+- With Obsidian Sync, turn on "Sync all other types" in its settings: Atlas keeps its library in JSON files, which Obsidian Sync leaves out otherwise
+- Atlas' own settings (dice, hotkeys, experimental features) now live with the plugin's settings and sync whenever you sync plugin settings
+
 ## Improved
 
 - A scene can measure at its own scale: Distance per cell in the command palette's Grid Settings sets how far one cell of that map reaches, in place of the collection's, for the ruler and for how far lights and senses reach on it. Leave it empty to follow the collection. Contributed by ISorokaI

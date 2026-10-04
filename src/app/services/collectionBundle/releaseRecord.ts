@@ -1,10 +1,10 @@
 import type { App } from 'obsidian';
 import { COLLECTIONS_DIR, type AssetService, type CollectionMetadata } from '../AssetService';
 import { systemPresetsOf } from '../mapCollectionRules';
-import { TEMPLATE_ROLE, type CollectionBundleManifest } from './bundleFormat';
+import { ID_MATCHED_ROLES, type CollectionBundleManifest } from './bundleFormat';
 import { storeCover, type CoverFile } from './collectionCover';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
-import { COLLECTION_FIELDS, deleteInstallRecord, moveInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord, type InstalledTemplate } from './installRecord';
+import { COLLECTION_FIELDS, deleteInstallRecord, movedInstallRecord, readInstallRecord, writeInstallRecord, type InstallRecord, type InstalledPreset, type InstalledTemplate } from './installRecord';
 
 /** How a shared copy names the collection, its folder and the files and records it carries. */
 export interface OriginNames {
@@ -20,7 +20,7 @@ export interface OriginNames {
  * Files the sharer added move from their collection folder to the original's.
  */
 export async function originNames(app: App, collection: CollectionMetadata, packedPaths: readonly string[]): Promise<OriginNames> {
-  const record = await readInstallRecord(app, collection.uid);
+  const record = await readInstallRecord(app, collection);
   const collectionId = record?.sourceCollectionId ?? collection.id;
   // A name the vault had to give the copy (because another collection used the original) is not a rename by the user.
   const keptOwnName = record?.sourceName !== undefined && record.fields.name?.installed === await fieldFingerprint(collection, 'name');
@@ -50,7 +50,8 @@ export async function originNames(app: App, collection: CollectionMetadata, pack
  * too, so a shared copy coming back is matched to them instead of copied; an
  * import only ever removes files inside the collection's own folder. Templates are
  * recorded by id (`templates`, keyed by their id): installed as the vault holds them,
- * code included, and with the packed version, without code, as their source.
+ * code included, and with the packed version, without code, as their source. A user preset
+ * is recorded by its id (`presets`).
  */
 export async function recordRelease(
   app: App,
@@ -59,14 +60,15 @@ export async function recordRelease(
   manifest: CollectionBundleManifest,
   cover: CoverFile | null,
   templates: Readonly<Record<string, InstalledTemplate>>,
+  installedPresets: Readonly<Record<string, InstalledPreset>> = {},
 ): Promise<void> {
   const { collection } = manifest;
   let collectionId = exportedFrom.id;
   if (cover) await storeCover(app, cover);
   if (collection.uid !== exportedFrom.uid) {
     // A fork takes its new name, and with it a folder of that name.
+    await deleteInstallRecord(app, exportedFrom);
     collectionId = (await assets.forkCollection(collectionId, collection.name, collection.uid)).id;
-    await deleteInstallRecord(app, exportedFrom.uid);
   }
   await assets.recordCollectionRelease(collectionId, {
     version: collection.version, releasedAt: manifest.exportedAt, author: collection.author, coverPath: collection.coverPath,
@@ -86,9 +88,10 @@ export async function recordRelease(
     assets: {},
     fields: {},
     ...(Object.keys(templates).length > 0 && { templates: { ...templates } }),
+    ...(Object.keys(installedPresets).length > 0 && { presets: { ...installedPresets } }),
   };
   for (const file of manifest.files) {
-    if (file.sha256 && file.role !== TEMPLATE_ROLE) record.files[file.vaultPath] = { target: file.vaultPath, source: file.sha256, installed: file.sha256 };
+    if (file.sha256 && !ID_MATCHED_ROLES.has(file.role)) record.files[file.vaultPath] = { target: file.vaultPath, source: file.sha256, installed: file.sha256 };
   }
   for (const asset of manifest.assets) {
     const fingerprint = await assetFingerprint(asset);
@@ -101,6 +104,6 @@ export async function recordRelease(
     const source = await fieldFingerprint(collection, field, presets);
     record.fields[field] = { source, installed: local ? await fieldFingerprint(local, field, presets) : source };
   }
-  await writeInstallRecord(app, record);
-  if (collectionId !== bundleCollectionId) await moveInstallRecord(app, collection.uid, bundleCollectionId, collectionId);
+  // Its paths are the bundle's; a fork's folder took a new name, which the stored record follows.
+  await writeInstallRecord(app, movedInstallRecord(record, collectionId));
 }

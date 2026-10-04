@@ -99,15 +99,23 @@ export interface ImportedPlaces {
   paths: ReadonlyMap<string, string>;
   /** Bundle template id → id here. */
   templateIds: TemplateIdMap;
+  /** Bundle preset id → id here, where the vault's own preset differed and the bundle's came in as a copy. */
+  presetIds?: ReadonlyMap<string, string> | undefined;
+}
+
+/** Settings whose game system is the preset's id in this vault. */
+export function withPresetId<T extends { systemPresetId?: string | undefined }>(settings: T, ids: ReadonlyMap<string, string> | undefined): T {
+  const id = settings.systemPresetId && ids?.get(settings.systemPresetId);
+  return id ? { ...settings, systemPresetId: id } : settings;
 }
 
 /**
  * The bundle's settings as the import stores them: its loot bases at the paths they get in this
- * vault, its roles starting from the templates' ids here, its role folders in the collection's
- * folder here (a folder outside the collection is left out).
+ * vault, its roles starting from the templates' ids here, its game system the preset's id here,
+ * its role folders in the collection's folder here (a folder outside the collection is left out).
  */
 export function importedSettings(collection: CollectionMetadata, places: ImportedPlaces): CollectionSettings {
-  const withPaths = withLootBases(collection.settings, (path) => places.paths.get(path) ?? path);
+  const withPaths = withPresetId(withLootBases(collection.settings, (path) => places.paths.get(path) ?? path), places.presetIds);
   const from = collectionFolderPath(collection.id);
   const to = collectionFolderPath(places.collectionId);
   return withRoleFolders(withRoleTemplates(withPaths, places.templateIds), (folder) => folderBelow(folder, from, to));
