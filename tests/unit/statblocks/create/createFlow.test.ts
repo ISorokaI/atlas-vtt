@@ -29,10 +29,10 @@ const MARSH: CollectionSettings = {
 let harness: NoteHarness;
 let link: ReturnType<typeof vi.fn>;
 
-/** Atlas' settings as these tests need them: the switch, and the fence setting. */
-function settings({ editor = true, fence = true } = {}): void {
+/** Atlas' settings as these tests need them: the switch. */
+function settings({ editor = true } = {}): void {
   vi.spyOn(SettingsService, 'forApp').mockReturnValue({
-    getSetting: (key: string) => (key === 'showStatblocksInNotes' ? fence : undefined),
+    getSetting: () => undefined,
     isExperimentalOn: () => editor,
     onChange: () => () => undefined,
   } as unknown as SettingsService);
@@ -60,7 +60,7 @@ afterEach(() => {
 const app = (): App => harness.app as unknown as App;
 
 describe('creating a statblock for a token', () => {
-  it('writes exactly the marker, the template, the name and the art, with the note fence, in the role\'s folder', async () => {
+  it('writes exactly the marker, the template, the name and the art, in the role\'s folder', async () => {
     const onLinked = vi.fn();
     const path = await createStatblock(app(), {
       collectionId: 'marsh', roleId: 'monster', name: 'Marsh Warden', tokenImagePath: 'art/warden.webp', from: 'map', onLinked,
@@ -71,11 +71,12 @@ describe('creating a statblock for a token', () => {
     expect(frontmatterOfText(text)).toEqual({
       statblock: true, 'atlas-template': 'builtin:generic-creature', name: 'Marsh Warden', image: 'art/warden.webp',
     });
-    expect(text.endsWith('---\n```atlas-statblock\n```\n')).toBe(true);
+    expect(text.endsWith('---\n')).toBe(true);
+    expect(text).not.toContain('atlas-statblock');
     expect(statblockSourceFromText(text)).toEqual({ kind: 'atlas', templateId: 'builtin:generic-creature' });
   });
 
-  it('links the token, then opens the pair for the entry point\'s collection', async () => {
+  it('links the token, then opens the note for the entry point\'s collection, focus on the first empty value', async () => {
     const onLinked = vi.fn();
     await createStatblock(app(), {
       collectionId: 'marsh', roleId: 'monster', name: 'Marsh Warden', tokenImagePath: 'art/warden.webp', from: 'map', onLinked,
@@ -83,11 +84,10 @@ describe('creating a statblock for a token', () => {
 
     expect(link).toHaveBeenCalledWith('art/warden.webp', 'Bestiary/Marsh Warden.md', { showConfirmation: false });
     expect(onLinked).toHaveBeenCalledWith('Bestiary/Marsh Warden.md');
-    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: 'Bestiary/Marsh Warden.md', collectionId: 'marsh', from: 'map' });
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: 'Bestiary/Marsh Warden.md', collectionId: 'marsh', from: 'map', focusFirstEmpty: true });
   });
 
-  it('leaves the fence out when the setting is off, and starts a role whose template is missing from the generic one', async () => {
-    settings({ fence: false });
+  it('starts a role whose template is missing from the generic one', async () => {
     await createStatblock(app(), { collectionId: 'marsh', roleId: 'beast', name: 'Wolf', from: 'asset-manager' });
 
     const text = harness.files.get('Wolf.md')!;
@@ -128,7 +128,7 @@ describe('creating a statblock from a command or the file menu', () => {
     }));
     expect(path).toBe('World/Swamp/Bog Hag.md');
     expect(frontmatterOfText(harness.files.get(path!)!)).toEqual({ statblock: true, 'atlas-template': 'builtin:generic-creature', name: 'Bog Hag' });
-    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: path, collectionId: 'marsh', from: 'command' });
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: path, collectionId: 'marsh', from: 'command', focusFirstEmpty: true });
   });
 
   it('keeps a named collection without offering another, and makes nothing when the user backs out', async () => {

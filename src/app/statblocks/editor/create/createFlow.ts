@@ -1,8 +1,8 @@
 /**
  * Creating a statblock (§7.3), one flow for every entry point: a role of the
  * collection, then the note (`createStatblockNote`) in the role's folder with
- * the role's template, then the pair opening with focus on the first empty
- * value. From a token the note is named after the token and the token linked;
+ * the role's template, then the note opening with its statblock beside it and
+ * focus on the first empty value. From a token the note is named after the token and the token linked;
  * otherwise (commands, the file menu) a popover asks for the name. Behind the
  * `statblockEditor` switch, like every entry point.
  */
@@ -41,7 +41,7 @@ export interface StatblockCreationRequest {
 
 /**
  * Creates the note for a chosen role and name, links the token, and opens the
- * pair. Returns the note's path, or null when nothing was created (the switch
+ * note. Returns the note's path, or null when nothing was created (the switch
  * is off, or the note could not be written, which a notice says).
  */
 export async function createStatblock(app: App, creation: StatblockCreation): Promise<string | null> {
@@ -66,7 +66,7 @@ export async function createStatblock(app: App, creation: StatblockCreation): Pr
     new Notice("Couldn't create the statblock.");
     return null;
   }
-  await openStatblockEditor(app, { notePath, collectionId, from: creation.from });
+  await openStatblockEditor(app, { notePath, collectionId, from: creation.from, focusFirstEmpty: true });
   return notePath;
 }
 
@@ -78,7 +78,7 @@ function promptPoint(win: Window): { x: number; y: number } {
 /**
  * The flow without a token (commands, the file menu): the role menu, with the
  * collection at its top where the entry point named none, then the name
- * popover, then the note and its pair. Returns the note's path, or null when
+ * popover, then the note. Returns the note's path, or null when
  * the user backed out.
  */
 export async function startStatblockCreation(app: App, request: StatblockCreationRequest): Promise<string | null> {

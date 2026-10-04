@@ -80,16 +80,16 @@ describe('Create statblock for a token', () => {
 });
 
 describe('Edit statblock (D9)', () => {
-  it('opens the pair for a native statblock while the switch is on', () => {
+  it('opens a native statblock\'s note, with its statblock beside it, while the switch is on', () => {
     withStatblockEditor(app());
     expect(editInStatblockPane(app(), NATIVE, { collectionId: 'marsh', from: 'map' })).toBe(true);
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: NATIVE, collectionId: 'marsh', from: 'map' });
   });
 
-  it('opens the pair for a Fantasy Statblocks statblock too, which the pane offers to adopt (M6)', () => {
+  it('leaves a Fantasy Statblocks statblock to the note, as before (M6)', () => {
     withStatblockEditor(app());
-    expect(editInStatblockPane(app(), FANTASY, { collectionId: 'marsh', from: 'map' })).toBe(true);
-    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: FANTASY, collectionId: 'marsh', from: 'map' });
+    expect(editInStatblockPane(app(), FANTASY, { collectionId: 'marsh', from: 'map' })).toBe(false);
+    expect(openStatblockEditor).not.toHaveBeenCalled();
   });
 
   it('leaves other notes, and everything while the switch is off, to the note', () => {
@@ -158,23 +158,27 @@ describe('commands and the file menu', () => {
     expect(startStatblockCreation).toHaveBeenCalledWith(app(), { collectionId: null, folder: undefined, from: 'command' });
   });
 
-  it('Edit statblock is there only on a statblock note, native or Fantasy Statblocks\'', () => {
+  it('Edit statblock is there only on a native statblock, Edit with an Atlas template only on Fantasy Statblocks\'', () => {
     withStatblockEditor(app());
     const { commands } = registered();
     const command = commands.find((candidate) => candidate.id === 'edit-statblock')!;
+    const adopt = commands.find((candidate) => candidate.id === 'edit-with-atlas-template')!;
     const active = vi.fn(() => new TFile(PLAIN));
     Object.assign(harness.app.workspace, { getActiveFile: active });
     expect(command.checkCallback?.(true)).toBe(false);
+    expect(adopt.checkCallback?.(true)).toBe(false);
     active.mockReturnValue(new TFile(FANTASY));
-    expect(command.checkCallback?.(true)).toBe(true);
+    expect(command.checkCallback?.(true)).toBe(false);
+    expect(adopt.checkCallback?.(true)).toBe(true);
 
     active.mockReturnValue(new TFile(NATIVE));
+    expect(adopt.checkCallback?.(true)).toBe(false);
     expect(command.checkCallback?.(true)).toBe(true);
     command.checkCallback?.(false);
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: NATIVE, collectionId: null, from: 'command' });
   });
 
-  it('adds New statblock here to folders and Edit statblock in Atlas to statblock notes', () => {
+  it('adds New statblock here to folders, Edit statblock in Atlas to native statblocks and the adoption to Fantasy Statblocks\'', () => {
     withStatblockEditor(app());
     const { fileMenu } = registered();
     const folder = recordingMenu();
@@ -189,7 +193,7 @@ describe('commands and the file menu', () => {
 
     const fantasy = recordingMenu();
     fileMenu(fantasy.menu, new TFile(FANTASY));
-    expect(fantasy.titles).toEqual(['Edit statblock in Atlas']);
+    expect(fantasy.titles).toEqual(['Edit with an Atlas template…']);
 
     const native = recordingMenu();
     fileMenu(native.menu, new TFile(NATIVE));

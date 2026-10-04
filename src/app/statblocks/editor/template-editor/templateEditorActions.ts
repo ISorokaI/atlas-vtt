@@ -18,11 +18,11 @@ function folderFor(app: App, templateId: TemplateId, collectionId: string | null
   return roles.length === 1 && only ? roleFolder(settings, only.id) : undefined;
 }
 
-/** New statblock from this template: a note named "New statblock" in its role's folder, opened with its pane. */
+/** New statblock from this template: a note named "New statblock" in its role's folder, opened with its statblock beside it. */
 export async function newStatblockFromTemplate(app: App, templateId: TemplateId, collectionId: string | null): Promise<void> {
   try {
     const { file } = await createStatblockNote(app, { name: 'New statblock', templateId, folder: folderFor(app, templateId, collectionId) });
-    await openStatblockEditor(app, { notePath: file.path, collectionId, from: 'command' });
+    await openStatblockEditor(app, { notePath: file.path, collectionId, from: 'command', focusFirstEmpty: true });
   } catch (error) {
     console.error('[Atlas] Creating a statblock failed:', error);
     new Notice("Couldn't create the statblock.");

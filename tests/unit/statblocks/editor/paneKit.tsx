@@ -93,11 +93,8 @@ export async function renderPane(options: PaneOptions = {}): Promise<PaneHarness
   const writer = new FakeWriter();
   if (options.frontmatter !== undefined) source.set(NOTE_PATH, options.frontmatter, options.problem ?? null);
   const actions: StatblockPaneActions = {
-    openNote: vi.fn(),
-    openInNewWindow: vi.fn(),
     showProperties: vi.fn(),
     changeCollection: vi.fn(),
-    reportKind: vi.fn(),
     ...options.actions,
   };
   const props = (extra: Partial<StatblockPaneProps> = {}): StatblockPaneProps => ({
@@ -105,8 +102,6 @@ export async function renderPane(options: PaneOptions = {}): Promise<PaneHarness
     services: { source, writer },
     notePath: NOTE_PATH,
     collectionId: 'campaign',
-    paired: true,
-    editorOn: true,
     propertiesShown: false,
     announcement: '',
     focusRequest: 0,

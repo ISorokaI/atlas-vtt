@@ -2,8 +2,8 @@
 // The statblock pane (§7.2, §7.10)
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported by StatblockPane.tsx, so not inside the `.atlas-vtt-plugin` scope of
-// styles/main.scss: the rules take that scope themselves. The pane's view
-// element carries `.atlas-vtt-plugin` and `.atlas-statblock-pane-view`.
+// styles/main.scss: the rules take that scope themselves. The panel beside the
+// note (`.atlas-sb-note-panel`, note-panel/) carries `.atlas-vtt-plugin` and scrolls.
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
@@ -14,13 +14,6 @@
 
 // The header's end controls are capsules: the bar is shorter than 48 px.
 $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));
-
-.atlas-vtt-plugin.atlas-statblock-pane-view {
-  padding: 0;
-  overflow-y: auto;
-  background: var(--background-primary);
-  @include atlas-scrollbar;
-}
 
 .atlas-vtt-plugin {
   // Padding equals the gap between the header, the hint, the card and the tray.

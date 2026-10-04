@@ -64,7 +64,7 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
     cardRef.current?.querySelector<HTMLElement>(`[data-block-id="${blockId}"]`)?.focus();
   });
 
-  // A pane that can no longer write (the pair ended, the statblock editor was switched off) leaves no input open.
+  // A pane that can no longer write (its template is still loading, the note went) leaves no input open.
   useEffect(() => {
     if (!writable) setEditing(null);
   }, [writable]);

@@ -1,15 +1,15 @@
 /**
- * The statblock editor's entry points outside the pane (§7.3, §11, D9): the
- * token menu, the asset card, the link dialog, the DM screen and the note
- * fence ask here. While the `statblockEditor` switch is off each answer is
- * "nothing", so every entry point behaves as before.
+ * The statblock editor's entry points (§7.3, §11, D9): the token menu, the
+ * asset card, the link dialog, the DM screen and the note fence ask here.
+ * While the `statblockEditor` switch is off each answer is "nothing", so
+ * every entry point behaves as before.
  */
 
-import type { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import { runInBackground } from '../../../utils/backgroundTask';
-import { cachedFrontmatter, frontmatterSource, statblockSourceOf } from '../../notes/statblockSource';
+import { cachedTemplateId } from '../../notes/statblockSource';
 import { openStatblockEditor, type StatblockEditorEntry } from '../openStatblockEditor';
 import { roleChoicesFor } from './collectionRoles';
 import { createStatblock } from './createFlow';
@@ -36,50 +36,25 @@ export interface TokenCreationContext extends EntryContext {
   onLinked?: ((notePath: string) => void) | undefined;
 }
 
-/** Whether the frontmatter marks a statblock: a native one, Fantasy Statblocks' or `statblock: inline`. */
-export function isMarkedStatblockNote(app: App, path: string): boolean {
-  const file = app.vault.getFileByPath(path);
-  const frontmatter = file ? cachedFrontmatter(app, file) : undefined;
-  return file !== null && (frontmatterSource(frontmatter) !== null || frontmatter?.statblock === 'inline');
-}
-
-/** Whether "Edit statblock" opens the pair for the note: a statblock its frontmatter marks, with the switch on (D9). */
-export function opensStatblockPair(app: App, path: string): boolean {
-  return experimentalFeatureOn(app, 'statblockEditor') && isMarkedStatblockNote(app, path);
-}
-
-/** A note whose frontmatter marks nothing may still hold a ```statblock fence: only one with a code block can. */
-function mayHoldFence(app: App, file: TFile): boolean {
-  return app.metadataCache.getFileCache(file)?.sections?.some((section) => section.type === 'code') ?? false;
-}
-
-/** Opens the pair when the note holds a ```statblock fence, else the note as before. */
-async function openWhereFenced(app: App, file: TFile, context: EntryContext): Promise<void> {
-  if ((await statblockSourceOf(app, file))?.kind === 'fs-fence') {
-    await openStatblockEditor(app, { notePath: file.path, collectionId: context.collectionId, from: context.from });
-  } else {
-    await app.workspace.openLinkText(file.path, '', true);
-  }
+/** Whether "Edit statblock" opens the note with its statblock beside it: a native statblock, with the switch on (D9). */
+export function opensStatblockEditor(app: App, path: string): boolean {
+  const file = experimentalFeatureOn(app, 'statblockEditor') ? app.vault.getFileByPath(path) : null;
+  return file !== null && cachedTemplateId(app, file) !== null;
 }
 
 /**
- * "Edit statblock": opens the pair while the switch is on and returns true,
- * for native statblocks and for Fantasy Statblocks' too, which the pane
- * offers to edit with an Atlas template or to copy (§6.4, D9). Returns false
- * for everything else, where the caller opens the note as it always did.
+ * "Edit statblock": opens a native statblock's note with its statblock beside
+ * it while the switch is on, and returns true. Returns false for everything
+ * else, Fantasy Statblocks' statblocks included, where the caller opens the
+ * note as it always did.
  */
 export function editInStatblockPane(app: App, path: string, context: EntryContext): boolean {
-  if (opensStatblockPair(app, path)) {
-    runInBackground(
-      openStatblockEditor(app, { notePath: path, collectionId: context.collectionId, from: context.from }),
-      `Opening the statblock of ${path}`,
-      "Couldn't open the statblock",
-    );
-    return true;
-  }
-  const file = experimentalFeatureOn(app, 'statblockEditor') ? app.vault.getFileByPath(path) : null;
-  if (!file || !mayHoldFence(app, file)) return false;
-  runInBackground(openWhereFenced(app, file, context), `Opening the statblock of ${path}`, "Couldn't open the statblock");
+  if (!opensStatblockEditor(app, path)) return false;
+  runInBackground(
+    openStatblockEditor(app, { notePath: path, collectionId: context.collectionId, from: context.from }),
+    `Opening the statblock of ${path}`,
+    "Couldn't open the statblock",
+  );
   return true;
 }
 

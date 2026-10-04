@@ -10,8 +10,7 @@ import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
 import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
-import { StatblockPaneView } from './src/app/statblocks/editor/StatblockPaneView';
-import { STATBLOCK_PANE_VIEW_TYPE } from './src/app/statblocks/editor/paneState';
+import { registerNoteStatblockPanels } from './src/app/statblocks/editor/note-panel/noteStatblockPanels';
 import { TemplateEditorView } from './src/app/statblocks/editor/TemplateEditorView';
 import { LeftPanel } from './src/app/statblocks/editor/template-editor/LeftPanel';
 import { Inspector } from './src/app/statblocks/editor/template-editor/inspector/Inspector';
@@ -19,11 +18,9 @@ import { TEMPLATE_EDITOR_VIEW_TYPE } from './src/app/statblocks/editor/templateE
 import { openTemplateEditor } from './src/app/statblocks/editor/openTemplateEditor';
 import { TEMPLATE_EXTENSION } from './src/app/statblocks/library/templateFiles';
 import { appPaneServices } from './src/app/statblocks/editor/paneServices';
-import { statblockSettingsSections } from './src/app/settings/statblockSettingsSection';
 import { registerNoteWriterFlush } from './src/app/plugin/noteWriterFlush';
 import { registerHostedDialogRelease } from './src/app/statblocks/editor/hostedDialog';
 import { editInStatblockPane } from './src/app/statblocks/editor/create/entryPoints';
-import { paneCreationActions } from './src/app/statblocks/editor/create/paneCreation';
 import { paneTokenLinkActions } from './src/app/statblocks/editor/tokenLinkAction';
 import { registerStatblockFileMenu } from './src/app/statblocks/editor/create/statblockCommands';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
@@ -109,6 +106,7 @@ export default class AtlasVTTPlugin extends Plugin {
     await storageReady;
     await this.settingsService.initialize();
     registerDiceLookSync(this, this.settingsService);
+    this.registerStatblockPanels();
     const changelogService = new ChangelogService(this.app, this.settingsService, {
       installedVersion: this.manifest.version,
       existingInstallation: await existingInstallation,
@@ -123,7 +121,6 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
-      ...statblockSettingsSections(this.settingsService),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version),
@@ -178,18 +175,11 @@ export default class AtlasVTTPlugin extends Plugin {
     disposeImageProcessing();
   }
 
-  private registerAtlasViews(): void {
-    this.registerExtensions([EXTENSION_ATLASMAP], ATLAS_VIEW_TYPE);
-    this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
-    this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
-    this.registerView(PLAYER_VIEW_TYPE, (leaf) => new PlayerView(leaf, this));
-    this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
-    registerLootQueryView(this);
-    // Always registered, so a saved workspace restores its panes; every way to open one checks the switch.
-    this.registerView(STATBLOCK_PANE_VIEW_TYPE, (leaf) => new StatblockPaneView(leaf, {
+  /** The statblock beside every native statblock note, in every window, while the statblock editor is switched on. */
+  private registerStatblockPanels(): void {
+    registerNoteStatblockPanels(this, {
       services: appPaneServices,
       actions: {
-        ...paneCreationActions(this.app),
         ...paneTokenLinkActions(this.app),
         editTemplate: (templateId, collectionId, notePath) => {
           void openTemplateEditor(this.app, { templateId, collectionId, previewPath: notePath });
@@ -198,7 +188,16 @@ export default class AtlasVTTPlugin extends Plugin {
           void openTemplateEditor(this.app, { templateId, path, collectionId, previewPath: notePath, select: blockId });
         },
       },
-    }));
+    });
+  }
+
+  private registerAtlasViews(): void {
+    this.registerExtensions([EXTENSION_ATLASMAP], ATLAS_VIEW_TYPE);
+    this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
+    this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
+    this.registerView(PLAYER_VIEW_TYPE, (leaf) => new PlayerView(leaf, this));
+    this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
+    registerLootQueryView(this);
     this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf, { leftPanel: LeftPanel, inspector: Inspector }));
     this.registerExtensions([TEMPLATE_EXTENSION], TEMPLATE_EDITOR_VIEW_TYPE);
   }

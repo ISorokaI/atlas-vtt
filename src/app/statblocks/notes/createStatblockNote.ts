@@ -1,18 +1,17 @@
 /**
  * Creating a native statblock note (§7.3): `statblock: true`, its template, its name and, for a
- * token, the token's art; the read-only note fence at the top of the body while the setting
- * "Show statblocks in their notes" is on (D14); then the token linked to it.
+ * token, the token's art, with an empty body (the statblock shows beside the note); then the
+ * token linked to it.
  */
 
 import { normalizePath, type App, type TFile, type TFolder } from 'obsidian';
 import { ensureFolder } from '../../plugin/vaultFolders';
-import { SettingsService } from '../../services/SettingsService';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
 import type { FieldValue, TemplateId } from '../model/templateTypes';
 import { applyFrontmatterPatches } from './frontmatterPatch';
 import type { NotePatch } from './patchTypes';
-import { STATBLOCK_FENCE_LANGUAGE, TEMPLATE_KEY } from './statblockSource';
+import { TEMPLATE_KEY } from './statblockSource';
 
 export interface NewStatblockNote {
   name: string;
@@ -37,8 +36,7 @@ const FALLBACK_NAME = 'New statblock';
 export async function createStatblockNote(app: App, note: NewStatblockNote): Promise<CreatedStatblockNote> {
   const folder = await targetFolder(app, note.folder);
   const path = freeNotePath(app, folder, noteFileName(note.name));
-  const withFence = SettingsService.forApp(app)?.getSetting('showStatblocksInNotes') ?? true;
-  const file = await app.vault.create(path, statblockNoteText(note, withFence));
+  const file = await app.vault.create(path, statblockNoteText(note));
   const linked = note.tokenImagePath === undefined
     ? false
     : await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(note.tokenImagePath, file.path, { showConfirmation: false });
@@ -52,8 +50,8 @@ async function targetFolder(app: App, folder: string | undefined): Promise<TFold
   return isRootPath(path) ? app.vault.getRoot() : ensureFolder(app, path);
 }
 
-/** The text of a new statblock note: its frontmatter, written by the patcher, and the note fence when asked for. */
-export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templateId' | 'tokenImagePath' | 'values'>, withFence: boolean): string {
+/** The text of a new statblock note: its frontmatter, written by the patcher. */
+export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templateId' | 'tokenImagePath' | 'values'>): string {
   const set = (key: string, next: FieldValue): NotePatch => ({ op: 'set', path: [key], base: undefined, next });
   const own = ['statblock', TEMPLATE_KEY, 'name', ...(note.tokenImagePath ? ['image'] : [])];
   const patches = [
@@ -63,8 +61,7 @@ export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templat
     ...(note.tokenImagePath ? [set('image', note.tokenImagePath)] : []),
     ...Object.entries(note.values ?? {}).filter(([key]) => !own.includes(key)).map(([key, value]) => set(key, value)),
   ];
-  const body = withFence ? `\`\`\`${STATBLOCK_FENCE_LANGUAGE}\n\`\`\`\n` : '';
-  const result = applyFrontmatterPatches(body, patches);
+  const result = applyFrontmatterPatches('', patches);
   if (result.conflicts.length > 0) throw new Error('The statblock note could not be written.');
   return result.text;
 }
