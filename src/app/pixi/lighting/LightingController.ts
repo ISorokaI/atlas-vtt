@@ -211,6 +211,7 @@ export class LightingController {
     return {
       store: this.deps.store,
       walls: this.editor.walls,
+      doors: this.editor.doors,
       wallRenderer: this.editor.renderer,
       lightAt: (x, y) => this.lightMarkers.hitTest(x, y),
     };
