@@ -15,6 +15,7 @@ import { EventEmitter } from 'events';
 import type { TextElement } from '../types';
 import { promptForText } from '../ui/textInputDialog';
 import { isHandledTap } from '../pixi/utils/handledEvents';
+import { MAP_LAYER_Z } from '../pixi/mapLayerOrder';
 
 export class TextTool {
   private viewport: Viewport;
@@ -113,6 +114,7 @@ export class TextTool {
   private createPreview(): void {
     this.previewContainer = new Container();
     this.previewContainer.label = 'textPreview';
+    this.previewContainer.zIndex = MAP_LAYER_Z.text;
     this.previewContainer.eventMode = 'none';
     this.previewContainer.alpha = 0.6;
     
