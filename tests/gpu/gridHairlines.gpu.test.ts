@@ -196,29 +196,32 @@ describe('grid lines thinner than a pixel', () => {
   it('are drawn once while the map is zoomed out, frame by frame', async () => {
     const stroke = vi.spyOn(GraphicsContext.prototype, 'stroke');
     const fill = vi.spyOn(GraphicsContext.prototype, 'fill');
-    for (const lineType of ['solid', 'dotted'] as const) {
-      const view = await scene(2, 'hex-vertical', lineType);
-      try {
-        zoomTo(view.viewport, 0.5);
-        view.renderer.render(view.stage);
-        stroke.mockClear();
-        fill.mockClear();
-        const contexts = new Set([view.lines().context]);
-        for (let scale = 0.5; scale > 0.1; scale *= 0.973) {
-          zoomTo(view.viewport, scale);
-          view.renderer.render(view.stage);
-          contexts.add(view.lines().context);
+    try {
+      for (const lineType of ['solid', 'dotted'] as const) {
+        const view = await scene(2, 'hex-vertical', lineType);
+        try {
+          zoomTo(view.viewport, 0.5);
+          view.render();
+          stroke.mockClear();
+          fill.mockClear();
+          const contexts = new Set([view.lines().context]);
+          for (let scale = 0.5; scale > 0.1; scale *= 0.973) {
+            zoomTo(view.viewport, scale);
+            view.renderer.render(view.stage);
+            contexts.add(view.lines().context);
+          }
+          // From one device pixel to a fifth: one hairline drawing, or markers 2, 4 and 8 map pixels thick
+          const drawings = lineType === 'solid' ? 1 : 3;
+          expect(stroke.mock.calls.length + fill.mock.calls.length).toBe(drawings);
+          expect(contexts.size).toBe(drawings + 1);
+        } finally {
+          view.destroy();
         }
-        // From one device pixel to a fifth: one hairline drawing, or markers 2, 4 and 8 map pixels thick
-        const drawings = lineType === 'solid' ? 1 : 3;
-        expect(stroke.mock.calls.length + fill.mock.calls.length).toBe(drawings);
-        expect(contexts.size).toBe(drawings + 1);
-      } finally {
-        view.destroy();
       }
+    } finally {
+      stroke.mockRestore();
+      fill.mockRestore();
     }
-    stroke.mockRestore();
-    fill.mockRestore();
   });
 
   it('are drawn for the player frame from its own camera, and for the GM from theirs', async () => {
@@ -252,9 +255,8 @@ describe('grid lines thinner than a pixel', () => {
       view.render();
       expect(view.lines().alpha).toBeCloseTo(0.4);
       view.renderer.resize(VIEW, VIEW, 2);
-      const sharp = view.render();
+      expect(gaps(view.render(), expected)).toEqual([]);
       expect(view.lines().alpha).toBeCloseTo(0.8);
-      expect(gaps(sharp, expected)).toEqual([]);
     } finally {
       view.destroy();
     }
