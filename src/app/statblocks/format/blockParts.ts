@@ -15,6 +15,7 @@ import type {
   ImageBlock,
   HeadingBlock,
   EntriesBlock,
+  SpellsBlock,
 } from '../model/templateTypes';
 import { CONDITION_KEYS, SCORE_COLUMN_KEYS } from './formatKeys';
 import { isRecord } from './jsonValues';
@@ -27,6 +28,7 @@ export const DISPLAYS = ['plain', 'signed'] as const satisfies readonly NonNulla
 export const COLLAPSIBLE = ['open', 'closed'] as const satisfies readonly NonNullable<SectionBlock['collapsible']>[];
 export const ALIGNS = ['start', 'center', 'spread'] as const satisfies readonly NonNullable<RowBlock['align']>[];
 export const NAME_STYLES = ['run-in', 'heading'] as const satisfies readonly NonNullable<EntriesBlock['nameStyle']>[];
+export const SPELL_LOOKS = ['lines', 'tabs'] as const satisfies readonly NonNullable<SpellsBlock['look']>[];
 export const MAX_COLUMNS = [1, 2, 3] as const satisfies readonly TemplateLayout['maxColumns'][];
 
 /** Required choices; the first is what an absent or unreadable value reads as, as `createBlock` makes them. */

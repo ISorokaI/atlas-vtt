@@ -16,6 +16,7 @@ import { blockMenu } from './menus/blockMenu';
 import { emptyCardMenu, newerTemplateMenu } from './menus/otherMenus';
 import { primaryOf, type BlockSelection } from './selection';
 import type { SessionSnapshot } from './sessionTypes';
+import { addTabTo, splitListIntoTabs } from './tabActions';
 import { SelectionToolbar } from './toolbar/SelectionToolbar';
 import type { EditorState } from './useEditorState';
 import { runBlockCommand, type KeyboardTarget } from './useTemplateKeyboard';
@@ -73,6 +74,8 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
       moveInto: (containerId) => editor.settle(moveIntoContainer(keys.session, blockId, containerId), true),
       openSettings: onSettings,
       copyText: copy,
+      addTab: () => editor.settle(addTabTo(keys.session, blockId)),
+      splitIntoTabs: () => editor.settle(splitListIntoTabs(keys.session, blockId)),
     });
   }, [onSettings, copy]);
 

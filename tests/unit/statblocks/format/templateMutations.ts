@@ -45,7 +45,7 @@ const KEYS = [
   '__proto__', 'constructor', 'toString', 'hasOwnProperty', 'blocks', 'type', 'id', 'field', 'fields', 'key', 'raw',
   'level', 'look', '', '0', '7', 'future', 'callback', 'layout', 'version', 'format', 'showWhen', 'columns',
 ];
-const BLOCK_TYPES = ['tabs', 'chart', 'opaque', 'Section', '', 'section', 'row', 'script', 'stat'];
+const BLOCK_TYPES = ['tabs', 'carousel', 'chart', 'opaque', 'Section', '', 'section', 'row', 'script', 'stat'];
 
 /** A random JSON value; deeper calls build smaller containers. */
 export function randomValue(random: Random, depth = 0): Json {

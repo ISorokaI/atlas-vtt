@@ -154,3 +154,40 @@ describe('isNoMove and sameTarget', () => {
     expect(sameTarget(null, { kind: 'refused' })).toBe(false);
   });
 });
+
+describe('tabs', () => {
+  /** A Tabs block "T" whose strip takes 0–20 and whose open tab "A" holds ac; its closed tab "B" holds hp and draws nothing. */
+  function tabsScene(): DropScene {
+    const blocks: TemplateBlock[] = [
+      {
+        id: 'T', type: 'tabs', blocks: [
+          { id: 'A', type: 'section', blocks: [{ id: 'ac', type: 'stat', field: 'ac', look: 'run-in' }] },
+          { id: 'B', type: 'section', blocks: [{ id: 'hp', type: 'stat', field: 'hp', look: 'run-in' }] },
+        ],
+      },
+      { id: 'D', type: 'divider' },
+    ];
+    const boxes = new Map<string, Box>([
+      ['T', box(0, 0, 300, 60)],
+      ['A', box(0, 28, 300, 60)],
+      ['ac', box(0, 30, 300, 50)],
+      ['D', box(0, 70, 300, 72)],
+    ]);
+    return { layout: template(blocks).layout, boxes, card: box(0, 0, 300, 72) };
+  }
+
+  it('refuses a block that is no Section over the strip, and takes it into the open tab', () => {
+    expect(dropTargetAt(tabsScene(), fresh('stat'), { x: 150, y: 10 })).toEqual({ kind: 'refused' });
+    expect(dropTargetAt(tabsScene(), moving('D', 'divider'), { x: 150, y: 48 })).toMatchObject({ kind: 'between', parentId: 'A', index: 1 });
+  });
+
+  it('takes a Section over the strip as a new tab', () => {
+    expect(dropTargetAt(tabsScene(), fresh('section'), { x: 150, y: 10 })).toMatchObject({ kind: 'between', parentId: 'T' });
+  });
+
+  it('offers the keys no place in a closed tab', () => {
+    const { targets } = keyboardTargets(tabsScene(), moving('D', 'divider'));
+    expect(targets.some((target) => target.kind !== 'refused' && target.parentId === 'B')).toBe(false);
+    expect(targets.some((target) => target.kind !== 'refused' && target.parentId === 'T')).toBe(false);
+  });
+});

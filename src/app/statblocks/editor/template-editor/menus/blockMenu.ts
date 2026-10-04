@@ -7,10 +7,11 @@
  * twelve rows: quick choices give way first.
  */
 
-import { PRIMITIVES, type AuthorableBlockType } from '../../../model/blockCatalogue';
-import { childrenOf } from '../../../model/treeEdit';
+import { PRIMITIVES, canContain, type AuthorableBlockType, type PrimitiveId } from '../../../model/blockCatalogue';
+import { childrenOf, parentTypeOf } from '../../../model/treeEdit';
 import { boundField, findBlock } from '../../../model/treeQueries';
-import { turnIntoPrimitives, typeForPrimitive } from '../../../model/turnInto';
+import { isListBlockType } from '../../../model/treeTabs';
+import { turnInto, turnIntoPrimitives, typeForPrimitive } from '../../../model/turnInto';
 import { isContainerBlock, type StatblockTemplate, type TemplateBlock } from '../../../model/templateTypes';
 import { MAX_MENU_ROWS, rowCount, SEPARATOR, tidy, type SurfaceAction } from '../../interaction/surfaceActions';
 import type { InsertPlace } from '../blockActions';
@@ -21,6 +22,13 @@ import { inSiblingOrder, type BlockSelection } from '../selection';
 import type { EditorSession } from '../sessionTypes';
 import { shortcutText } from '../shortcutText';
 import { quickChoices } from './quickChoices';
+
+/** The primitives a block turns into where it stands: a container only into one its place and its children allow. */
+function turnablePrimitives(template: StatblockTemplate, block: TemplateBlock): PrimitiveId[] {
+  const primitives = turnIntoPrimitives(block.type);
+  if (!isContainerBlock(block)) return primitives;
+  return primitives.filter((id) => turnInto(template.layout, block.id, typeForPrimitive(block, id, template.fields), template.fields).ok);
+}
 
 export interface BlockMenuContext {
   session: EditorSession;
@@ -37,6 +45,20 @@ export interface BlockMenuContext {
   moveInto: (containerId: string) => void;
   openSettings?: (() => void) | undefined;
   copyText: (text: string) => void;
+  /** A Tabs block's Add tab. */
+  addTab?: (() => void) | undefined;
+  /** A list's Split into tabs. */
+  splitIntoTabs?: (() => void) | undefined;
+}
+
+/** Add tab on a Tabs block, Split into tabs (in Arrange) on a list. */
+function tabRows(ctx: BlockMenuContext, block: TemplateBlock, parentId: string | null): { head: SurfaceAction[]; arrange: SurfaceAction[] } {
+  const { addTab, splitIntoTabs, editable } = ctx;
+  if (block.type === 'tabs' && addTab) return { head: [item('add-tab', 'Add tab', addTab, { icon: 'plus', disabled: !editable })], arrange: [] };
+  if (!isListBlockType(block.type) || !splitIntoTabs) return { head: [], arrange: [] };
+  const parentType = parentTypeOf(ctx.template.layout, parentId);
+  const fits = parentType !== null && canContain(parentType, 'tabs');
+  return { head: [], arrange: [item('split-into-tabs', 'Split into tabs', splitIntoTabs, { disabled: !editable || !fits })] };
 }
 
 function item(id: string, label: string, run: () => void, extra: Partial<Extract<SurfaceAction, { kind: 'item' }>> = {}): SurfaceAction {
@@ -79,10 +101,12 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   const what = many ? `${ctx.selection.length} blocks` : blockName(block, template.fields);
   const ordered = inSiblingOrder(template.layout, ctx.selection);
   const last = ordered.at(-1) ?? ctx.blockId;
-  const turnable = editable && !many ? turnIntoPrimitives(block.type) : [];
+  const turnable = editable && !many ? turnablePrimitives(template, block) : [];
+  const tabs = many ? { head: [], arrange: [] } : tabRows(ctx, block, found.parentId);
   const head: SurfaceAction[] = [
     ...(ctx.openSettings && !many ? [item('settings', 'Settings…', ctx.openSettings, { icon: 'settings-2', hint: shortcutText(['Shift'], '⏎') })] : []),
     ...(editable && !many && labelTargetOf(block, template.fields) ? [item('rename', 'Rename', () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
+    ...tabs.head,
   ];
   const body: SurfaceAction[] = [
     SEPARATOR,
@@ -105,6 +129,7 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
         item('group', 'Group into section', () => ctx.run('group'), { hint: shortcutText(['Mod'], 'G'), disabled: !editable }),
         item('side-by-side', 'Put side by side', () => ctx.run('side-by-side'), { hint: shortcutText(['Mod', 'Alt'], 'R'), disabled: !editable }),
         ...(isContainerBlock(block) ? [item('ungroup', 'Ungroup', () => ctx.run('ungroup'), { hint: shortcutText(['Mod', 'Shift'], 'G'), disabled: !editable })] : []),
+        ...tabs.arrange,
       ],
     },
     SEPARATOR,

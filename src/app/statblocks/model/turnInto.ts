@@ -5,7 +5,7 @@ import { fieldByKey } from './fieldKeys';
 import { done, parentTypeOf, refuse, spliced, withChildren, type TreeEdit } from './treeEdit';
 import { boundField, findBlock } from './treeQueries';
 import {
-  isContainerBlock, type BlockBase, type BlockType, type TemplateBlock, type TemplateField, type TemplateLayout,
+  isContainerBlock, isContainerType, type BlockBase, type ContainerType, type BlockType, type TemplateBlock, type TemplateField, type TemplateLayout,
 } from './templateTypes';
 
 type CommonProps = Partial<Pick<BlockBase, 'showWhen' | 'whenEmpty' | 'fallback' | 'className' | 'size'>>;
@@ -92,22 +92,19 @@ export function typeForPrimitive(block: TemplateBlock, primitive: PrimitiveId, f
   return fitting ?? spec.inserts;
 }
 
-/** The primitives a block may turn into: every other one of its sort, a container into the other container. */
+/** The primitives a block may turn into: every other one of its sort, a container into another container. */
 export function turnIntoPrimitives(type: BlockType): PrimitiveId[] {
   const own = blockSpec(type).primitive;
-  const container = type === 'section' || type === 'row';
-  return PRIMITIVE_IDS.filter((id) => {
-    const kind = PRIMITIVES[id].inserts;
-    return id !== own && (kind === 'section' || kind === 'row') === container;
-  });
+  const container = isContainerType(type);
+  return PRIMITIVE_IDS.filter((id) => id !== own && isContainerType(PRIMITIVES[id].inserts) === container);
 }
 
 /**
  * Changes a block's type, keeping its id, its place and its field where the
- * new type binds that field's type (`fields` are the template's). Sections
- * and Rows turn into each other with their children; other blocks into any
- * authorable block but those two, keeping the label, heading, pattern and
- * display the new type shares.
+ * new type binds that field's type (`fields` are the template's). Sections,
+ * Rows and Tabs turn into each other with their children, where the new type
+ * takes them; other blocks into any authorable block but those, keeping the
+ * label, heading, pattern and display the new type shares.
  */
 export function turnInto(
   layout: TemplateLayout, id: string, type: AuthorableBlockType, fields: readonly TemplateField[],
@@ -116,16 +113,13 @@ export function turnInto(
   if (!found) return refuse(layout, 'block-not-found');
   const { block } = found;
   if (block.type === type) return done(layout, id);
-  const toContainer = type === 'section' || type === 'row';
-  if (!isAuthorableBlockType(type) || isContainerBlock(block) !== toContainer) return refuse(layout, 'cannot-turn-into');
+  if (!isAuthorableBlockType(type) || isContainerBlock(block) !== isContainerType(type)) return refuse(layout, 'cannot-turn-into');
   const parentType = parentTypeOf(layout, found.parentId);
   if (parentType === null || !canContain(parentType, type)) return refuse(layout, 'not-allowed-here');
   let turned: TemplateBlock;
   if (isContainerBlock(block)) {
     if (block.blocks.some((child) => !canContain(type, child.type))) return refuse(layout, 'not-allowed-here');
-    turned = type === 'row'
-      ? { id, type, blocks: block.blocks, ...commonProps(block) }
-      : { id, type: 'section', blocks: block.blocks, ...commonProps(block) };
+    turned = { id, type: type as ContainerType, blocks: block.blocks, ...commonProps(block) };
   } else {
     turned = turnedLeaf(block, type, fields);
   }

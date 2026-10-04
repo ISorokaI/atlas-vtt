@@ -91,6 +91,7 @@ export function BasicsGroup(props: GroupProps): React.JSX.Element {
       <KindSetting {...props} />
       <LabelSetting {...props} />
       {block.type === 'section' && <SectionHeading {...props} block={block} />}
+      {block.type === 'tabs' && <SettingNote>Each section in it is a tab, named by its heading.</SettingNote>}
       {block.type === 'text' && <TextSource {...props} block={block} />}
       {block.type === 'line' && <LineFields {...props} block={block} />}
       <Shows {...props} />

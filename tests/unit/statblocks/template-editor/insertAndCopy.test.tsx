@@ -20,7 +20,7 @@ describe('the insert menu\'s items', () => {
     const groups = groupItems(insertItems());
     expect(groups.map((group) => group.label)).toEqual(['Text and values', 'Lists and tables', 'Layout', 'Pictures']);
     expect(groups.map((group) => group.items.map((item) => item.label))).toEqual([
-      ['Heading', 'Text', 'Value', 'Line'], ['List', 'Table', 'Track'], ['Section', 'Side by side', 'Divider'], ['Picture'],
+      ['Heading', 'Text', 'Value', 'Line'], ['List', 'Table', 'Track'], ['Section', 'Side by side', 'Tabs', 'Divider'], ['Picture'],
     ]);
     expect(insertItems().find((item) => item.label === 'List')?.type).toBe('entries');
     expect(insertItems().find((item) => item.label === 'Heading')?.type).toBe('heading');
@@ -42,7 +42,7 @@ describe('the insert menu\'s items', () => {
   });
 
   it('turns blocks only into other primitives of their sort, each primitive once', () => {
-    expect(turnIntoPrimitives('row')).toEqual(['section']);
+    expect(turnIntoPrimitives('row')).toEqual(['section', 'tabs']);
     expect(turnIntoPrimitives('stat')).not.toContain('side-by-side');
     expect(turnIntoPrimitives('stat')).toContain('track');
     expect(turnIntoPrimitives('tags')).toEqual(['heading', 'text', 'value', 'line', 'table', 'track', 'divider', 'picture']);

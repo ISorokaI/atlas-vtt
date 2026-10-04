@@ -3,7 +3,7 @@ import {
 } from '../../../../src/app/statblocks/model/blockCatalogue';
 import { blockIdSource, type BlockIdSource } from '../../../../src/app/statblocks/model/templateIds';
 import {
-  FIELD_TYPES, isContainerBlock, type TemplateBlock, type TemplateField, type TemplateLayout,
+  FIELD_TYPES, isContainerBlock, isContainerType, type ContainerType, type TemplateBlock, type TemplateField, type TemplateLayout,
 } from '../../../../src/app/statblocks/model/templateTypes';
 
 /** A seeded PRNG (mulberry32), so every failing case reproduces from its seed. */
@@ -31,8 +31,9 @@ export function pick<T>(random: Random, items: readonly T[]): T {
   return item;
 }
 
-export const LEAF_TYPES: readonly AuthorableBlockType[] =
-  AUTHORABLE_BLOCK_TYPES.filter((type) => type !== 'section' && type !== 'row');
+export const LEAF_TYPES: readonly AuthorableBlockType[] = AUTHORABLE_BLOCK_TYPES.filter((type) => !isContainerType(type));
+
+const CONTAINER_TYPES: readonly ContainerType[] = ['section', 'row', 'tabs'];
 
 export const FIELD_KEYS = ['f0', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9'];
 
@@ -55,8 +56,9 @@ function randomList(random: Random, nextId: BlockIdSource, parent: ParentType, d
   const count = int(random, 0, depth === 0 ? 6 : 4);
   for (let i = 0; i < count && budget.left > 0; i++) {
     budget.left--;
-    if (depth < 4 && random() < 0.3) {
-      const type = parent === 'row' ? 'section' : pick(random, ['section', 'row'] as const);
+    // Tabs hold Sections only.
+    if (parent === 'tabs' || (depth < 4 && random() < 0.3)) {
+      const type = pick(random, CONTAINER_TYPES.filter((each) => canContain(parent, each)));
       const container = createBlock(type, nextId);
       blocks.push({ ...container, blocks: randomList(random, nextId, type, depth + 1, budget) });
     } else {
@@ -75,7 +77,7 @@ export function randomLayout(random: Random, size = 30): TemplateLayout {
 /** A small legal subtree with ids from `nextId`. */
 export function randomSubtree(random: Random, nextId: BlockIdSource): TemplateBlock {
   if (random() < 0.7) return randomLeaf(random, nextId);
-  const type = pick(random, ['section', 'row'] as const);
+  const type = pick(random, CONTAINER_TYPES);
   return { ...createBlock(type, nextId), blocks: randomList(random, nextId, type, 3, { left: 4 }) };
 }
 

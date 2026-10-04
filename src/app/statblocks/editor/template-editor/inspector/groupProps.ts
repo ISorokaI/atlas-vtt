@@ -21,5 +21,5 @@ export function isLabelled(block: TemplateBlock): block is LabelledBlock {
 
 /** Blocks whose values may be empty, which hide or show a fallback then; an empty Image shows a silhouette. */
 export function canBeEmpty(block: TemplateBlock): boolean {
-  return !['section', 'row', 'heading', 'divider', 'image', 'script', 'opaque'].includes(block.type);
+  return !['section', 'row', 'tabs', 'heading', 'divider', 'image', 'script', 'opaque'].includes(block.type);
 }

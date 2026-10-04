@@ -5,11 +5,12 @@ import {
   AUTHORABLE_BLOCK_TYPES, BLOCK_TYPES, PALETTE_GROUPS, PRIMITIVE_IDS, PRIMITIVES, bindsFieldType, blockSpec, canContain, createBlock,
   isAuthorableBlockType, naturalBlockFor, primitiveOf, rowSizeOf,
 } from '../../../../src/app/statblocks/model/blockCatalogue';
+import { isLegalSubtree } from '../../../../src/app/statblocks/model/treeEdit';
 import { FIELD_TYPES, type BlockType } from '../../../../src/app/statblocks/model/templateTypes';
 import { idsFrom } from './treeFixtures';
 
 const ALL_TYPES: BlockType[] = [
-  'section', 'row', 'title', 'line', 'stat', 'scores', 'tags', 'text', 'entries', 'pairs', 'track', 'image',
+  'section', 'row', 'tabs', 'title', 'line', 'stat', 'scores', 'tags', 'text', 'entries', 'pairs', 'track', 'image',
   'spells', 'heading', 'divider', 'script', 'opaque',
 ];
 
@@ -37,7 +38,7 @@ describe('block catalogue', () => {
 
   it('names every authorable block by the primitive it is, and its kind where the primitive has several', () => {
     expect(Object.fromEntries(AUTHORABLE_BLOCK_TYPES.map((type) => [type, blockSpec(type).label]))).toEqual({
-      section: 'Section', row: 'Side by side', title: 'Heading', line: 'Line', stat: 'Value', scores: 'Table', tags: 'List',
+      section: 'Section', row: 'Side by side', tabs: 'Tabs', title: 'Heading', line: 'Line', stat: 'Value', scores: 'Table', tags: 'List',
       text: 'Text', entries: 'List', pairs: 'List', track: 'Track', image: 'Picture', spells: 'List', heading: 'Heading', divider: 'Divider',
     });
     expect(PRIMITIVES.list.kinds.map((type) => blockSpec(type).kind)).toEqual(['A word', 'A label and a value', 'A name and text', 'A group with items']);
@@ -61,7 +62,7 @@ describe('block catalogue', () => {
   });
 
   it('binds no field to layout blocks, headings and dividers', () => {
-    for (const type of ['section', 'row', 'heading', 'divider', 'script', 'opaque'] as const) expect(blockSpec(type).binds).toEqual([]);
+    for (const type of ['section', 'row', 'tabs', 'heading', 'divider', 'script', 'opaque'] as const) expect(blockSpec(type).binds).toEqual([]);
     expect(blockSpec('stat').binds).toEqual(['text', 'number', 'rating', 'dice', 'choice']);
     expect(bindsFieldType('track', 'number')).toBe(true);
     expect(bindsFieldType('tags', 'text')).toBe(false);
@@ -69,19 +70,31 @@ describe('block catalogue', () => {
 
   it('names the FS block type each block exports to', () => {
     expect(Object.fromEntries(ALL_TYPES.map((type) => [type, blockSpec(type).fsType]))).toEqual({
-      section: 'group', row: 'inline', title: 'heading', line: 'subheading', stat: 'property', scores: 'table',
+      section: 'group', row: 'inline', tabs: 'group', title: 'heading', line: 'subheading', stat: 'property', scores: 'table',
       tags: 'property', text: 'text', entries: 'traits', pairs: 'saves', track: 'property', image: 'image',
       spells: 'spells', heading: 'text', divider: null, script: 'javascript', opaque: null,
     });
   });
 
-  it('lets the root and Sections take every block, Rows every block but a Row, and nothing else any', () => {
+  it('lets the root and Sections take every block, Rows every block but a Row and Tabs, Tabs only Sections, and nothing else any', () => {
     for (const child of ALL_TYPES) {
       expect(canContain('root', child)).toBe(true);
       expect(canContain('section', child)).toBe(true);
-      expect(canContain('row', child)).toBe(child !== 'row');
-      for (const leaf of ALL_TYPES.filter((type) => type !== 'section' && type !== 'row')) expect(canContain(leaf, child)).toBe(false);
+      expect(canContain('row', child)).toBe(child !== 'row' && child !== 'tabs');
+      expect(canContain('tabs', child)).toBe(child === 'section');
+      for (const leaf of ALL_TYPES.filter((type) => type !== 'section' && type !== 'row' && type !== 'tabs')) expect(canContain(leaf, child)).toBe(false);
     }
+  });
+
+  it('makes a new Tabs block with two empty tabs, "Tab 1" and "Tab 2"', () => {
+    const tabs = createBlock('tabs', idsFrom('tabs0001', 'tab00001', 'tab00002'));
+    expect(tabs).toEqual({
+      id: 'tabs0001', type: 'tabs', blocks: [
+        { id: 'tab00001', type: 'section', heading: 'Tab 1', blocks: [] },
+        { id: 'tab00002', type: 'section', heading: 'Tab 2', blocks: [] },
+      ],
+    });
+    expect(isLegalSubtree(tabs)).toBe(true);
   });
 
   it('sizes blocks inside a Row by their own size, else their type', () => {

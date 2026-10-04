@@ -12,7 +12,7 @@ export type FsBlockType =
 /** lucide-react icon names the catalogue uses. */
 export type BlockIcon =
   | 'heading' | 'text' | 'hash' | 'subtitles' | 'list' | 'table' | 'gauge' | 'image' | 'square-stack' | 'columns-3' | 'minus'
-  | 'code' | 'circle-help';
+  | 'code' | 'circle-help' | 'panel-top';
 
 /** The group of the Add panel a primitive is listed under. */
 export type PaletteGroup = 'basics' | 'lists' | 'layout' | 'media';
@@ -31,7 +31,7 @@ export const PALETTE_GROUPS: ReadonlyArray<{ id: PaletteGroup; label: string }> 
  * people; its kind is a setting, which turns the block into the other type.
  */
 export type PrimitiveId =
-  | 'heading' | 'text' | 'value' | 'line' | 'list' | 'table' | 'track' | 'picture' | 'section' | 'side-by-side' | 'divider';
+  | 'heading' | 'text' | 'value' | 'line' | 'list' | 'table' | 'track' | 'picture' | 'section' | 'side-by-side' | 'tabs' | 'divider';
 
 type Kinds = readonly [AuthorableBlockType, ...AuthorableBlockType[]];
 
@@ -66,6 +66,7 @@ export const PRIMITIVES: Readonly<Record<PrimitiveId, PrimitiveSpec>> = {
   track: primitive('track', 'Track', 'gauge', 'lists', ['track']),
   section: primitive('section', 'Section', 'square-stack', 'layout', ['section']),
   'side-by-side': primitive('side-by-side', 'Side by side', 'columns-3', 'layout', ['row']),
+  tabs: primitive('tabs', 'Tabs', 'panel-top', 'layout', ['tabs']),
   divider: primitive('divider', 'Divider', 'minus', 'layout', ['divider']),
   picture: primitive('picture', 'Picture', 'image', 'media', ['image']),
 };
@@ -106,6 +107,7 @@ function fileOnly(type: BlockType, label: string, icon: BlockIcon, fsType: FsBlo
 export const BLOCK_CATALOGUE: Readonly<Record<BlockType, BlockSpec>> = {
   section: spec('section', 'section', [], 'group', 'fill'),
   row: spec('row', 'side-by-side', [], 'inline', 'fill'),
+  tabs: spec('tabs', 'tabs', [], 'group', 'fill'),
   title: spec('title', 'heading', ['text'], 'heading', 'fill', 'From a property'),
   line: spec('line', 'line', SCALAR_FIELDS, 'subheading', 'fill'),
   stat: spec('stat', 'value', SCALAR_FIELDS, 'property', 'fit'),
@@ -158,13 +160,20 @@ export type ParentType = 'root' | BlockType;
 
 /**
  * The root and a Section take every block, a Row every block but a Row (a Row
- * already wraps), and no other block holds children. That a block is never
- * placed inside itself is the tree's rule (`treeOps`), not the catalogue's.
+ * already wraps) and Tabs, Tabs only Sections (one per tab), and no other
+ * block holds children. That a block is never placed inside itself is the
+ * tree's rule (`treeOps`), not the catalogue's.
  */
 export function canContain(parent: ParentType, child: BlockType): boolean {
   if (parent === 'root' || parent === 'section') return true;
-  if (parent === 'row') return child !== 'row';
+  if (parent === 'row') return child !== 'row' && child !== 'tabs';
+  if (parent === 'tabs') return child === 'section';
   return false;
+}
+
+/** The label a new tab gets: "Tab 3" for the third. */
+export function tabLabel(position: number): string {
+  return `Tab ${position}`;
 }
 
 const NATURAL_BLOCKS: Readonly<Record<FieldType, AuthorableBlockType>> = {
@@ -191,6 +200,9 @@ export function createBlock(type: AuthorableBlockType, nextId: BlockIdSource, fi
   switch (type) {
     case 'section': return { id, type, blocks: [] };
     case 'row': return { id, type, blocks: [] };
+    case 'tabs': return {
+      id, type, blocks: [1, 2].map((position) => ({ id: nextId(), type: 'section', heading: tabLabel(position), blocks: [] })),
+    };
     case 'title': return { id, type, field: fieldKey ?? 'name', level: 1 };
     case 'line': return { id, type, fields: fieldKey ? [fieldKey] : [] };
     case 'stat': return { id, type, field, look: 'run-in' };

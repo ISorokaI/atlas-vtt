@@ -9,7 +9,7 @@ import type { BlockBase, TemplateBlock, TemplateLayout } from '../model/template
 import { BlockIdAllocator } from './blockIds';
 import {
   ALIGNS, COLLAPSIBLE, DISPLAYS, HEADING_LEVELS, IMAGE_SHAPES, MAX_COLUMNS, NAME_STYLES, ORIENTATIONS, SIZES,
-  STAT_LOOKS, TAG_LOOKS, TITLE_LEVELS, TRACK_COUNTS, TRACK_LOOKS, WHEN_EMPTY, readCondition, readScoreColumn,
+  SPELL_LOOKS, STAT_LOOKS, TAG_LOOKS, TITLE_LEVELS, TRACK_COUNTS, TRACK_LOOKS, WHEN_EMPTY, readCondition, readScoreColumn,
 } from './blockParts';
 import { LAYOUT_KEYS, blockKeys, isFileBlockType, type BlockKey, type FileBlockType } from './formatKeys';
 import { describeValue, isRecord, jsonRecordCopy, own } from './jsonValues';
@@ -57,6 +57,7 @@ const BODY_READERS: { [T in FileBlockType]: BodyRead<T> } = {
     blocks: children(),
   }),
   row: (r, children) => ({ type: 'row', ...optionalOneOf(r, 'align', ALIGNS), blocks: children() }),
+  tabs: (_r, children) => ({ type: 'tabs', blocks: children() }),
   title: (r) => withField(r, (field) => ({
     type: 'title', field, level: oneOf(r, 'level', TITLE_LEVELS), ...r.opt('pattern', asString, TEXT),
   })),
@@ -112,7 +113,9 @@ const BODY_READERS: { [T in FileBlockType]: BodyRead<T> } = {
     ...r.opt('resource', asString, TEXT),
   })),
   image: (r) => withField(r, (field) => ({ type: 'image', field, shape: oneOf(r, 'shape', IMAGE_SHAPES) })),
-  spells: (r) => withField(r, (field) => ({ type: 'spells', field, ...r.opt('heading', asString, TEXT) })),
+  spells: (r) => withField(r, (field) => ({
+    type: 'spells', field, ...r.opt('heading', asString, TEXT), ...optionalOneOf(r, 'look', SPELL_LOOKS),
+  })),
   heading: (r) => {
     const text = r.get('text', asString);
     return text === undefined ? { missing: 'text' } : { type: 'heading', text, level: oneOf(r, 'level', HEADING_LEVELS) };

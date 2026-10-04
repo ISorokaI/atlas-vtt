@@ -38,6 +38,7 @@ const PRIMITIVE_WORDS: Readonly<Record<PrimitiveId, { example: string; keywords:
   track: { example: 'Boxes or a gauge that count up or down', keywords: ['boxes', 'gauge', 'clock', 'counter'] },
   section: { example: 'A heading with blocks under it', keywords: ['group'] },
   'side-by-side': { example: 'Blocks next to each other', keywords: ['row', 'columns'] },
+  tabs: { example: 'Sections shown one at a time', keywords: ['tab', 'pages', 'levels', 'kinds'] },
   divider: { example: 'A line across', keywords: ['rule', 'separator'] },
   picture: { example: 'Token art or a portrait', keywords: ['image', 'art', 'portrait', 'token'] },
 };
@@ -107,6 +108,12 @@ function previewParts(item: InsertItem, nextId: BlockIdSource): { blocks: Templa
     const children = fields.map((field) => ({ ...createBlock('stat', nextId, field.key), look }));
     const container = createBlock(item.type, nextId);
     return { blocks: [{ ...container, blocks: children }], fields };
+  }
+  if (item.type === 'tabs') {
+    const fields: TemplateField[] = [{ key: 'first', label: 'First', type: 'number' }, { key: 'second', label: 'Second', type: 'number' }];
+    const tabs = createBlock('tabs', nextId);
+    const blocks = tabs.blocks.map((tab, index) => ({ ...tab, blocks: [createBlock('stat', nextId, fields[index]?.key)] }));
+    return { blocks: [{ ...tabs, blocks }], fields };
   }
   const shape = PREVIEW_FIELDS[item.type];
   const field: TemplateField | null = shape ? { key: item.type, label: item.label, type: shape.type, ...(shape.slots && { slots: shape.slots }) } : null;

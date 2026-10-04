@@ -49,7 +49,8 @@ function emptyThroughout(block: TemplateBlock, reader: ValueReader): boolean {
 /**
  * The blocks that fold on a card of `template` with `record`, in reading
  * order. A folded Section folds with everything in it; blocks inside a
- * folded Section are not listed again.
+ * folded Section are not listed again. A tab's Section never folds: its tab
+ * stays, and holds the prompts of what it shows.
  */
 export function foldedBlocks(template: StatblockTemplate, record: FieldRecord, unfolded: ReadonlySet<string> = new Set()): FoldedBlock[] {
   const reader = readerFor(record, template.fields);
@@ -57,18 +58,18 @@ export function foldedBlocks(template: StatblockTemplate, record: FieldRecord, u
   const lists = flattenReadingOrder(template.layout.blocks).filter((block) => block.type === 'entries');
   const firstAbilities = (lists.find((block) => block.type === 'entries' && block.addLabel?.trim()) ?? lists[0])?.id;
   const folded: FoldedBlock[] = [];
-  const visit = (blocks: readonly TemplateBlock[]): void => {
+  const visit = (blocks: readonly TemplateBlock[], tabs: boolean): void => {
     for (const block of blocks) {
       if (block.showWhen && !evaluateCondition(block.showWhen, reader)) continue;
-      const heading = foldHeading(block, (key) => labels.get(key));
+      const heading = tabs ? null : foldHeading(block, (key) => labels.get(key));
       if (heading && block.id !== firstAbilities && !unfolded.has(block.id) && emptyThroughout(block, reader)) {
         folded.push({ blockId: block.id, heading });
         continue;
       }
-      if (isContainerBlock(block)) visit(block.blocks);
+      if (isContainerBlock(block)) visit(block.blocks, block.type === 'tabs');
     }
   };
-  visit(template.layout.blocks);
+  visit(template.layout.blocks, false);
   return folded;
 }
 

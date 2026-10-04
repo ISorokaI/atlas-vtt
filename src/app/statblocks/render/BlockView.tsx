@@ -15,12 +15,13 @@ import { ScriptView } from './blocks/ScriptView';
 import { SectionView } from './blocks/SectionView';
 import { SpellsView } from './blocks/SpellsView';
 import { StatView } from './blocks/StatView';
+import { TabsView } from './blocks/TabsView';
 import { TagsView } from './blocks/TagsView';
 import { TextView } from './blocks/TextView';
 import { TitleView } from './blocks/TitleView';
 import { TrackView } from './blocks/TrackView';
 
-/** A list of blocks, each in its frame; the root and every Section and Row render their children with it. */
+/** A list of blocks, each in its frame; the root and every Section and Row render their children with it, Tabs one per panel. */
 export function BlockList({ blocks }: { blocks: readonly TemplateBlock[] }): React.JSX.Element {
   return <>{blocks.map((block) => <BlockView key={block.id} block={block} />)}</>;
 }
@@ -29,6 +30,7 @@ function content(block: TemplateBlock, display: BlockDisplay): React.ReactNode {
   switch (block.type) {
     case 'section': return <SectionView block={block} display={display}><BlockList blocks={block.blocks} /></SectionView>;
     case 'row': return <RowView block={block} display={display}><BlockList blocks={block.blocks} /></RowView>;
+    case 'tabs': return <TabsView block={block} display={display} renderBlock={(tab) => <BlockView block={tab} />} />;
     case 'title': return <TitleView block={block} display={display} />;
     case 'line': return <LineView block={block} display={display} />;
     case 'stat': return <StatView block={block} display={display} />;

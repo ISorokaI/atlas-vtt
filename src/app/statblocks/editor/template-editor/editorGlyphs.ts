@@ -5,7 +5,7 @@
  */
 
 import {
-  AlignLeft, CircleDot, CircleHelp, Code, Columns3, Dices, Gauge, Hash, Heading, Image, List, ListTree, Minus, ScrollText,
+  AlignLeft, CircleDot, CircleHelp, Code, Columns3, Dices, Gauge, Hash, Heading, Image, List, ListTree, Minus, PanelTop, ScrollText,
   SquareStack, Star, Subtitles, Table, Tags, Text, Type, type LucideIcon,
 } from 'lucide-react';
 import { blockSpec, type BlockIcon } from '../../model/blockCatalogue';
@@ -13,7 +13,7 @@ import type { BlockType, FieldMeaning, FieldType } from '../../model/templateTyp
 
 const BLOCK_GLYPHS: Readonly<Record<BlockIcon, LucideIcon>> = {
   heading: Heading, text: Text, hash: Hash, subtitles: Subtitles, list: List, table: Table, gauge: Gauge, image: Image,
-  'square-stack': SquareStack, 'columns-3': Columns3, minus: Minus, code: Code, 'circle-help': CircleHelp,
+  'square-stack': SquareStack, 'columns-3': Columns3, minus: Minus, code: Code, 'circle-help': CircleHelp, 'panel-top': PanelTop,
 };
 
 export function blockGlyph(type: BlockType): LucideIcon {

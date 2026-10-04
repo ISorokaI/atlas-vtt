@@ -11,6 +11,7 @@ import { blockFrame, editorChrome, frameAt } from './editorChrome';
 import { EDITOR_VALUE_EDITING } from './editorValueSlot';
 import type { Box } from './gapGeometry';
 import { primaryOf, withSibling, type BlockSelection } from './selection';
+import { tabAt, withoutClosedTab } from './tabClicks';
 
 /** Marks the elements whose focus the block keys act on (the canvas; the outline may carry it too). */
 export const BLOCK_KEYS_SELECTOR = '[data-te-blocks]';
@@ -56,7 +57,8 @@ function playEntrance(frame: HTMLElement): void {
  * with values read-only. A click selects the innermost block, Shift+click
  * adds a sibling, a double click edits its label; its gutter handle (or
  * Space) moves it, a right-click opens its menu; links, dice and folds in
- * the card do nothing here.
+ * the card do nothing here. A tab opens on a click, and the tabs that hold
+ * the selected block open with it.
  */
 export function Canvas(props: CanvasProps): React.JSX.Element {
   const { stageRef, template, selection, onSelect, focusRequest, washId } = props;
@@ -91,7 +93,15 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
     const target = event.target as Element;
     if (target.closest?.('.atlas-te-chrome')) return;
     const sheet = sheetOf();
-    if (sheet?.contains(target)) {
+    // A tab opens on its own click; a selection it hides is let go, so no key acts on what is out of sight.
+    const tab = sheet ? tabAt(target, sheet) : null;
+    if (tab) {
+      const kept = withoutClosedTab(template.layout, selection, tab);
+      if (kept !== selection) onSelect(kept);
+      return;
+    }
+    // A Spells block's tabs open too, and the click selects the block.
+    if (sheet?.contains(target) && !target.closest?.('[role="tab"]')) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -110,7 +120,8 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
   const onDoubleClickCapture = (event: React.MouseEvent<HTMLDivElement>): void => {
     const sheet = sheetOf();
     const frame = sheet ? frameAt(event.target, sheet) : null;
-    const id = frame?.getAttribute('data-block-id');
+    // A tab's label is its Section's heading.
+    const id = (sheet ? tabAt(event.target as Element, sheet)?.sectionId : null) ?? frame?.getAttribute('data-block-id');
     if (!id || event.shiftKey) return;
     event.preventDefault();
     props.onEditLabel(id);
@@ -167,6 +178,7 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
       sourcePath={props.sourcePath}
       shownWidth={props.shownWidth}
       folded={props.folded}
+      reveal={primary}
       around={stage}
     />
   );
