@@ -132,9 +132,11 @@ export class NoteStatblockPanel {
     else this.ensureHost();
     this.applyWidth();
     const { containerEl } = this.view;
+    const shown = containerEl.hasClass(NOTE_PANEL_CLASS);
     containerEl.toggleClass(NOTE_PANEL_CLASS, this.host !== null);
     containerEl.toggleClass(HIDE_PROPERTIES_CLASS, this.host !== null && !this.propertiesShown);
     containerEl.toggleClass(STACKED_CLASS, this.host !== null && this.stacked);
+    if (shown !== (this.host !== null)) this.announceShown();
     this.render();
   }
 
@@ -143,7 +145,14 @@ export class NoteStatblockPanel {
     this.removeHost();
     this.action?.remove();
     this.action = null;
+    const shown = this.view.containerEl.hasClass(NOTE_PANEL_CLASS);
     this.view.containerEl.removeClass(NOTE_PANEL_CLASS, HIDE_PROPERTIES_CLASS, STACKED_CLASS);
+    if (shown) this.announceShown();
+  }
+
+  /** Tells whoever follows the panel (the status bar) that it came or went. */
+  private announceShown(): void {
+    this.view.app.workspace.trigger('atlas-vtt:statblock-panel-changed');
   }
 
   private updateAction(hidden: boolean): void {
