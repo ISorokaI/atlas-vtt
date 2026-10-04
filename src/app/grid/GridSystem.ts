@@ -3,7 +3,9 @@ import { Viewport } from 'pixi-viewport';
 import type { RenderLayer } from 'pixi.js';
 import { drawSquareGrid } from './squareGridDrawer';
 import { drawHexGrid } from './hexGridDrawer';
+import { gridMarkerArmLength } from './gridLineStyle';
 import type { GridBounds, GridLineType } from './gridLineStyle';
+import { GridLines } from './gridLines';
 import { createHexLayout, hexCellExtent, isHexGridType, nearestHexCenter } from './hexGeometry';
 import type { HexLayout } from './hexGeometry';
 import { contrastColorForSprite } from './gridContrastColor';
@@ -177,31 +179,21 @@ export class GridSystem {
 
     // `??`, not `||`: black is 0x000000 and must not fall through to the automatic colour
     const gridColor = isAligning ? ALIGNMENT_GRID_COLOR : (color ?? this.getAutoColor(bgSprite));
-    const gridAlpha = isAligning ? Math.min(alpha! * 1.5, 1) : alpha!;
 
-    const lines = new Graphics();
-    lines.setStrokeStyle({
-      width: lineWidth!,
+    const lines = new GridLines({
+      lineType,
+      lineWidth: lineWidth!,
       color: gridColor,
-      alpha: gridAlpha,
-      alignment: 0,
-      cap: 'round',
-      join: 'miter'
+      alpha: isAligning ? Math.min(alpha! * 1.5, 1) : alpha!,
+      markerArm: gridMarkerArmLength(size),
+      trace: (path, thickness, arm) => {
+        if (hexLayout) drawHexGrid(path, bounds, hexLayout, lineType, thickness, arm);
+        else drawSquareGrid(path, bounds, size, offsetX, offsetY, lineType, thickness, arm);
+      },
     });
 
-    if (hexLayout) {
-      drawHexGrid(lines, bounds, hexLayout, lineType, lineWidth);
-    } else {
-      drawSquareGrid(lines, bounds, size, offsetX, offsetY, lineType, lineWidth);
-    }
-    if (lineType === 'dotted') {
-      lines.fill({ color: gridColor, alpha: gridAlpha });
-    } else {
-      lines.stroke();
-    }
-
     const grid = new Container({ label: 'grid', eventMode: 'none', interactiveChildren: false });
-    grid.addChild(lines);
+    grid.addChild(lines.graphics);
     grid.position.set(bounds.minX, bounds.minY);
 
     const cellNumbers = this.options.cellNumbers;
