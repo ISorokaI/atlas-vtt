@@ -3,7 +3,6 @@ import { capsuleFieldFragment, capsuleFieldVertex } from './capsuleFieldShader';
 import { cascadeFragment, cascadeVertex, emissionFragment, resolveFragment } from './cascadeShaders';
 import { compositeFragment } from './compositeShader';
 import { darknessFragment, darknessVertex, pierceFragment, pierceVertex } from './darknessShader';
-import { fogLiftFragment, fogLiftVertex } from './fogLiftShader';
 import { lightMapFragment, lightMapVertex } from './lightMapShader';
 import { limitedFragment, limitedVertex } from './limitedShader';
 import { sightFragment, sightVertex } from './sightShader';
@@ -20,8 +19,7 @@ export interface EngineShaderSource {
 /**
  * Every program the lighting engine draws with. Passes create their shaders from these entries
  * (`createShader`), so the rules the unit tests hold the sources to, and the check that they
- * compile on the device (`verifyEngineShaders`), cover all of them. The fog's lift (`FogLift`)
- * is no pass of the engine, but it reads the engine's textures and is held to the same rules.
+ * compile on the device (`verifyEngineShaders`), cover all of them.
  */
 export const ENGINE_SHADERS = {
   capsuleField: { name: 'atlas-capsule-field', vertex: capsuleFieldVertex, fragment: capsuleFieldFragment },
@@ -37,5 +35,4 @@ export const ENGINE_SHADERS = {
   bounceResolve: { name: 'atlas-bounce-resolve', vertex: cascadeVertex, fragment: resolveFragment },
   sight: { name: 'atlas-sight', vertex: sightVertex, fragment: sightFragment },
   composite: { name: 'atlas-lighting-composite', vertex: defaultFilterVert, fragment: compositeFragment },
-  fogLift: { name: 'atlas-fog-lift', vertex: fogLiftVertex, fragment: fogLiftFragment },
 } as const satisfies Record<string, EngineShaderSource>;

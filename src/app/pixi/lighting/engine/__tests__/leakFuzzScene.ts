@@ -50,7 +50,7 @@ export function footprints(room: FuzzRoom, outline: readonly P[], walls: readonl
   const oneWay = room.walls.filter((wall) => wall.direction);
   const kept = places.filter((p) => insidePolygon(p, outline) && oneWay.every((wall) => blocksFrom(wall, { x: p[0], y: p[1] })));
   const tokens = Object.fromEntries(kept.map(([x, y], i) => [`p${i}`, { id: `p${i}`, kind: 'token', imagePath: '', x, y, size: SIZES[i % SIZES.length]!, vision: { enabled: true } }]));
-  const model: SceneModel = { walls, lights: [], reaches: [], sight: NO_SIGHT, perceived: null, explored: null, zones: [], ambient: { ambient: 0 } };
+  const model: SceneModel = { walls, lights: [], reaches: [], sight: NO_SIGHT, explored: null, zones: [], ambient: { ambient: 0 } };
   return new SceneSpots().update(model, { objects: { tokens, walls: {}, lights: {} }, lighting: { enabled: true, ambient: 0 }, grid: null, heldTokens: {} } as unknown as Parameters<SceneSpots['update']>[1], MEASUREMENT);
 }
 

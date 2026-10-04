@@ -9,8 +9,7 @@ import type { ViewAtlasState } from '../../storeFactory';
 import type { TokenEntity } from '../../types';
 import type { SceneLighting } from '../../types/lightingTypes';
 import type { WallSegment } from '../../types/wallTypes';
-import { exploredMemoryOn } from '../../lighting/sceneLightingOptions';
-import { perceivedShapes, type ExploredShapes } from '../../vision/exploredShapes';
+import { exploredShapes, type ExploredShapes } from '../../vision/exploredShapes';
 import { quenched, sourcesInDarkness } from '../../vision/magicalDarkness';
 import { seenSpots, type SeenSpot } from '../../vision/perception';
 import type { SightRules } from '../../vision/sightRules';
@@ -29,9 +28,7 @@ export interface SceneModel {
   lights: EngineLight[];
   reaches: LightReach[];
   sight: Sight;
-  /** What the tokens perceive now (`perceivedShapes`); null when they perceive nothing or line of sight hides nothing. */
-  perceived: ExploredShapes | null;
-  /** What explored memory records: `perceived`, or null when the scene remembers nothing. */
+  /** What the tokens see now, for explored memory to record; null when nothing is recorded. */
   explored: ExploredShapes | null;
   /** The scene's ambient zones as the engine draws them; the same list while the zones stay. */
   zones: readonly EngineZone[];
@@ -105,8 +102,7 @@ export class SceneModelBuilder {
     const sight = sceneSight(state.lighting, sourcesInDarkness(sightSources(tokens, scale, bounds, rules), ambient, reaches), walls, this.sightCache);
     // Half a cell: the width of a zone's soft edge past its outline.
     const zones = zoneList.map(({ polygon, ambient: level, ambientColor }) => ({ polygon, ambient: level, ...(ambientColor && { ambientColor }), soft: scale.cellSize / 2 }));
-    const perceived = perceivedShapes(sight, ambient, reaches);
-    return { walls, lights, reaches, sight, perceived, explored: exploredMemoryOn(state.lighting) ? perceived : null, zones: zones.length > 0 ? zones : NO_ZONES, ambient };
+    return { walls, lights, reaches, sight, explored: exploredShapes(sight, ambient, reaches), zones: zones.length > 0 ? zones : NO_ZONES, ambient };
   }
 }
 

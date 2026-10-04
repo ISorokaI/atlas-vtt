@@ -18,9 +18,7 @@ import { FogOperationCanvas } from './FogOperationCanvas';
 import { calculateOperationBounds } from './fogRenderUtils';
 import { hitTestFogOp, findConnectedFogOps } from './fogHitTest';
 import { extractConnectedComponentRects } from './fogComponentDelete';
-import { canInteractWithFog } from './fogVisibilityPolicy';
-import { FogDisplay } from './FogDisplay';
-import type { FogReveal } from './fogReveal';
+import { canInteractWithFog, resolveFogPreviewAlpha } from './fogVisibilityPolicy';
 import type { LayerVisibility } from '../playerSafeFrame';
 import { destroyTree } from '../utils/destroyTree';
 import { requestRender } from '../RenderScheduler';
@@ -45,8 +43,7 @@ interface FogSpriteEntry {
 export class FogOfWarRenderer {
   // PIXI display objects
   private container: PIXI.Container;
-  /** The painted fog as the GM and the players see it, drawn from the compositor's canvas. */
-  private display: FogDisplay;
+  private previewSprite: PIXI.Sprite;
   private previewTexture: PIXI.Texture;
   private lassoGraphics: PIXI.Graphics;
   private rectPreviewGraphics: PIXI.Graphics;
@@ -98,11 +95,18 @@ export class FogOfWarRenderer {
     this.compositor = new FogCanvasCompositor(bounds);
 
     this.previewTexture = PIXI.Texture.from(this.compositor.getCanvas());
-    this.display = new FogDisplay(this.previewTexture, bounds);
-    this.display.showPlayers(this.showsPlayers());
-    this.display.view.visible = false;
-    this.display.view.zIndex = 999; // Below per-op sprites during normal mode
-    this.container.addChild(this.display.view);
+    this.previewSprite = new PIXI.Sprite(this.previewTexture);
+    this.previewSprite.position.set(bounds.x, bounds.y);
+    this.previewSprite.width = bounds.width;
+    this.previewSprite.height = bounds.height;
+    this.previewSprite.alpha = resolveFogPreviewAlpha({
+      isPlayerView: this.store.getState().isPlayerView,
+      isGMView: this.store.getState().isGMView,
+    });
+    this.previewSprite.visible = false;
+    this.previewSprite.eventMode = 'none';
+    this.previewSprite.zIndex = 999; // Below per-op sprites during normal mode
+    this.container.addChild(this.previewSprite);
 
     // ── Lasso & rectangle preview graphics ──────────────────────────
     this.lassoGraphics = new PIXI.Graphics();
@@ -171,18 +175,10 @@ export class FogOfWarRenderer {
     return this.container;
   }
 
-  /**
-   * From now on the players see painted fog lifted where the party has explored or perceives now
-   * (`FogReveal`, read on every render); the GM's own view keeps the fog as painted.
-   */
-  followSight(reveal: () => FogReveal | null): void {
-    this.display.followSight(this._pixiApp.renderer, reveal);
-  }
-
   /** Local player captures share the DM renderer but must not share its fog preview opacity. */
   getPlayerViewLayers(): LayerVisibility[] {
     return [
-      ...this.display.playerViewLayers(),
+      { layer: this.previewSprite, visible: this.previewSprite.visible, alpha: 1 },
       { layer: this.cursorPreview.getDisplayObject(), visible: false },
       { layer: this.lassoGraphics, visible: false },
       { layer: this.rectPreviewGraphics, visible: false },
@@ -191,7 +187,7 @@ export class FogOfWarRenderer {
 
   /** The fog as translucent as the GM view shows it, also while the canvas is in session view: for a picture of the scene. */
   getGmViewLayers(): LayerVisibility[] {
-    return this.display.gmViewLayers();
+    return [{ layer: this.previewSprite, visible: this.previewSprite.visible, alpha: resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true }) }];
   }
 
   /** Returns a map of fog sprite IDs → Containers for SelectionManager. */
@@ -259,7 +255,7 @@ export class FogOfWarRenderer {
 
     // Refresh compositor display with all committed ops
     this.renderPreviewFromStore();
-    this.display.view.visible = true;
+    this.previewSprite.visible = true;
 
     if (this.stroke.mode === 'brush') {
       this.cursorPreview.show(this.isErasing);
@@ -321,19 +317,12 @@ export class FogOfWarRenderer {
     if (this.rectPreviewGraphics && !this.rectPreviewGraphics.destroyed) {
       this.rectPreviewGraphics.destroy();
     }
-    this.display.destroy();
     if (this.previewTexture && !this.previewTexture.destroyed) {
       this.previewTexture.destroy(true);
     }
     if (this.container && !this.container.destroyed) {
       destroyTree(this.container);
     }
-  }
-
-  /** The canvas shows the fog as the players see it: the player window's own, or the GM's in session view. */
-  private showsPlayers(): boolean {
-    const { isPlayerView, isGMView } = this.store.getState();
-    return isPlayerView || !isGMView;
   }
 
   private clearAllFog(): void {
@@ -430,10 +419,13 @@ export class FogOfWarRenderer {
         }
       }
 
-      // GM view toggle → the GM's translucent fog, or the players' in session view
+      // GM view toggle → adjust fog opacity
       if (state.isGMView !== prevGMView) {
         prevGMView = state.isGMView;
-        this.display.showPlayers(this.showsPlayers());
+        this.previewSprite.alpha = resolveFogPreviewAlpha({
+          isPlayerView: state.isPlayerView,
+          isGMView: state.isGMView,
+        });
       }
     });
   }
@@ -441,10 +433,14 @@ export class FogOfWarRenderer {
   private applyInitialStoreState(): void {
     const state = this.store.getState();
     this.currentMapPath = state.mapPath;
+    this.previewSprite.alpha = resolveFogPreviewAlpha({
+      isPlayerView: state.isPlayerView,
+      isGMView: state.isGMView,
+    });
 
     if (state.isMapLoading) {
       this.container.visible = false;
-      this.display.view.visible = false;
+      this.previewSprite.visible = false;
       return;
     }
 
@@ -511,14 +507,14 @@ export class FogOfWarRenderer {
       // Update visibility
       if (allOps.length > 0) {
         this.container.visible = true;
-        this.display.view.visible = true;
+        this.previewSprite.visible = true;
       } else {
         const tool = this.store.getState().activeTool;
         const isFogDrawing = tool === 'fog' || tool === 'eraser';
         if (!isFogDrawing) {
           this.container.visible = false;
         }
-        this.display.view.visible = false;
+        this.previewSprite.visible = false;
       }
 
       // Sprites stay non-interactive; viewport-level dispatch handles fog clicks.
@@ -994,7 +990,10 @@ export class FogOfWarRenderer {
         this.previewTexture.destroy(true);
       }
       this.previewTexture = PIXI.Texture.from(this.compositor.getCanvas());
-      this.display.setTexture(this.previewTexture, newBounds);
+      this.previewSprite.texture = this.previewTexture;
+      this.previewSprite.position.set(newBounds.x, newBounds.y);
+      this.previewSprite.width = newBounds.width;
+      this.previewSprite.height = newBounds.height;
     }
   }
 

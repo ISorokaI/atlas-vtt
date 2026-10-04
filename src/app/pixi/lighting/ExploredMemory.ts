@@ -63,11 +63,6 @@ export class ExploredMemory {
     this.unsubscribe = deps.store.subscribe((state) => this.follow(state.exploredEdits, state.isMapLoading));
   }
 
-  /** The memory's texture over the map, or none yet. */
-  get current(): Texture | null {
-    return this.texture?.texture ?? null;
-  }
-
   /** Sizes the memory to the map and loads the scene's saved mask unless the texture holds it. */
   sync(bounds: MapBounds, mask: string | null): void {
     this.ensure(bounds);

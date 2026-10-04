@@ -24,7 +24,6 @@ function fakeView(sight: Sight = SEES_ALL): FakeView {
     currentSight: () => sight,
     lightReaches: () => [],
     ambientLight: () => ({ ambient: 1 }),
-    fogReveal: () => null,
     refreshBounds: vi.fn(),
     resetExplored: vi.fn(),
     editExplored: vi.fn(() => false),
