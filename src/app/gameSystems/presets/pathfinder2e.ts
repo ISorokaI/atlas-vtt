@@ -64,6 +64,5 @@ export const PATHFINDER_2E: SystemPreset = {
     resources: [{ ...HP_RESOURCE }],
     senses: PATHFINDER_2E_SENSES,
     lightPresets: PATHFINDER_2E_LIGHTS,
-    statblockRoles: [{ id: 'creature', name: 'Creature', templateId: 'builtin:d20-creature' }],
   },
 };

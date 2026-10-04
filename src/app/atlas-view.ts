@@ -11,9 +11,7 @@ import { claimWorkspaceLeafFocus } from './utils/activeLeafGuard';
 import { isScenePath } from './utils/sceneFiles';
 import { runInBackground } from './utils/backgroundTask';
 
-import { ATLAS_VIEW_TYPE } from './atlasViewType';
-
-export { ATLAS_VIEW_TYPE };
+export const ATLAS_VIEW_TYPE = "atlas-vtt";
 
 interface TabViewportState {
   centerX: number;

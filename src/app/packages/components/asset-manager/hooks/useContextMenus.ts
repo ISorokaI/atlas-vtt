@@ -62,7 +62,6 @@ export function useContextMenus({
       selectedAssetIds: sel.selectedAssetIds,
       assets: data.assets, folders: data.folders, availableTags: data.availableTags,
       transferTargets: transferTargets(data.collections, selectedCollection),
-      collectionId: selectedCollection,
     });
     openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
   };

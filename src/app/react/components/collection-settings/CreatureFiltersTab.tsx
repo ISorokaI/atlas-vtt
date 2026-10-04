@@ -8,11 +8,9 @@ import React, { useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { CATALOG_CREATURE_FILTERS } from '../../../creatures/creatureFieldCatalog';
-import type { DiscoveredField } from '../../../creatures/creatureFieldDiscovery';
+import { discoverCreatureFields, type DiscoveredField } from '../../../creatures/creatureFieldDiscovery';
 import { filterFields, filterForField, newCreatureFilterId } from '../../../creatures/creatureFilterDefinitions';
 import type { IndexedCreature } from '../../../creatures/CreatureIndex';
-import { suggestedFilterFields } from '../../../creatures/templateFilterFields';
-import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import type { CreatureFilterDefinition } from '../../../types/creatureFilterTypes';
 import { CatalogFilterList } from './CatalogFilterList';
 import { CreatureFieldSuggestions } from './CreatureFieldSuggestions';
@@ -29,14 +27,10 @@ interface CreatureFiltersTabProps {
   creatures: readonly IndexedCreature[];
   /** Whether those statblocks are still being read. */
   pending: boolean;
-  /** The templates of the collection's statblock roles, whose fields are suggested first. */
-  templates?: readonly StatblockTemplate[];
 }
 
-const NO_TEMPLATES: readonly StatblockTemplate[] = [];
-
-export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomChange, creatures, pending, templates = NO_TEMPLATES }: CreatureFiltersTabProps): React.ReactElement {
-  const discovered = useMemo(() => suggestedFilterFields(templates, creatures), [templates, creatures]);
+export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomChange, creatures, pending }: CreatureFiltersTabProps): React.ReactElement {
+  const discovered = useMemo(() => discoverCreatureFields(creatures), [creatures]);
   const unused = useMemo(() => {
     const used = new Set([...CATALOG_CREATURE_FILTERS, ...custom].flatMap(filterFields));
     return discovered.filter((field) => !used.has(field.field));
@@ -61,7 +55,7 @@ export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomCha
   };
 
   const addDiscovered = (field: DiscoveredField): void => {
-    onCustomChange([...custom, filterForField(taken, field.field, field.kind, field.label)]);
+    onCustomChange([...custom, filterForField(taken, field.field, field.kind)]);
   };
 
   return (

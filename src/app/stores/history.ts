@@ -5,20 +5,10 @@ import { areTemporalSnapshotsEqual, type TemporalSnapshotLike } from './temporal
 /** Maximum number of undo steps kept per map. */
 export const HISTORY_LIMIT = 50;
 
-/** The slice of a map store's state that undo/redo tracks. */
+/** The slice of store state that undo/redo tracks. */
 export type HistorySnapshot = TemporalSnapshotLike;
 
 type TrackedSlice<S extends HistorySnapshot> = Pick<S, keyof HistorySnapshot>;
-
-/**
- * What a store's history tracks: the part of its state a step holds, and when
- * two such parts count as the same (no step). Equality must be cheap; compare
- * the references Immer keeps for unchanged branches.
- */
-export interface HistorySlice<S, T> {
-  partialize: (state: S) => T;
-  equality: (past: T, current: T) => boolean;
-}
 
 /**
  * Undo/redo API exposed on `store.temporal`.
@@ -28,7 +18,7 @@ export interface HistorySlice<S, T> {
  * vertex, sweeping the eraser) is recorded as exactly one undo step even
  * though the store is written many times while it happens.
  */
-export interface HistoryState<T = HistorySnapshot> extends TemporalState<T> {
+export interface HistoryState extends TemporalState<HistorySnapshot> {
   /**
    * Start grouping writes into a single undo step. Nestable: only the
    * outermost `endTransaction` records the step.
@@ -44,9 +34,9 @@ export interface HistoryState<T = HistorySnapshot> extends TemporalState<T> {
    */
   abandonTransaction: () => void;
   /** Run `fn` inside a transaction. */
-  transaction: <R>(fn: () => R) => R;
+  transaction: <T>(fn: () => T) => T;
   /** Run `fn` without recording anything (hydration, remote sync, derived state). */
-  untracked: <R>(fn: () => R) => R;
+  untracked: <T>(fn: () => T) => T;
 }
 
 /** Anything store-shaped; the bound zustand store and plain `StoreApi` both qualify. */
@@ -64,36 +54,23 @@ function partializeHistory<S extends HistorySnapshot>(state: S): TrackedSlice<S>
   };
 }
 
-/** A map store's slice: objects, grid, background, widget values and the count of explored-memory edits. */
-function mapHistorySlice<S extends HistorySnapshot>(): HistorySlice<S, TrackedSlice<S>> {
-  return { partialize: partializeHistory, equality: areTemporalSnapshotsEqual };
-}
-
 /**
- * Builds the zundo options for a store. `getState` must return the live state
- * of the store the options are attached to. Without `slice` the options track
- * a map store's slice; another store (a template session's) names its own.
+ * Builds the zundo options for a view store. `getState` must return the
+ * live state of the store the options are attached to.
  */
-export function createHistoryOptions<S extends HistorySnapshot>(getState: () => S): ZundoOptions<S, TrackedSlice<S>>;
-export function createHistoryOptions<S, T>(getState: () => S, slice: HistorySlice<S, T>): ZundoOptions<S, T>;
-export function createHistoryOptions<S extends HistorySnapshot, T>(
+export function createHistoryOptions<S extends HistorySnapshot>(
   getState: () => S,
-  slice?: HistorySlice<S, T>,
-): ZundoOptions<S, T> | ZundoOptions<S, TrackedSlice<S>> {
-  return slice ? sliceHistoryOptions(getState, slice) : sliceHistoryOptions(getState, mapHistorySlice<S>());
-}
-
-function sliceHistoryOptions<S, T>(getState: () => S, { partialize, equality }: HistorySlice<S, T>): ZundoOptions<S, T> {
+): ZundoOptions<S, TrackedSlice<S>> {
   let transactionDepth = 0;
   let untrackedDepth = 0;
-  let transactionStart: T | null = null;
+  let transactionStart: TrackedSlice<S> | null = null;
 
   const isSuppressed = (): boolean => transactionDepth > 0 || untrackedDepth > 0;
 
   return {
     limit: HISTORY_LIMIT,
-    partialize,
-    equality,
+    partialize: partializeHistory,
+    equality: areTemporalSnapshotsEqual,
     handleSet: (recordStep) => (pastState) => {
       if (isSuppressed()) return;
       recordStep(pastState);
@@ -103,7 +80,7 @@ function sliceHistoryOptions<S, T>(getState: () => S, { partialize, equality }: 
 
       const beginTransaction = (): void => {
         if (transactionDepth === 0) {
-          transactionStart = partialize(getState());
+          transactionStart = partializeHistory(getState());
         }
         transactionDepth += 1;
       };
@@ -115,10 +92,10 @@ function sliceHistoryOptions<S, T>(getState: () => S, { partialize, equality }: 
 
         const start = transactionStart;
         transactionStart = null;
-        if (start === null || untrackedDepth > 0 || !get().isTracking) return;
-        if (equality(start, partialize(getState()))) return;
+        if (!start || untrackedDepth > 0 || !get().isTracking) return;
+        if (areTemporalSnapshotsEqual(start, partializeHistory(getState()))) return;
 
-        // The tracked slice is a valid Partial<S>; TS cannot prove it for a generic S.
+        // A Pick of S is a valid Partial<S>; TS cannot prove it for a generic S.
         const step = start as Partial<S>;
         set({
           pastStates: [...get().pastStates, step].slice(-HISTORY_LIMIT),
@@ -144,7 +121,7 @@ function sliceHistoryOptions<S, T>(getState: () => S, { partialize, equality }: 
         base.clear();
       };
 
-      const transaction = <R>(fn: () => R): R => {
+      const transaction = <T>(fn: () => T): T => {
         beginTransaction();
         try {
           return fn();
@@ -153,7 +130,7 @@ function sliceHistoryOptions<S, T>(getState: () => S, { partialize, equality }: 
         }
       };
 
-      const untracked = <R>(fn: () => R): R => {
+      const untracked = <T>(fn: () => T): T => {
         untrackedDepth += 1;
         try {
           return fn();

@@ -2,18 +2,13 @@ import { StatblockTokenImportService } from './StatblockTokenImportService';
 import { App, TFile, Notice, Modal } from 'obsidian';
 import { EventEmitter } from 'events';
 import { AssetService, type TokenAsset } from './AssetService';
-import { difficultyLabel } from '../creatures/statblockRating';
+import { resolveLinkedCreature } from '../creatures/linkedCreature';
 import { mapResources } from '../resources/collectionResources';
 import { tokenFromFile, tokenToFile } from '../resources/resourceFileFormat';
 import type { ResourceDefinition } from '../resources/resourceTypes';
 import { startingResources } from '../resources/statblockResourceValues';
-import type { StatblockFields } from '../resources/statblockResourceSync';
-import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
-import { readStatblock } from '../statblocks/resolve/readStatblock';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
-import { NoteFieldWriter } from '../statblocks/notes/NoteFieldWriter';
-import type { NotePatch } from '../statblocks/notes/patchTypes';
 import type { BaseToken, Character } from '../types';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../ui/nativeModal';
 
@@ -52,8 +47,6 @@ export interface LinkChangeEvent {
   tokenImagePath: string;
   statblockPath: string | null;
   previousStatblockPath?: string | null;
-  /** A statblock note's image moved the link: open maps apply it untracked, as no edit of theirs. */
-  fromNote?: boolean;
 }
 
 /**
@@ -97,11 +90,9 @@ export class TokenStatblockLinkService extends EventEmitter {
     options: { 
       showConfirmation?: boolean;
       updateStatblockAvatar?: boolean;
-      /** The note's image named the token (`followStatblockImage`); passed on with every event. */
-      fromNote?: boolean;
     } = {}
   ): Promise<boolean> {
-    const { showConfirmation = true, updateStatblockAvatar = true, fromNote = false } = options;
+    const { showConfirmation = true, updateStatblockAvatar = true } = options;
     
     // Get the statblock file
     const statblockFile = this.app.vault.getAbstractFileByPath(statblockPath);
@@ -122,14 +113,14 @@ export class TokenStatblockLinkService extends EventEmitter {
       }
       
       // Unlink the existing token - make sure to clear its asset metadata
-      await this.unlinkToken(existingTokenPath, { updateStatblockAvatar: false, notify: false, fromNote });
+      await this.unlinkToken(existingTokenPath, { updateStatblockAvatar: false, notify: false });
     }
     
     // Check if this token is already linked to another statblock
     const currentStatblockPath = await this.getStatblockLinkedToToken(tokenImagePath);
     if (currentStatblockPath && currentStatblockPath !== statblockPath) {
       // Unlink from current statblock
-      await this.unlinkToken(tokenImagePath, { updateStatblockAvatar: true, notify: false, fromNote });
+      await this.unlinkToken(tokenImagePath, { updateStatblockAvatar: true, notify: false });
     }
     
     // Find the asset using improved path matching
@@ -163,8 +154,7 @@ export class TokenStatblockLinkService extends EventEmitter {
       type: 'linked',
       tokenImagePath: finalTokenPath,
       statblockPath,
-      previousStatblockPath: currentStatblockPath,
-      ...(fromNote && { fromNote }),
+      previousStatblockPath: currentStatblockPath
     });
     
     // Update all spawned tokens on all maps
@@ -182,17 +172,15 @@ export class TokenStatblockLinkService extends EventEmitter {
    * Unlinks a token from its statblock.
    * `notify` fires the asset-manager refresh event; pass false when the unlink
    * is one step of a larger operation that refreshes once at the end.
-   * `fromNote` marks the event as one a statblock note's image caused.
    */
   async unlinkToken(
     tokenImagePath: string,
     options: { 
       updateStatblockAvatar?: boolean;
       notify?: boolean;
-      fromNote?: boolean;
     } = {}
   ): Promise<boolean> {
-    const { updateStatblockAvatar = true, notify = true, fromNote = false } = options;
+    const { updateStatblockAvatar = true, notify = true } = options;
     
     // Get current statblock
     const statblockPath = await this.getStatblockLinkedToToken(tokenImagePath);
@@ -235,8 +223,7 @@ export class TokenStatblockLinkService extends EventEmitter {
       type: 'unlinked',
       tokenImagePath,
       statblockPath: null,
-      previousStatblockPath: statblockPath,
-      ...(fromNote && { fromNote }),
+      previousStatblockPath: statblockPath
     });
     
     // Update all spawned tokens on all maps
@@ -275,13 +262,11 @@ export class TokenStatblockLinkService extends EventEmitter {
    * it, this imports a statblock that already carries an image.
    *
    * Returns the created token's image path, or null when there is nothing to
-   * import or a token is already linked. The token goes into `collectionId`,
-   * else the default collection.
+   * import or a token is already linked.
    */
-  async createTokenFromStatblockImage(statblockPath: string, collectionId?: string): Promise<string | null> {
+  async createTokenFromStatblockImage(statblockPath: string): Promise<string | null> {
     try {
-      const collection = collectionId ?? this.assetService.getDefaultCollectionId();
-      const result = await new StatblockTokenImportService(this.app, this.assetService).import([statblockPath], collection);
+      const result = await new StatblockTokenImportService(this.app, this.assetService).import([statblockPath], this.assetService.getDefaultCollectionId());
       const item = result.items[0];
       if (item?.asset) {
         this.emit('link-changed', { type: 'linked', tokenImagePath: item.asset.imagePath, statblockPath });
@@ -307,8 +292,7 @@ export class TokenStatblockLinkService extends EventEmitter {
   }
 
   /**
-   * Writes the token image into the statblock's frontmatter, through the note's
-   * open editor when it has one, so unsaved typing there is kept.
+   * Writes the token image into the statblock's frontmatter.
    *
    * Fantasy Statblocks renders the `image` field, so that is the source of
    * truth. The legacy `token-image` field (from the removed in-house statblock
@@ -318,21 +302,23 @@ export class TokenStatblockLinkService extends EventEmitter {
    * names the token being unlinked.
    */
   private async updateStatblockImage(statblockPath: string, tokenImagePath: string, linked = true): Promise<void> {
-    if (!this.app.vault.getFileByPath(statblockPath)) return;
-    const outcome = await NoteFieldWriter.forApp(this.app).patchNow(statblockPath, (frontmatter): NotePatch[] => {
-      if (linked) return [{ op: 'set', path: ['image'], base: frontmatter?.image, next: tokenImagePath }];
-      const cleared = (['image', 'token-image'] as const).flatMap((key): NotePatch[] => {
-        const value = frontmatter?.[key];
-        return value === undefined ? [] : [{ op: 'delete', path: [key], base: value }];
-      });
-      const token = frontmatter?.token;
-      return typeof token === 'string' && this.arePathsEquivalent(token, tokenImagePath)
-        ? [...cleared, { op: 'delete', path: ['token'], base: token }]
-        : cleared;
-    });
-    if (outcome.problem) console.error(`[TokenStatblockLinkService] Could not write the image of ${statblockPath}: ${outcome.problem}`);
-  }
+    const file = this.app.vault.getAbstractFileByPath(statblockPath);
+    if (!(file instanceof TFile)) return;
 
+    try {
+      await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+        if (linked) {
+          frontmatter.image = tokenImagePath;
+        } else {
+          delete frontmatter.image;
+          delete frontmatter['token-image'];
+          if (typeof frontmatter.token === 'string' && this.arePathsEquivalent(frontmatter.token, tokenImagePath)) delete frontmatter.token;
+        }
+      });
+    } catch (error) {
+      console.error('[TokenStatblockLinkService] Failed to write statblock image:', error);
+    }
+  }
   /**
    * Updates all spawned tokens on all maps that use the given image.
    */
@@ -359,7 +345,7 @@ export class TokenStatblockLinkService extends EventEmitter {
           if (statblockData) {
             token.name = statblockData.name;
             // As on an open map: what the statblock supplies starts anew, the rest stays
-            setOrDelete(token, 'resources', nonEmpty({ ...token.resources, ...startingResources(statblockData.record, definitions, statblockData.meanings) }));
+            setOrDelete(token, 'resources', nonEmpty({ ...token.resources, ...startingResources(statblockData.record, definitions) }));
             setOrDelete(token, 'difficulty', statblockData.difficulty);
             delete token.overriddenMax;
           }
@@ -391,10 +377,9 @@ export class TokenStatblockLinkService extends EventEmitter {
     }
   }
   
-  /** The fields of a statblock note with its template's meanings, as resources read them; null when the note is no statblock. */
-  async readStatblockRecord(statblockPath: string): Promise<StatblockFields | null> {
-    const data = await this.extractStatblockData(statblockPath);
-    return data && { fields: data.record, meanings: data.meanings };
+  /** The fields of a statblock note, as resources read them; null when the note is no statblock. */
+  async readStatblockRecord(statblockPath: string): Promise<Record<string, unknown> | null> {
+    return (await this.extractStatblockData(statblockPath))?.record ?? null;
   }
 
   /**
@@ -403,25 +388,23 @@ export class TokenStatblockLinkService extends EventEmitter {
   private async extractStatblockData(statblockPath: string): Promise<{
     name: string;
     difficulty?: string;
-    /** The statblock's fields as the resolver gives them, with the note's frontmatter laid over them. */
+    /** The statblock's fields: the Fantasy Statblocks creature, with the note's frontmatter laid over it. */
     record: Record<string, unknown>;
-    /** What the fields of the statblock's template mean (hit points, rating under other keys). */
-    meanings: FieldMeanings;
   } | null> {
     const file = this.app.vault.getAbstractFileByPath(statblockPath);
     if (!(file instanceof TFile)) return null;
 
     const frontmatter: Record<string, unknown> | undefined = this.app.metadataCache.getFileCache(file)?.frontmatter;
-    const statblock = await readStatblock(this.app, statblockPath);
-    if (!frontmatter && !statblock) return null;
-    const record = { ...statblock?.fields, ...frontmatter };
-    const meanings = statblock?.meanings ?? NO_MEANINGS;
-    const difficulty = difficultyLabel(record, meanings);
+    const creature: Record<string, unknown> | null = await resolveLinkedCreature(this.app, statblockPath);
+    if (!frontmatter && !creature) return null;
+    const record = { ...creature, ...frontmatter };
+    const tier = frontmatterLabel(record.tier);
+    const difficulty = frontmatterLabel(record.cr) !== undefined ? `CR ${frontmatterLabel(record.cr)}`
+      : tier !== undefined ? `T${tier}` : frontmatterLabel(record.difficulty);
     return {
       name: frontmatterLabel(record.name) ?? 'Unknown',
       ...(difficulty !== undefined && { difficulty }),
       record,
-      meanings,
     };
   }
   
@@ -538,7 +521,7 @@ export class TokenStatblockLinkService extends EventEmitter {
   /**
    * Finds an asset by any path format (resource URL or file path).
    */
-  async findAssetByAnyPath(path: string): Promise<TokenAsset | null> {
+  private async findAssetByAnyPath(path: string): Promise<TokenAsset | null> {
     const tokenAssets = await this.assetService.getTokenAssets();
     const normalizedSearchPath = this.normalizeResourcePath(path);
     

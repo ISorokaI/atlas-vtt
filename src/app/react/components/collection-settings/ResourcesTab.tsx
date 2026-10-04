@@ -8,7 +8,6 @@ import { cn } from '../../../../utils/cn';
 import fighterArt from '../../../assets/starter-tokens/fighter.webp?inline';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { EASE_OUT_CONTROL_POINTS } from '../../../utils/motion';
-import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestions';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import { ResourceCard } from './resources/ResourceCard';
 import { ResourceFan } from './resources/ResourceFan';
@@ -18,8 +17,8 @@ import { isUntouched, movedResources, newResourceAt, resourcesBySocket, SOCKETS,
 interface ResourcesTabProps {
   resources: ResourceDefinition[];
   onChange: (resources: ResourceDefinition[]) => void;
-  /** Statblock fields that hold a quantity, offered for the field (`resourceFieldSuggestions`). */
-  fieldSuggestions: readonly FieldSuggestion[];
+  /** Statblock fields of the collection's creatures that hold a quantity, offered for the field. */
+  fieldSuggestions: readonly string[];
 }
 
 const CARD_MOTION = {

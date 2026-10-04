@@ -2,9 +2,9 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({
-  LinkedStatblock: ({ path, tokens }: { path: string; tokens: Array<{ imagePath?: string }> }) => (
-    <div data-testid="statblock" data-portrait={tokens[0]?.imagePath}>{path}</div>
+vi.mock('../../src/app/react/components/FantasyStatblock', () => ({
+  default: ({ notePath, tokens }: { notePath: string; tokens: Array<{ imagePath?: string }> }) => (
+    <div data-testid="statblock" data-portrait={tokens[0]?.imagePath}>{notePath}</div>
   ),
 }));
 
@@ -15,8 +15,7 @@ import {
   statblockEntries,
 } from '../../src/app/packages/components/asset-manager/statblock-link/statblockEntries';
 import { BESTIARY_SETTLE_MS } from '../../src/app/creatures/CreatureIndex';
-import { bestiaryLookup } from '../../src/app/creatures/linkedCreature';
-import { statblockNoteEntries } from '../../src/app/packages/components/asset-manager/statblock-link/statblockNoteEntries';
+import { unparsedStatblockNotes } from '../../src/app/creatures/linkedCreature';
 
 type Handler = () => void;
 
@@ -157,10 +156,9 @@ describe('StatblockLinkModal', () => {
     expect(onLink).toHaveBeenCalledWith(null);
   });
 
-  it('explains a missing Fantasy Statblocks plugin', async () => {
+  it('explains a missing Fantasy Statblocks plugin', () => {
     open();
-    // Without the plugin the vault is still read for statblocks it can list.
-    expect(await screen.findByText(/Install and enable the Fantasy Statblocks plugin/)).toBeTruthy();
+    expect(screen.getByText(/Install and enable the Fantasy Statblocks plugin/)).toBeTruthy();
     expect(search().disabled).toBe(true);
   });
 
@@ -259,7 +257,7 @@ describe('StatblockLinkModal while the bestiary parses', () => {
       metadataCache: { getFileCache: () => null },
     } as never;
 
-    expect(await statblockNoteEntries(app, bestiaryLookup(), controller.signal)).toEqual([]);
+    expect(await unparsedStatblockNotes(app, undefined, controller.signal)).toEqual([]);
     expect(cachedRead).toHaveBeenCalledTimes(1);
   });
 

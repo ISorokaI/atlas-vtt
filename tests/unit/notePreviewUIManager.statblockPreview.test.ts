@@ -7,9 +7,8 @@ import { NotePreviewUIManager } from '../../src/app/services/NotePreviewUIManage
 
 vi.mock('../../src/app/services/FantasyStatblocksService', () => ({
   findCreatureForNotePath: (): object => ({}),
-  getFantasyStatblocksApi: (): object => ({}),
 }));
-vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({ LinkedStatblock: (): null => null }));
+vi.mock('../../src/app/react/components/FantasyStatblock', () => ({ default: (): null => null }));
 
 const VIEW_ID = 'statblock-preview-test';
 const NOTE_PATH = 'Bestiary/Goblin.md';

@@ -31,7 +31,7 @@ function boundsFor(op: QueryToken<FilterKeyword>['op'], typed: NumericRange, val
 /**
  * The filters `tokens` set on top of `filters`, and the words that stay in the
  * search: plain words, `name:` values and tokens that name nothing (a tag that
- * does not exist) as typed. Negated options and templates are excluded.
+ * does not exist) as typed. Negated options and layouts are excluded.
  */
 export function applyFilterTokens(
   text: string,
@@ -57,12 +57,9 @@ export function applyFilterTokens(
       case 'statblock':
         selection = withStatblockFilter(selection, statblockValue(value) ?? 'any');
         break;
-      case 'template': {
-        // A Fantasy Statblocks layout and a native template may share the name: the name picks both
-        const named = facets?.layouts.filter((candidate) => optionKey(candidate.label) === optionKey(value)) ?? [];
-        for (const key of named.length > 0 ? named.map((option) => option.key) : [value]) {
-          selection = withOptionState(selection, LAYOUT_FACET, key, state);
-        }
+      case 'layout': {
+        const layout = facets?.layouts.find((candidate) => optionKey(candidate.label) === optionKey(value));
+        selection = withOptionState(selection, LAYOUT_FACET, layout?.key ?? value, state);
         break;
       }
       case 'options':
