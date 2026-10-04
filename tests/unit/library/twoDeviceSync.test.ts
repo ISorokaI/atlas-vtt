@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AssetService, type Asset } from '../../../src/app/services/AssetService';
 import { transferAssets } from '../../../src/app/services/assetTransfer/assetTransfer';
+import { COPY_SETTLE_MS, libraryClock } from '../../../src/app/services/library/libraryState';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 import { FakeSync, seededRandom } from './fakeSync';
 
@@ -135,9 +136,16 @@ class Trial {
   }
 }
 
-/** Exchanges files and lets both devices check them, as the vault events would, until nothing changes. */
+/** The clock copied files are timed by; exchanges move it on. */
+let clock = 0;
+const realClock = libraryClock.now;
+beforeAll(() => { libraryClock.now = (): number => clock; });
+afterAll(() => { libraryClock.now = realClock; });
+
+/** Exchanges files and lets both devices check them, as the vault events would, until nothing changes; copied files have time to stand. */
 async function settle(sync: FakeSync, devices: readonly [Device, Device]): Promise<void> {
   for (let round = 0; round < 8; round++) {
+    clock += COPY_SETTLE_MS;
     const before = JSON.stringify([synced(devices[0].vault), synced(devices[1].vault)]);
     const outcome = await sync.exchange();
     await devices[0].assets.reconcileWithVault(outcome.deletedOn[0]);
@@ -161,9 +169,14 @@ async function runTrial(seed: number): Promise<void> {
       const edits = Math.floor(random() * 3);
       for (let i = 0; i < edits; i++) await trial.edit(device);
     }
-    // Offline now and then: edits pile up on both sides before they meet.
+    // Offline now and then: edits pile up on both sides before they meet. Some exchanges deliver in halves.
     if (random() < 0.5) {
-      const outcome = await sync.exchange();
+      const between = random() < 0.3 ? async (): Promise<void> => {
+        await a.assets.reconcileWithVault();
+        await b.assets.reconcileWithVault();
+      } : undefined;
+      clock += Math.floor(random() * COPY_SETTLE_MS);
+      const outcome = await sync.exchange(between);
       await a.assets.reconcileWithVault(outcome.deletedOn[0]);
       await b.assets.reconcileWithVault(outcome.deletedOn[1]);
     }
@@ -178,6 +191,7 @@ async function runTrial(seed: number): Promise<void> {
   for (const id of trial.created) {
     if (!trial.deleted.has(id)) expect(kept, `seed ${seed}: ${id} was never deleted`).toContain(id);
   }
+  for (const device of [a, b, fresh]) device.assets.cancelScheduledChecks();
 }
 
 describe('two devices sharing a library through a file sync', () => {

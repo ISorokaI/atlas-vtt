@@ -1,5 +1,5 @@
 import { Platform } from 'obsidian';
-import { foreignHotkeys, readHotkeyOverrides, type HotkeyOverrides } from '../keyboard/hotkeyOverrides';
+import { keptHotkeys, readHotkeyOverrides, type HotkeyOverrides } from '../keyboard/hotkeyOverrides';
 import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../tools/laserPointerSettings';
 import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
@@ -108,13 +108,11 @@ function deepMerge<T extends object>(target: T, source: Partial<T>): T {
   return result as T;
 }
 
-/** What Atlas reads from stored settings, and whether writing them back would change them. */
+/** What Atlas reads from stored settings. */
 export interface ReadSettings {
   settings: AtlasSettings;
-  /** Bindings stored for actions this Atlas does not have (a newer one's), written back as they were. */
+  /** Bindings this Atlas does not apply (another version's actions or defaults), written back as they were. */
   foreignHotkeys: Record<string, string>;
-  /** The stored hotkeys were in an older form (every binding saved), so the settings should be saved again. */
-  rewrite: boolean;
 }
 
 /**
@@ -125,8 +123,6 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
   const record: Partial<AtlasSettings> = isRecord(stored) ? stored : {};
   const merged = deepMerge(DEFAULT_SETTINGS, record);
   const hotkeys = readHotkeyOverrides(record.hotkeys);
-  const foreign = foreignHotkeys(record.hotkeys);
-  const known = Object.entries(isRecord(record.hotkeys) ? record.hotkeys : {}).filter(([id]) => !(id in foreign));
   return {
     settings: {
       ...merged,
@@ -134,8 +130,8 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       navigation: { inputMode },
       experimental: isRecord(record.experimental) ? merged.experimental : {},
     },
-    foreignHotkeys: foreign,
-    rewrite: JSON.stringify(Object.fromEntries(known)) !== JSON.stringify(hotkeys),
+    // Never rewritten on reading: the settings are shared with devices that may run another version.
+    foreignHotkeys: keptHotkeys(record.hotkeys),
   };
 }
 

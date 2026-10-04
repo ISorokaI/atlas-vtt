@@ -148,14 +148,18 @@ describe('scenes changed outside Atlas', () => {
     expect(vault.files.has(`${keep}/scenes/${vault.sceneId}.json`)).toBe(true);
   });
 
-  it('removes a scene whose map was deleted, with its JSON', async () => {
+  it('keeps a scene whose map was deleted until its record file goes, since another device may only have renamed the map', async () => {
     const vault = await setup();
+    const json = `${camp}/scenes/${vault.sceneId}.json`;
     vault.files.delete(`${camp}/scenes/Cave.atlasmap`);
 
     await vault.service.reconcileWithVault(new Set([`${camp}/scenes/Cave.atlasmap`]));
+    expect(await vault.service.getAssetById(vault.sceneId)).not.toBeNull();
+    expect(vault.files.has(json)).toBe(true);
 
+    vault.files.delete(json);
+    await vault.service.reconcileWithVault(new Set([json]));
     expect(await vault.service.getAssetById(vault.sceneId)).toBeNull();
-    expect(vault.files.has(`${camp}/scenes/${vault.sceneId}.json`)).toBe(false);
   });
 
   it('adds a scene for a map file copied into a collection', async () => {
@@ -256,7 +260,8 @@ describe('Atlas\' own folders at a collection\'s root', () => {
     const after = await vault.service.getAssets();
     // Nothing refers into Atlas' own folders; the scene whose record file went is its map again.
     expect(after.filter((asset) => /\/(snapshots|loot-history)\//.test(JSON.stringify(asset)))).toEqual([]);
-    expect(await vault.service.getAssetById(vault.tokenId)).toBeNull();
+    // The token keeps its record file, so it stays, its art missing.
+    expect(await vault.service.getAssetById(vault.tokenId)).toMatchObject({ imagePath: `${camp}/tokens/goblin_1790000000000_abcdef.webp` });
     expect(after.filter((asset) => !before.has(asset.id)).map((asset) => [asset.type, asset.name])).toEqual([['scene', 'Cave']]);
   });
 });

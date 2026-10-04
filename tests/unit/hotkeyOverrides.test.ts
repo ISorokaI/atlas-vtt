@@ -51,12 +51,16 @@ describe('saved hotkeys', () => {
     expect(savedHotkeys(data)).toEqual({ help: '' });
   });
 
-  it('rewrites files that saved every binding on load', async () => {
+  it('never rewrites the shared settings on load, so a binding another version calls a choice survives', async () => {
     vi.useFakeTimers();
-    const { settings, data } = stored({ hotkeys: { ...DEFAULT_MAP_HOTKEYS, assets: 'q' } });
+    const { settings, data } = stored({ hotkeys: { help: DEFAULT_MAP_HOTKEYS.help, assets: 'q' } });
     await settings.initialize();
     await vi.runAllTimersAsync();
-    expect(savedHotkeys(data)).toEqual({ assets: 'q' });
+    expect(data.saveData).not.toHaveBeenCalled();
     expect(settings.getHotkeys()).toEqual({ ...DEFAULT_MAP_HOTKEYS, assets: 'q' });
+
+    settings.setHotkey('palette', 'Shift+F12');
+    await vi.runAllTimersAsync();
+    expect(savedHotkeys(data)).toEqual({ help: DEFAULT_MAP_HOTKEYS.help, assets: 'q', palette: 'Shift+F12' });
   });
 });

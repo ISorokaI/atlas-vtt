@@ -43,6 +43,8 @@ export class SettingsService {
   /** Bindings of actions a newer Atlas added, written back unchanged. */
   private foreignHotkeys: Record<string, string> = {};
   private saveTimeout: number | undefined;
+  /** The settings as last read from or written to the plugin's data. */
+  private saved: AtlasSettings;
   private listeners: Set<SettingsListener> = new Set();
   /** Settles once the plugin's data is in place (after the startup migration). */
   private readonly storageReady: Promise<unknown>;
@@ -52,6 +54,7 @@ export class SettingsService {
     this.storageReady = storageReady;
     SettingsService.instances.set(app, this);
     this.settings = { ...DEFAULT_SETTINGS, navigation: { inputMode: this.deviceInputMode() } };
+    this.saved = this.settings;
   }
 
   /**
@@ -68,7 +71,15 @@ export class SettingsService {
    */
   async reload(): Promise<void> {
     await this.initialize();
+    const local = this.settings;
+    const saved = this.saved;
     await this.loadSettings();
+    // A change made here and not saved yet is newer than what arrived; it stays and is saved.
+    if (this.saveTimeout !== undefined) {
+      for (const key of Object.keys(local) as Array<keyof AtlasSettings>) {
+        if (JSON.stringify(local[key]) !== JSON.stringify(saved[key])) this.settings = { ...this.settings, [key]: local[key] };
+      }
+    }
     this.notify();
   }
 
@@ -87,17 +98,18 @@ export class SettingsService {
     }
     const read = readStoredSettings(stored, this.deviceInputMode());
     this.settings = read.settings;
+    this.saved = read.settings;
     this.foreignHotkeys = read.foreignHotkeys;
-    // Rewrite data from versions that saved every binding, so it keeps only the user's.
-    if (read.rewrite) this.scheduleSave();
   }
 
   private async saveSettings(): Promise<void> {
     // Saving before the data was read would write the defaults over the user's settings.
     await this.initialize();
     if (!this.data) return;
+    const settings = this.settings;
     try {
-      await this.data.saveData(storedSettings(this.settings, this.foreignHotkeys));
+      await this.data.saveData(storedSettings(settings, this.foreignHotkeys));
+      this.saved = settings;
     } catch (error) {
       console.error('[SettingsService] Failed to save settings:', error);
     }
@@ -109,6 +121,7 @@ export class SettingsService {
     }
 
     this.saveTimeout = window.setTimeout(() => {
+      this.saveTimeout = undefined;
       void this.saveSettings();
     }, 500); // Debounce saves by 500ms
   }

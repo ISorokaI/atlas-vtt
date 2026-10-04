@@ -6,6 +6,12 @@ export { recordFilePath };
 /** Library-wide facts every device shares: the default collection, the vault's publisher id. */
 export const LIBRARY_FILE = `${ATLAS_VTT_DIR}/library.json`;
 
+/**
+ * Where versions before the hidden cache kept the index, visible and so carried by sync tools.
+ * Read only while no device has written the library files, and retired once this one has.
+ */
+export const LEGACY_INDEX_FILE = `${ATLAS_VTT_DIR}/assets-metadata.json`;
+
 /** A collection's own record (name, settings, tags), in its folder so it moves and syncs with it. */
 export const COLLECTION_FILE = 'collection.json';
 

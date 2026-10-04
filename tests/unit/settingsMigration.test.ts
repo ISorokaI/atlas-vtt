@@ -1,3 +1,4 @@
+import { DEFAULT_MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
@@ -41,7 +42,7 @@ afterEach(() => {
 });
 
 describe('carrying the settings over into the plugin data', () => {
-  it('moves preferences, input mode and presets out of the old settings file and leaves the file in place', async () => {
+  it('moves preferences, input mode and presets out of the old settings file, which stays, marked as carried over', async () => {
     const old = JSON.stringify({ diceColour: 'dark', hotkeys: { assets: 'q' }, navigation: { inputMode: 'mouse' }, systemPresets: [homebrew, fen], futureKey: 1 });
     const { app, files, data, presets, migrate } = device({ [HIDDEN_SETTINGS]: old });
     await migrate();
@@ -50,7 +51,7 @@ describe('carrying the settings over into the plugin data', () => {
     expect(app.loadLocalStorage(INPUT_MODE_STORAGE_KEY)).toBe('mouse');
     expect(presetFiles(files)).toEqual([`${SYSTEM_PRESET_FOLDER}/Fen.json`, `${SYSTEM_PRESET_FOLDER}/Homebrew.json`]);
     expect(new SystemPresetService(presets).list().find((preset) => preset.id === 'p1')).toMatchObject({ name: 'Homebrew' });
-    expect(files.get(HIDDEN_SETTINGS)).toBe(old);
+    expect(JSON.parse(files.get(HIDDEN_SETTINGS)!)).toEqual({ ...JSON.parse(old), systemPresetsMovedToFiles: true });
     expect(app.loadLocalStorage(SETTINGS_MIGRATED_KEY)).toBe(true);
 
     const settings = new SettingsService(app, undefined, data);
@@ -58,6 +59,25 @@ describe('carrying the settings over into the plugin data', () => {
     expect(settings.getDiceLook().colour).toBe('dark');
     expect(settings.getHotkeys().assets).toBe('q');
     expect(settings.getNavigationSettings().inputMode).toBe('mouse');
+  });
+
+  it('brings back no preset deleted since another device, sharing the old file, carried it over', async () => {
+    const old = JSON.stringify({ systemPresets: [homebrew] });
+    const first = device({ [HIDDEN_SETTINGS]: old });
+    await first.migrate();
+    const marked = first.files.get(HIDDEN_SETTINGS)!;
+
+    // A second device, or this one reinstalled, finds the old file marked and the preset deleted.
+    const second = device({ [HIDDEN_SETTINGS]: marked });
+    await second.migrate();
+    expect(presetFiles(second.files)).toEqual([]);
+  });
+
+  it('drops bindings older versions saved at their default, keeping actions this Atlas does not have', async () => {
+    const old = JSON.stringify({ hotkeys: { help: DEFAULT_MAP_HOTKEYS.help, assets: 'q', laterAction: 'k' } });
+    const { data, migrate } = device({ [HIDDEN_SETTINGS]: old });
+    await migrate();
+    expect(data.stored()).toEqual({ hotkeys: { assets: 'q', laterAction: 'k' } });
   });
 
   it('reads the settings file of the oldest versions too', async () => {

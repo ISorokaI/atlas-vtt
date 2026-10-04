@@ -4,7 +4,7 @@ import { FileReferenceService } from '../services/FileReferenceService';
 import { MapThumbnailService } from '../services/MapThumbnailService';
 import type { PathMove } from '../services/renamedPaths';
 import { stemOf } from '../services/vault-sync/recoveredIds';
-import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
+import { followSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { runInBackground } from '../utils/backgroundTask';
 import { isLibraryFile } from '../services/library/libraryPaths';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
@@ -46,7 +46,9 @@ export function registerVaultSync(plugin: Plugin): void {
     runInBackground(propagateMoves(moves), 'Updating references to moved files');
   };
 
-  // Files deleted since the last check; a deleted map's snapshots and thumbnail wait for it, since the map may have only moved.
+  // Files deleted since the last check; a deleted map's thumbnail waits for it, since the map may have only moved.
+  // Snapshots are never trashed here: a deletion may be another device's rename arriving in halves,
+  // and a trash here would sync back to it. The device that deletes a scene trashes them.
   const deleted = new Set<string>();
   const deletedMaps = new Set<string>();
   const check = async (): Promise<void> => {
@@ -55,20 +57,16 @@ export function registerVaultSync(plugin: Plugin): void {
     deleted.clear();
     deletedMaps.clear();
     await assets.initialize();
-    // The scenes of deleted maps, read before the check drops their records.
-    const scenes = (await assets.getAssets(undefined, 'scene')).filter((scene) => maps.includes(scene.data?.mapPath ?? ''));
     const result = await assets.reconcileWithVault(seen);
     const moved = new Set([...result.fileMoves, ...filesOfMovedFolders(app, result.folderMoves)].map(({ from }) => from));
     for (const map of maps) {
       if (moved.has(map) || app.vault.getFileByPath(map)) continue;
       await sceneThumbnails.trashThumbnail(map);
     }
-    for (const scene of scenes) {
-      if (!(await assets.getAssetById(scene.id))) await trashSceneSnapshots(app, scene);
-    }
   };
   const scheduleCheck = debounce(() => runInBackground(check(), 'Checking Atlas files against the vault'), SETTLE_MS, true);
   plugin.register(() => scheduleCheck.cancel());
+  plugin.register(() => assets.cancelScheduledChecks());
 
   /** Moves the check found reach the open map and every stored reference, like renames Obsidian reports. */
   const followReconciliation = async (result: VaultReconciliation): Promise<void> => {
@@ -76,6 +74,7 @@ export function registerVaultSync(plugin: Plugin): void {
     const view = getLoadedAtlasView(app);
     for (const { from, to } of moves) view?.handleFileRenamed(from, to, stemOf(to));
     if (moves.length > 0) await propagateMoves(moves);
+    await followSceneSnapshots(app, await assets.getAssets(undefined, 'scene'));
     app.workspace.trigger('atlas-vtt:refresh-assets');
   };
   plugin.register(assets.onReconciled((result) => runInBackground(followReconciliation(result), 'Following files moved outside Atlas')));

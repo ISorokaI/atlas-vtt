@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { payloadBytes } from './recordPayload';
+import { comparedBytes } from './recordPayload';
 import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
 import { BUNDLE_MANIFEST, PRESET_ROLE, TEMPLATE_ROLE, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
@@ -194,7 +194,7 @@ export async function exportCollectionBundle(
     const preset = file.role === PRESET_ROLE ? await packedPresetRecord(content) : null;
     if (file.role === PRESET_ROLE && !preset) continue;
     if (preset) presets[preset.localId] = preset;
-    const data = template ? toBuffer(template.text) : rewriteContent(file, payloadBytes(file.vaultPath, content), origin.names);
+    const data = template ? toBuffer(template.text) : rewriteContent(file, comparedBytes(file.vaultPath, content), origin.names);
     const bundlePath = named(file.vaultPath);
     files.push({
       ...file,

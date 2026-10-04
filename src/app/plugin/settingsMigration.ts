@@ -1,5 +1,6 @@
 import type { App } from 'obsidian';
 import { isRecord } from '../services/atlasSettings';
+import { foreignHotkeys, readHotkeyOverrides } from '../keyboard/hotkeyOverrides';
 import { isInputMode, loadInputMode, saveInputMode } from '../services/deviceSettings';
 import type { PluginDataStore } from '../services/SettingsService';
 import { isStoredPreset } from '../services/systemPresets/presetFiles';
@@ -19,13 +20,13 @@ const MOVED_KEYS = ['systemPresets', 'navigation'];
 
 type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
-async function readOldSettings(app: App): Promise<Record<string, unknown> | null> {
+async function readOldSettings(app: App): Promise<{ path: string; settings: Record<string, unknown> } | null> {
   const { adapter } = app.vault;
   for (const path of OLD_SETTINGS_PATHS) {
     if (!(await adapter.exists(path))) continue;
     try {
       const parsed: unknown = JSON.parse(await adapter.read(path));
-      return isRecord(parsed) ? parsed : null;
+      return isRecord(parsed) ? { path, settings: parsed } : null;
     } catch (error) {
       console.error(`[Atlas] The old settings in ${path} could not be read:`, error);
       return null;
@@ -38,8 +39,28 @@ function preferencesOf(stored: Record<string, unknown>): Record<string, unknown>
   return Object.fromEntries(Object.entries(stored).filter(([key]) => !MOVED_KEYS.includes(key)));
 }
 
+/**
+ * The preferences of the old settings file. Versions before overrides saved every binding,
+ * so a binding equal to its default was never a choice and is left out; bindings of actions
+ * this Atlas does not have are kept.
+ */
+function oldPreferencesOf(stored: Record<string, unknown>): Record<string, unknown> {
+  const preferences = preferencesOf(stored);
+  if (isRecord(stored.hotkeys)) preferences.hotkeys = { ...foreignHotkeys(stored.hotkeys), ...readHotkeyOverrides(stored.hotkeys) };
+  return preferences;
+}
+
+/** Written into the old settings file once its presets became files, so no device brings back a preset deleted since. */
+const PRESETS_MOVED_KEY = 'systemPresetsMovedToFiles';
+
 const presetsIn = (stored: Record<string, unknown> | null): unknown[] =>
-  Array.isArray(stored?.systemPresets) ? stored.systemPresets : [];
+  Array.isArray(stored?.systemPresets) && stored[PRESETS_MOVED_KEY] !== true ? stored.systemPresets : [];
+
+/** Marks the old settings file as carried over; another device that shares it, or a reinstall, then skips its presets. */
+async function markPresetsMoved(app: App, old: { path: string; settings: Record<string, unknown> } | null): Promise<void> {
+  if (!old || old.settings[PRESETS_MOVED_KEY] === true || !Array.isArray(old.settings.systemPresets)) return;
+  await app.vault.adapter.write(old.path, JSON.stringify({ ...old.settings, [PRESETS_MOVED_KEY]: true }, null, 2));
+}
 
 function migrated(storage: DeviceStorage): boolean {
   try {
@@ -62,8 +83,9 @@ export async function migrateSettingsToPluginData(app: App, data: PluginDataStor
   if (migrated(app)) return;
   const loaded: unknown = await data.loadData();
   const current = isRecord(loaded) && Object.keys(loaded).length > 0 ? loaded : null;
-  const old = await readOldSettings(app);
-  if (!current && old) await data.saveData(preferencesOf(old));
+  const oldFile = await readOldSettings(app);
+  const old = oldFile?.settings ?? null;
+  if (!current && old) await data.saveData(oldPreferencesOf(old));
 
   const mode = isRecord(old?.navigation) ? old.navigation.inputMode : undefined;
   if (isInputMode(mode) && !loadInputMode(app)) saveInputMode(app, mode);
@@ -83,5 +105,6 @@ export async function migrateSettingsToPluginData(app: App, data: PluginDataStor
   if (unwritten.length > 0) throw new Error(`${unwritten.length} system preset file(s) could not be written; trying again at the next start`);
   // The presets live in their files now; a list left in the plugin's data would bring deleted ones back.
   if (current && 'systemPresets' in current) await data.saveData(preferencesOf(current));
+  await markPresetsMoved(app, oldFile);
   app.saveLocalStorage(SETTINGS_MIGRATED_KEY, true);
 }

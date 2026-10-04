@@ -58,3 +58,6 @@ export function placedRecord(reading: RecordReading): Asset {
 
 /** The id a copy of record `id` gets: worked out from where the copy lies, so every device gives it the same. */
 export const copyId = (id: string, path: string): string => `${id}-copy-${hashText(path)}`;
+
+/** The record a copy's id was made from. */
+export const originalOfCopy = (id: string): string => id.replace(/-copy-[a-z0-9]+$/, '');

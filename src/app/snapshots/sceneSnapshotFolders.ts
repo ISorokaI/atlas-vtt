@@ -2,7 +2,9 @@ import { TFile, TFolder, type App } from 'obsidian';
 import type { AssetService, SceneAsset } from '../services/AssetService';
 import { trashVaultItem } from '../utils/trashVaultItem';
 import { SceneSnapshotService } from './SceneSnapshotService';
-import { collectionSnapshotsFolder, isSnapshotJsonPath, sceneSnapshotFolder } from './snapshotPaths';
+import { collectionSnapshotsFolder, isSnapshotJsonPath, parentFolderOf, sceneSnapshotFolder } from './snapshotPaths';
+import { COLLECTIONS_DIR } from '../services/assetPaths';
+import { ensureFolder } from '../plugin/vaultFolders';
 
 type SceneKey = Pick<SceneAsset, 'id' | 'collection'>;
 
@@ -28,6 +30,25 @@ export async function snapshotFolderForMap(assets: AssetService, mapPath: string
 export async function trashSceneSnapshots(app: App, scene: SceneKey): Promise<void> {
   const folder = app.vault.getFolderByPath(snapshotFolderOf(scene));
   if (folder) await trashVaultItem(app, folder);
+}
+
+/**
+ * Moves the snapshots of scenes whose collection changed outside Atlas (a map
+ * dragged into another collection's folder) to their collection's folder, so
+ * they stay with the scene. A scene whose folder is in place is left alone.
+ */
+export async function followSceneSnapshots(app: App, scenes: readonly SceneKey[]): Promise<void> {
+  const collections = (app.vault.getFolderByPath(COLLECTIONS_DIR)?.children ?? []).filter((child) => child instanceof TFolder);
+  for (const scene of scenes) {
+    const target = snapshotFolderOf(scene);
+    if (app.vault.getFolderByPath(target)) continue;
+    const found = collections
+      .map((collection) => app.vault.getFolderByPath(sceneSnapshotFolder(collection.name, scene.id)))
+      .find((folder): folder is TFolder => folder !== null);
+    if (!found) continue;
+    await ensureFolder(app, parentFolderOf(target));
+    await app.fileManager.renameFile(found, target);
+  }
 }
 
 /** Moves a scene's snapshot folder to the trash once nothing is left in it. */

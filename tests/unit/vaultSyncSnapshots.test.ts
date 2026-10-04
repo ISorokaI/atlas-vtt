@@ -31,14 +31,16 @@ async function syncedVault(): Promise<{ vault: InMemoryApp; assets: AssetService
 afterEach(() => AssetService.resetInstance());
 
 describe('snapshots of a map deleted outside Atlas', () => {
-  it('go to the trash once the check drops the scene', async () => {
+  it('stay: a deletion may be another device renaming the map, and a trash here would sync back to it', async () => {
     const { vault, assets, folder } = await syncedVault();
 
     vault.files.delete(MAP_PATH);
     vault.emit('delete', new TFile(MAP_PATH));
 
-    await vi.waitFor(async () => expect(await assets.getAssets('c', 'scene')).toEqual([]));
-    await vi.waitFor(() => expect(vault.files.has(`${folder}/s1.json`)).toBe(false));
+    await vi.waitFor(async () => expect(await assets.getAssets('c', 'scene')).toHaveLength(1));
+    // Let the rest of the check run.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(vault.files.has(`${folder}/s1.json`)).toBe(true);
   });
 
   it('stay while the map only moved and its scene follows it', async () => {

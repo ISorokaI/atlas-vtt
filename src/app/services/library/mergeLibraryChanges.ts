@@ -1,24 +1,12 @@
 import type { Asset, AssetMetadata } from '../AssetService';
-import type { FileReading, LibraryChanges, RecordReading } from './libraryReader';
+import type { LibraryChanges, PayloadReading, RecordReading } from './libraryReader';
 import { recordFilePath } from './libraryPaths';
-import { assetKey, collectionIdentity, collectionKey, duplicateKey, hashText, idOfKey, LIBRARY_KEY, type FileStamp, type LibraryState } from './libraryState';
+import { assetKey, copyKey, duplicateKey, idOfKey, type FileStamp, type LibraryState } from './libraryState';
 import { copyId, placedRecord, resolveHolders } from './recordHolders';
-import { collectionFolderPath } from '../assetPaths';
-import { moveCollectionRecord } from '../collectionRecords';
-import type { PathMove } from '../renamedPaths';
+import { mergeCollectionFiles, mergeLibraryFacts } from './mergeCollections';
+import { sameJson, stamp, type LibraryMergeResult, type MergeContext } from './mergeShared';
 
-export interface LibraryMergeResult {
-  changed: boolean;
-  /** Record files that hold a record another file already holds (copies a sync tool made on a conflict); left alone. */
-  duplicates: string[];
-  /** Collections whose record changed on disk, so open maps can apply their rules. */
-  changedCollections: string[];
-  /** Collection folders renamed outside Atlas, recognised by the `collection.json` they carried along. */
-  folderMoves: PathMove[];
-}
-
-/** A collection whose folder was copied gets an identity of its own, the same on every device that sees the copy. */
-const copiedCollectionUid = (uid: string, folder: string): string => `${uid.slice(0, 36)}-${hashText(folder)}`;
+export type { LibraryMergeResult } from './mergeShared';
 
 const PAYLOAD_TYPES: ReadonlySet<string> = new Set(['scene', 'encounter', 'player', 'character', 'statblock']);
 const MIRRORED_FIELDS: Readonly<Record<string, readonly string[]>> = {
@@ -26,13 +14,8 @@ const MIRRORED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   player: ['tokens', 'level', 'class'],
 };
 
-const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
-
-function stamp(state: LibraryState, reading: FileReading, key: string): void {
-  const entry: FileStamp = { key, hash: reading.hash, mtime: reading.mtime, size: reading.size };
-  if (reading.newer) entry.readOnly = true;
-  state.files[reading.path] = entry;
-}
+/** Whether a file this device read or wrote holds `id` as a record of its own. */
+const hasOwnFile = (state: LibraryState, id: string): boolean => Object.values(state.files).some((entry) => entry.key === assetKey(id));
 
 /**
  * Takes the library files that changed on disk into the index: their content
@@ -46,93 +29,80 @@ export function mergeLibraryChanges(
   state: LibraryState,
   changes: LibraryChanges,
   migrated: boolean,
-  hasCollectionFile: (collectionId: string) => boolean,
+  vault: Pick<MergeContext, 'hasCollectionFile' | 'settledCopy'>,
 ): LibraryMergeResult {
-  let changed = false;
-  const duplicates: string[] = [];
-  const changedCollections: string[] = [];
-  const folderMoves: PathMove[] = [];
+  const result: LibraryMergeResult = { changed: false, duplicates: [], changedCollections: [], folderMoves: [], retryAt: null };
+  const context: MergeContext = { metadata, state, migrated, ...vault, result };
 
   for (const reading of changes.touched) {
     const previous = state.files[reading.path];
     if (previous) state.files[reading.path] = { ...previous, mtime: reading.mtime, size: reading.size };
   }
+  const upserted = mergeRecords(context, changes.records);
+  mergePayloads(context, changes.payloads);
+  mergeCollectionFiles(context, changes.collections);
+  mergeLibraryFacts(context, changes.library);
+  dropRecordsWhoseFileWent(context, changes.removed, upserted);
+  return result;
+}
 
-  const readingsById = new Map<string, RecordReading[]>();
-  for (const reading of changes.records) {
-    const list = readingsById.get(reading.record.id);
-    if (list) list.push(reading);
-    else readingsById.set(reading.record.id, [reading]);
-  }
+/** Takes in the record files that changed, deciding for each id which file holds it; returns the ids taken in. */
+function mergeRecords(context: MergeContext, readings: readonly RecordReading[]): Set<string> {
+  const { state, result } = context;
   const upserted = new Set<string>();
-  const takeIn = (record: Asset, reading: RecordReading): void => {
-    const key = assetKey(record.id);
-    stamp(state, reading, key);
-    delete state.derived[key];
-    upserted.add(record.id);
-    if (sameJson(metadata.assets[record.id], record)) return;
-    metadata.assets[record.id] = record;
-    changed = true;
-  };
-  for (const [id, readings] of readingsById) {
-    const { winner, duplicates: conflictCopies, copies } = resolveHolders(readings);
-    for (const reading of conflictCopies) {
-      duplicates.push(reading.path);
+  const byId = new Map<string, RecordReading[]>();
+  for (const reading of readings) byId.set(reading.record.id, [...(byId.get(reading.record.id) ?? []), reading]);
+
+  for (const [id, holders] of byId) {
+    const { winner, duplicates, copies } = resolveHolders(holders);
+    for (const reading of duplicates) {
+      result.duplicates.push(reading.path);
       stamp(state, reading, duplicateKey(id));
     }
-    takeIn(placedRecord(winner), winner);
-    for (const reading of copies) takeIn({ ...placedRecord(reading), id: copyId(id, reading.path) }, reading);
-  }
-
-  changed = mergePayloads(metadata, state, changes) || changed;
-
-  // After the records: moving a collection's record rewrites the paths every record holds into its folder.
-  for (const reading of changes.collections) {
-    const id = reading.collection.id;
-    let collection = reading.collection;
-    const sameUid = Object.values(metadata.collections).find((other) => other.uid === collection.uid && other.id !== id);
-    // A copied folder leaves the original's collection.json where it was; a renamed one took it along.
-    if (sameUid && !hasCollectionFile(sameUid.id)) {
-      moveCollectionRecord(metadata, sameUid.id, id);
-      folderMoves.push({ from: collectionFolderPath(sameUid.id), to: collectionFolderPath(id) });
-    } else if (sameUid) {
-      collection = { ...collection, uid: copiedCollectionUid(collection.uid, id) };
-    }
-    stamp(state, reading, collectionKey(id));
-    delete state.derived[collectionIdentity(collection.uid)];
-    if (!sameJson(metadata.collections[id], collection)) {
-      metadata.collections[id] = collection;
-      changedCollections.push(id);
-      changed = true;
+    takeIn(context, placedRecord(winner), winner, upserted);
+    for (const reading of copies) {
+      // Taken in once it has stood long enough: until then it may be another device's move arriving in halves.
+      if (!context.settledCopy(reading.path)) continue;
+      const copied = copyId(id, reading.path);
+      stamp(state, reading, copyKey(copied));
+      // Written as a record of its own already, its old file is what the copy left behind; the writer clears it.
+      if (hasOwnFile(state, copied)) continue;
+      upsert(context, { ...placedRecord(reading), id: copied }, upserted);
     }
   }
+  return upserted;
+}
 
-  if (changes.library) {
-    stamp(state, changes.library, LIBRARY_KEY);
-    delete state.derived[LIBRARY_KEY];
-    changed = applyLibraryFacts(metadata, changes.library.facts) || changed;
+/** Takes a record in from the file it lives in; a file that stood for a copy until now hands it back to its record. */
+function takeIn(context: MergeContext, record: Asset, reading: RecordReading, upserted: Set<string>): void {
+  const { metadata, state, result } = context;
+  const formerCopy = idOfKey(state.files[reading.path]?.key ?? '', 'copy');
+  stamp(state, reading, assetKey(record.id));
+  delete state.derived[assetKey(record.id)];
+  upsert(context, record, upserted);
+  if (formerCopy && formerCopy !== record.id && !hasOwnFile(state, formerCopy) && metadata.assets[formerCopy]) {
+    delete metadata.assets[formerCopy];
+    delete state.derived[assetKey(formerCopy)];
+    result.changed = true;
   }
+}
 
-  for (const { path, stamp: entry } of changes.removed) {
-    delete state.files[path];
-    const id = idOfKey(entry.key, 'asset');
-    const asset = id ? metadata.assets[id] : undefined;
-    if (!migrated || !id || !asset || upserted.has(id) || recordFilePath(asset) !== path) continue;
-    delete metadata.assets[id];
-    changed = true;
-  }
-  return { changed: changed || folderMoves.length > 0, duplicates, changedCollections, folderMoves };
+function upsert(context: MergeContext, record: Asset, upserted: Set<string>): void {
+  upserted.add(record.id);
+  if (sameJson(context.metadata.assets[record.id], record)) return;
+  context.metadata.assets[record.id] = record;
+  context.result.changed = true;
 }
 
 /** Payloads older versions wrote into the JSON of records the index knows: the file's payload wins, as records do. */
-function mergePayloads(metadata: AssetMetadata, state: LibraryState, changes: LibraryChanges): boolean {
-  if (changes.payloads.length === 0) return false;
+function mergePayloads(context: MergeContext, readings: readonly PayloadReading[]): void {
+  if (readings.length === 0) return;
+  const { metadata, state, result } = context;
   const byPath = new Map<string, Asset>();
   for (const asset of Object.values(metadata.assets)) {
     if (PAYLOAD_TYPES.has(asset.type)) byPath.set(recordFilePath(asset), asset);
   }
-  let changed = false;
-  for (const reading of changes.payloads) {
+  for (const reading of readings) {
     const asset = byPath.get(reading.path);
     if (!asset) continue;
     stamp(state, reading, assetKey(asset.id));
@@ -142,25 +112,24 @@ function mergePayloads(metadata: AssetMetadata, state: LibraryState, changes: Li
       if (key in reading.payload) updated[key] = reading.payload[key];
     }
     Object.assign(asset, updated);
-    changed = true;
+    result.changed = true;
   }
-  return changed;
 }
 
-/** Library facts from `library.json`; a fact it lacks keeps the index's value, and the starter tokens stay added once added anywhere. */
-function applyLibraryFacts(metadata: AssetMetadata, facts: { defaultCollectionId?: string; vaultId?: string; starterTokensAdded?: boolean }): boolean {
-  let changed = false;
-  if (facts.defaultCollectionId && facts.defaultCollectionId !== metadata.defaultCollectionId) {
-    metadata.defaultCollectionId = facts.defaultCollectionId;
-    changed = true;
+/** Records whose file went leave the index, unless the record was taken in from another file. */
+function dropRecordsWhoseFileWent(context: MergeContext, removed: ReadonlyArray<{ path: string; stamp: FileStamp }>, upserted: ReadonlySet<string>): void {
+  const { metadata, state, migrated, result } = context;
+  for (const { path, stamp: entry } of removed) {
+    delete state.files[path];
+    const own = idOfKey(entry.key, 'asset');
+    const copied = idOfKey(entry.key, 'copy');
+    const id = own ?? copied;
+    const asset = id ? metadata.assets[id] : undefined;
+    if (!migrated || !id || !asset || upserted.has(id)) continue;
+    if (own && recordFilePath(asset) !== path) continue;
+    if (copied && hasOwnFile(state, copied)) continue;
+    delete metadata.assets[id];
+    delete state.derived[assetKey(id)];
+    result.changed = true;
   }
-  if (facts.vaultId && facts.vaultId !== metadata.vaultId) {
-    metadata.vaultId = facts.vaultId;
-    changed = true;
-  }
-  if (facts.starterTokensAdded && !metadata.starterTokensAdded) {
-    metadata.starterTokensAdded = true;
-    changed = true;
-  }
-  return changed;
 }

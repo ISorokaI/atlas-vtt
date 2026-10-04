@@ -4,6 +4,7 @@ import type { Asset, CollectionMetadata } from '../AssetService';
 import { collectionOfCollectionFile, isLibraryFile, isRecordFileCandidate, LIBRARY_FILE } from './libraryPaths';
 import { parseCollectionFile, parseLibraryFile, type LibraryFacts } from './collectionFile';
 import { parseRecordFile } from './recordFile';
+import { originalOfCopy } from './recordHolders';
 import { hashText, idOfKey, type FileStamp, type LibraryState } from './libraryState';
 
 /** How a file was found on disk: what its stamp will say once the change is taken in. */
@@ -81,7 +82,11 @@ export async function readLibraryChanges(app: App, state: LibraryState, recordFo
   return changes;
 }
 
-const recordIdOf = (key: string): string | null => idOfKey(key, 'asset') ?? idOfKey(key, 'duplicate');
+/** The record id a stamped file holds; a copy's file holds the record it was copied from. */
+function recordIdOf(key: string): string | null {
+  const copied = idOfKey(key, 'copy');
+  return copied !== null ? originalOfCopy(copied) : idOfKey(key, 'asset') ?? idOfKey(key, 'duplicate');
+}
 
 /**
  * When a file holding a record changed or went, every other file holding it is

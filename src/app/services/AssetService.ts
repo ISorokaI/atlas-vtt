@@ -23,9 +23,9 @@ import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from 
 import { trashVaultItem } from '../utils/trashVaultItem';
 import { LibrarySync } from './library/LibrarySync';
 import type { LibraryMergeResult } from './library/mergeLibraryChanges';
-import { recordFilePath } from './library/libraryPaths';
+import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
 import { isPayloadUnread, serializeRecord } from './library/recordFile';
-import { parseLibraryState } from './library/libraryState';
+import { libraryClock, parseLibraryState } from './library/libraryState';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 
 export interface BaseAsset {
@@ -231,7 +231,7 @@ export interface AssetTransferCommit {
  * device builds its own from the files, so sync tools must not carry it.
  */
 const ASSETS_METADATA_PATH = getDataFilePath(`${ATLAS_VTT_DIR}/assets-metadata.json`);
-const LEGACY_ASSETS_METADATA_PATH = `${ATLAS_VTT_DIR}/assets-metadata.json`;
+const LEGACY_ASSETS_METADATA_PATH = LEGACY_INDEX_FILE;
 /** A sync tool may be rewriting the index; a few more reads ride that out. */
 const METADATA_READ_OPTIONS = { retries: 3, retryDelayMs: 200 };
 /** The key under which the cache keeps the library's device-local bookkeeping. */
@@ -256,6 +256,8 @@ export class AssetService {
   private readonly library: LibrarySync;
   /** Above zero while Atlas changes the index by itself (loading, a vault check); saves then reach only the cache. */
   private automaticDepth = 0;
+  /** A vault check waiting for files that look like copies to stand long enough. */
+  private copyCheck: number | null = null;
 
   private constructor(app: App) {
     this.app = app;
@@ -363,8 +365,15 @@ export class AssetService {
     return assetFilePath(asset);
   }
 
-  private readStoredMetadata(): Promise<StoredMetadata> {
-    return readStoredMetadata(this.app.vault.adapter, [ASSETS_METADATA_PATH, LEGACY_ASSETS_METADATA_PATH], METADATA_READ_OPTIONS);
+  /**
+   * The cache, or the visible index of older versions while no device has written
+   * the library files: once one has, those files are the library and that index
+   * is frozen at an older state, which would bring back what was deleted since.
+   */
+  private async readStoredMetadata(): Promise<StoredMetadata> {
+    const legacyApplies = !(await this.app.vault.adapter.exists(LIBRARY_FILE));
+    const paths = legacyApplies ? [ASSETS_METADATA_PATH, LEGACY_ASSETS_METADATA_PATH] : [ASSETS_METADATA_PATH];
+    return readStoredMetadata(this.app.vault.adapter, paths, METADATA_READ_OPTIONS);
   }
 
   private async loadMetadata(): Promise<void> {
@@ -397,7 +406,7 @@ export class AssetService {
    * returns whether it changed the index without saving.
    */
   private async automatically(step: () => Promise<boolean>): Promise<void> {
-    const before = this.metadata ? this.library.entityIdentities(this.metadata) : new Set<string>();
+    const before = this.metadata ? this.library.assetIds(this.metadata) : new Set<string>();
     const savesBefore = this.saveCount;
     this.automaticDepth++;
     let changed: boolean;
@@ -514,16 +523,18 @@ export class AssetService {
   }
 
   /**
-   * Saves the index as it is now: the library files that changed first, then
-   * the cache, so the cache never holds a record its file lacks. Saves reach
-   * the disk in the order they were made.
+   * Saves the index: the library files that changed first, then the cache, so
+   * the cache never holds a record its file lacks. Saves reach the disk in the
+   * order they were made, each with the index as it is when its turn comes, so
+   * a save waiting behind a read of the files never writes what the read replaced.
    */
   private saveMetadata(): Promise<void> {
     if (!this.metadata) return Promise.resolve();
-    const snapshot = structuredClone(this.metadata);
     const persistFiles = this.automaticDepth === 0;
     this.saveCount++;
     return this.writes.run(async () => {
+      if (!this.metadata) return;
+      const snapshot = structuredClone(this.metadata);
       let failure: Error | null = null;
       try {
         if (persistFiles) await this.library.persist(snapshot);
@@ -1424,7 +1435,23 @@ export class AssetService {
     // Inside the write queue, so no save writes a file while it is read.
     const merged = await this.writes.run(() => this.library.read(this.metadata!));
     for (const id of merged.changedCollections) this.app.workspace.trigger('atlas-vtt:collection-settings-changed', id);
+    if (merged.retryAt !== null) this.checkAgainAt(merged.retryAt);
     return merged;
+  }
+
+  /** Checks the vault again once files that look like copies have stood long enough to be taken in. */
+  private checkAgainAt(time: number): void {
+    if (this.copyCheck !== null) window.clearTimeout(this.copyCheck);
+    this.copyCheck = window.setTimeout(() => {
+      this.copyCheck = null;
+      runInBackground(this.reconcileWithVault().then(() => undefined), 'Taking in copied Atlas files');
+    }, Math.max(0, time - libraryClock.now()) + 100);
+  }
+
+  /** Stops a check waiting for copies; called when the plugin unloads. */
+  cancelScheduledChecks(): void {
+    if (this.copyCheck !== null) window.clearTimeout(this.copyCheck);
+    this.copyCheck = null;
   }
 
   /**
@@ -1600,6 +1627,7 @@ export class AssetService {
    * Reset the singleton instance (useful for testing)
    */
   static resetInstance(): void {
+    AssetService.instance?.cancelScheduledChecks();
     AssetService.instance = null;
   }
 }

@@ -41,12 +41,17 @@ export class FakeSync {
 
   constructor(private readonly a: InMemoryApp, private readonly b: InMemoryApp, private readonly random: () => number) {}
 
-  async exchange(): Promise<SyncOutcome> {
+  /**
+   * One exchange. `between`, when given, runs after new and changed files have
+   * arrived and before deletions do, as a sync that delivers a rename in
+   * halves lets a vault check run in the middle.
+   */
+  async exchange(between?: () => Promise<void>): Promise<SyncOutcome> {
     const sides = [syncedState(this.a), syncedState(this.b)] as const;
     const paths = new Set([...this.base.keys(), ...sides[0].keys(), ...sides[1].keys()]);
     const deletedOn: [Set<string>, Set<string>] = [new Set(), new Set()];
     const next = new Map<string, string>();
-    let changed = false;
+    const outcomes: Array<{ path: string; inA: string | undefined; inB: string | undefined; winner: string | undefined }> = [];
     for (const path of [...paths].sort()) {
       const base = this.base.get(path);
       const [inA, inB] = [sides[0].get(path), sides[1].get(path)];
@@ -56,8 +61,17 @@ export class FakeSync {
       if (changedA && changedB) winner = inA === inB || this.random() < 0.5 ? inA : inB;
       else winner = changedA ? inA : inB;
       if (winner !== undefined) next.set(path, winner);
-      changed = await this.apply(this.a, path, inA, winner, deletedOn[0]) || changed;
-      changed = await this.apply(this.b, path, inB, winner, deletedOn[1]) || changed;
+      outcomes.push({ path, inA, inB, winner });
+    }
+    // Files bring their folders along; folders are exchanged once every file has arrived or gone.
+    let changed = false;
+    for (const deletions of [false, true]) {
+      if (deletions && between) await between();
+      for (const { path, inA, inB, winner } of outcomes) {
+        if ((winner === undefined) !== deletions) continue;
+        changed = await this.apply(this.a, path, inA, winner, deletedOn[0]) || changed;
+        changed = await this.apply(this.b, path, inB, winner, deletedOn[1]) || changed;
+      }
     }
     this.base = next;
     changed = this.exchangeFolders() || changed;

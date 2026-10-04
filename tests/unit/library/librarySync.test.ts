@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { RECORD_KEY } from '../../../src/app/services/library/recordFile';
+import { COPY_SETTLE_MS, libraryClock } from '../../../src/app/services/library/libraryState';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
 const CACHE = 'atlas-vtt/.atlas-data/assets-metadata.json';
@@ -116,7 +117,7 @@ describe('a second device', () => {
     expect(b.files.has(ENCOUNTER)).toBe(false);
   });
 
-  it('keeps a token whose record arrived before its art, and lets it go once the art is deleted', async () => {
+  it('keeps a token whose record arrived before its art, and while its art is gone, until its record file goes', async () => {
     const a = await device(olderVault());
     const files = syncedFiles(a);
     delete files[ART];
@@ -128,10 +129,15 @@ describe('a second device', () => {
     await b.assets.reconcileWithVault();
     expect(await b.assets.getAssetById('token-1')).toMatchObject({ imagePath: ART });
 
+    // Another device's rename can arrive as a deletion before the record that names the new file.
     await b.app.vault.adapter.remove(ART);
     await b.assets.reconcileWithVault(new Set([ART]));
+    expect(await b.assets.getAssetById('token-1')).not.toBeNull();
+    expect(b.files.has(TOKEN_RECORD)).toBe(true);
+
+    await b.app.vault.adapter.remove(TOKEN_RECORD);
+    await b.assets.reconcileWithVault(new Set([TOKEN_RECORD]));
     expect(await b.assets.getAssetById('token-1')).toBeNull();
-    expect(b.files.has(TOKEN_RECORD)).toBe(false);
   });
 
   it('writes nothing for art that arrived before its record, and keeps one token once the record arrives', async () => {
@@ -183,15 +189,31 @@ describe('a device that starts before sync delivered the library', () => {
 });
 
 describe('collection folders', () => {
-  it('gives a copied collection folder its own identity, the same on every device', async () => {
-    const a = await device(olderVault());
-    const copyOf = (vault: InMemoryApp): Promise<void> => arrive(vault, 'atlas-vtt/collections/Fen copy/collection.json', vault.files.get(`${FEN}/collection.json`)!);
-    await copyOf(a);
-    await a.assets.reconcileWithVault();
-    const b = await device(syncedFiles(a));
+  it('takes a copied collection folder in once it stood beside the original, with an identity of its own written to its file', async () => {
+    const realClock = libraryClock.now;
+    let now = 1_000_000;
+    libraryClock.now = (): number => now;
+    try {
+      const a = await device(olderVault());
+      const copied = 'atlas-vtt/collections/Fen copy/collection.json';
+      await arrive(a, copied, a.files.get(`${FEN}/collection.json`)!);
+      await a.assets.reconcileWithVault();
+      // Until then it may be another device's rename arriving in halves.
+      expect(JSON.parse(a.files.get(copied)!)).toMatchObject({ uid: 'uid-fen' });
 
-    const uidOn = async (assets: AssetService): Promise<string | undefined> => (await assets.getCollection('Fen copy'))?.uid;
-    expect(await uidOn(a.assets)).not.toBe('uid-fen');
-    expect(await uidOn(b.assets)).toBe(await uidOn(a.assets));
+      now += COPY_SETTLE_MS;
+      await a.assets.reconcileWithVault();
+      const uid = (await a.assets.getCollection('Fen copy'))?.uid;
+      expect(uid).not.toBe('uid-fen');
+      expect(JSON.parse(a.files.get(copied)!)).toMatchObject({ uid });
+      expect((await a.assets.getCollection('Fen'))?.uid).toBe('uid-fen');
+
+      const b = await device(syncedFiles(a));
+      expect((await b.assets.getCollection('Fen copy'))?.uid).toBe(uid);
+      a.assets.cancelScheduledChecks();
+      b.assets.cancelScheduledChecks();
+    } finally {
+      libraryClock.now = realClock;
+    }
   });
 });

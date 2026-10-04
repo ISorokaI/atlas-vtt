@@ -2,7 +2,11 @@ import { isRecord } from '../assetMetadataGuards';
 
 /** What this device last knew of one library file, so unchanged files are neither read nor written again. */
 export interface FileStamp {
-  /** The entity the file holds: `asset:<id>`, `collection:<id>`, `library`, or `duplicate:<id>` for another file holding a record. */
+  /**
+   * The entity the file holds: `asset:<id>`, `collection:<id>`, `library`, `duplicate:<id>` for
+   * another file holding a record, or `copy:<copy id>` for a file a copied folder brought, which
+   * stands for a record of its own until the user changes it.
+   */
   key: string;
   hash: string;
   mtime: number;
@@ -29,15 +33,27 @@ export interface LibraryState {
 
 export const emptyLibraryState = (): LibraryState => ({ files: {}, derived: {} });
 
+/**
+ * How long a file that looks like a copy (a folder copied beside its original)
+ * must stand before it is taken in as one: a sync tool may deliver another
+ * device's rename as the new folder first and the old one's deletion later,
+ * and within this time that reads as the move it is.
+ */
+export const COPY_SETTLE_MS = 60_000;
+
+/** The clock copies are timed by; tests move it on. */
+export const libraryClock = { now: (): number => Date.now() };
+
 export const assetKey = (id: string): string => `asset:${id}`;
 export const collectionKey = (id: string): string => `collection:${id}`;
 /** A collection's identity, which survives renaming its folder; derived records are kept by identity. */
 export const collectionIdentity = (uid: string): string => `collection-uid:${uid}`;
 export const LIBRARY_KEY = 'library';
 export const duplicateKey = (id: string): string => `duplicate:${id}`;
+export const copyKey = (copyId: string): string => `copy:${copyId}`;
 
-/** The id of an `asset:`, `collection:` or `duplicate:` key, or null for another kind. */
-export function idOfKey(key: string, kind: 'asset' | 'collection' | 'duplicate'): string | null {
+/** The id of an `asset:`, `collection:`, `duplicate:` or `copy:` key, or null for another kind. */
+export function idOfKey(key: string, kind: 'asset' | 'collection' | 'duplicate' | 'copy'): string | null {
   const prefix = `${kind}:`;
   return key.startsWith(prefix) ? key.slice(prefix.length) : null;
 }

@@ -3,7 +3,7 @@ import { ensureFolder } from '../../plugin/vaultFolders';
 import { trashVaultItem } from '../../utils/trashVaultItem';
 import { parentPath } from '../../utils/pathUtils';
 import type { DesiredFile } from './libraryFiles';
-import { hashText, idOfKey, type FileStamp, type LibraryState } from './libraryState';
+import { assetKey, hashText, idOfKey, type FileStamp, type LibraryState } from './libraryState';
 
 const stampOf = (file: TFile, key: string, hash: string): FileStamp => ({ key, hash, mtime: file.stat.mtime, size: file.stat.size });
 
@@ -42,12 +42,17 @@ export class LibraryWriter {
     }
     for (const [path, stamp] of Object.entries(this.state.files)) {
       if (desiredPaths.has(path) || stamp.readOnly) continue;
+      const copied = idOfKey(stamp.key, 'copy');
+      // A copied file a record of its own replaced (a token's, whose record file is named for its id) goes once that record is written.
+      if (copied !== null && desiredKeys.has(assetKey(copied)) && this.writtenElsewhere(assetKey(copied), path)) {
+        if (await this.isUnchanged(path, stamp)) await this.remove(path);
+        continue;
+      }
       const removable = idOfKey(stamp.key, 'asset') !== null || idOfKey(stamp.key, 'collection') !== null;
       if (!removable) continue;
       if (desiredKeys.has(stamp.key)) {
         // A record that now lives elsewhere leaves its old file once it was written there, and only while that file is still the copy Atlas wrote.
-        const writtenElsewhere = Object.entries(this.state.files).some(([other, entry]) => other !== path && entry.key === stamp.key);
-        if (!writtenElsewhere) continue;
+        if (!this.writtenElsewhere(stamp.key, path)) continue;
         if (!(await this.isUnchanged(path, stamp))) {
           delete this.state.files[path];
           continue;
@@ -56,6 +61,10 @@ export class LibraryWriter {
       if (!(await this.remove(path))) failures.push(path);
     }
     if (failures.length > 0) throw new Error(`Atlas could not save ${failures.length} library file${failures.length === 1 ? '' : 's'} (${failures[0]})`);
+  }
+
+  private writtenElsewhere(key: string, path: string): boolean {
+    return Object.entries(this.state.files).some(([other, entry]) => other !== path && entry.key === key);
   }
 
   private async isUnchanged(path: string, stamp: FileStamp): Promise<boolean> {
@@ -69,6 +78,8 @@ export class LibraryWriter {
     delete this.state.derived[desired.identity];
 
     const stamp = this.state.files[desired.path];
+    // Worked out by itself, it is never written where there is no file, nor over a file this device has not taken in (a copy waiting to be one).
+    if (desired.derivable && !stamp) return;
     if (stamp?.readOnly || stamp?.hash === hash) return;
     let file = this.app.vault.getFileByPath(desired.path);
     if (stamp && !file) return;

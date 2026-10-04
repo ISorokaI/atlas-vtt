@@ -42,18 +42,21 @@ class UnownedFiles {
 }
 
 /**
- * Whether a record goes when its file is gone. Art, maps and scenes are their
- * file, unless their record has a file of its own: a sync tool may deliver the
- * record before the art, so those go only once the art was seen deleted. The
- * index holds everything else in full, so those go only after the user deleted
- * the file, never because a file is missing at startup.
+ * Whether a record goes when its file is gone. A record with a record file of
+ * its own goes only with that file: a sync tool may deliver the record before
+ * its art, or another device's rename as a deletion and a creation, and a
+ * device cannot tell those from the user deleting the file, so going here
+ * would delete the record on every device. Without a record file, art, maps
+ * and scenes are their file. The index holds everything else in full, so those
+ * go only after the user deleted the file, never because a file is missing at startup.
  */
 function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<string>, recorded: ReadonlySet<string>): boolean {
+  if (recorded.has(asset.id)) return false;
   switch (asset.type) {
     case 'token':
     case 'map':
     case 'scene':
-      return !recorded.has(asset.id) || (path !== null && deleted.has(path));
+      return true;
     case 'note':
       return false;
     default:

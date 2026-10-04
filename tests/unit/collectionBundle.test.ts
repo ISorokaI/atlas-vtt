@@ -1391,3 +1391,16 @@ describe('loot tables', () => {
     expect((await reviewImport(creator, shared)).review).toMatchObject({ upToDate: true, conflicts: [] });
   });
 });
+
+describe('record files of an installed collection', () => {
+  it('read as unchanged after Atlas rewrote them for a collection installed under another name', async () => {
+    const creator = await creatorVault();
+    await creator.assets.addAsset({ type: 'map', name: 'Region', collection: 'source', tags: [], mapFilePath: BACKGROUND });
+    const v1 = await exportFrom(creator, { kind: 'release', version: 1 });
+    const fan = await emptyVault();
+    await fan.assets.createCollection('source');
+    await importInto(fan, v1, { name: 'source (2)' });
+
+    expect((await reviewImport(fan, v1)).review).toMatchObject({ relation: 'same', upToDate: true, canRestore: false, conflicts: [] });
+  });
+});
