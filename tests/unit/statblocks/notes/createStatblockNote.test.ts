@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TokenStatblockLinkService } from '../../../../src/app/services/TokenStatblockLinkService';
-import { createStatblockNote, noteFileName, statblockNoteText } from '../../../../src/app/statblocks/notes/createStatblockNote';
+import { createStatblockNote, noteFileName, shownName, statblockNoteText } from '../../../../src/app/statblocks/notes/createStatblockNote';
 import { statblockSourceFromText } from '../../../../src/app/statblocks/notes/statblockSource';
 import { noteHarness } from './noteHarness';
 
@@ -70,5 +70,23 @@ describe('createStatblockNote', () => {
     expect(linked).toBe(true);
     expect(harness.files.get(file.path)).toContain('image: art/warden.webp');
     expect(service.linkTokenToStatblock).toHaveBeenCalledWith('art/warden.webp', 'Bestiary/Warden.md', { showConfirmation: false });
+  });
+
+  it('names an unnamed statblock after its file, so note and card agree', async () => {
+    linkService();
+    const harness = noteHarness({ 'New statblock.md': '' });
+
+    const { file } = await createStatblockNote(harness.app, { name: 'New statblock', templateId: TEMPLATE });
+
+    expect(file.path).toBe('New statblock 2.md');
+    expect(harness.files.get(file.path)).toContain('name: New statblock 2');
+  });
+});
+
+describe('shownName', () => {
+  it('keeps a name the user gave, and takes the file name for none or the default', () => {
+    expect(shownName('Goblin', 'Bestiary/Goblin 2.md')).toBe('Goblin');
+    expect(shownName('', 'New statblock 3.md')).toBe('New statblock 3');
+    expect(shownName('New statblock', 'Folder/New statblock 3.md')).toBe('New statblock 3');
   });
 });

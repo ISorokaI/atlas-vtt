@@ -36,11 +36,22 @@ const FALLBACK_NAME = 'New statblock';
 export async function createStatblockNote(app: App, note: NewStatblockNote): Promise<CreatedStatblockNote> {
   const folder = await targetFolder(app, note.folder);
   const path = freeNotePath(app, folder, noteFileName(note.name));
-  const file = await app.vault.create(path, statblockNoteText(note));
+  const file = await app.vault.create(path, statblockNoteText({ ...note, name: shownName(note.name, path) }));
   const linked = note.tokenImagePath === undefined
     ? false
     : await TokenStatblockLinkService.getInstance(app).linkTokenToStatblock(note.tokenImagePath, file.path, { showConfirmation: false });
   return { file, linked };
+}
+
+/**
+ * The name the statblock starts with: the one asked for, except that an unnamed
+ * statblock takes its file's name ("New statblock 3"), so note and card agree.
+ */
+export function shownName(asked: string, path: string): string {
+  const name = asked.trim();
+  if (name && name !== FALLBACK_NAME) return name;
+  const base = path.split('/').pop() ?? '';
+  return base.replace(/\.md$/i, '') || FALLBACK_NAME;
 }
 
 /** The folder named, created when missing, or Obsidian's folder for new notes. */

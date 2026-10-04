@@ -18,6 +18,7 @@ import { noteName } from '../../../utils/pathUtils';
 import type { PaneServices } from '../paneServices';
 import { blockName } from '../template-editor/blockNames';
 import type { PanelSessions } from './usePanelSessions';
+import { rollsIn } from './diceRolls';
 import type { BlockMenuInput } from './paneMenus';
 import type { PaneEditController } from './paneEditContext';
 import { clearPatches, removeBlockFromTemplate } from './paneTemplateEdits';
@@ -96,6 +97,8 @@ export function blockMenuInput(input: BlockActionInput): BlockMenuInput | null {
       const field = template.fields.find((each) => patches.some((patch) => 'path' in patch && named(patch.path[0], each)));
       if (!field || !patches.length) return;
       void pane.write(field, patches);
+      // A section whose values are cleared folds into its chip again (§8.2).
+      pane.setUnfolded(blockId, false);
       pane.announce(`Cleared ${name} on ${noteName(pane.notePath)}.`);
       input.toast(`Cleared ${name} on ${noteName(pane.notePath)}.`);
     },
@@ -103,5 +106,7 @@ export function blockMenuInput(input: BlockActionInput): BlockMenuInput | null {
       ? () => input.openTemplateAt?.({ templateId: entry.template.id, path: entry.path, blockId, collectionId: pane.collectionId, notePath: pane.notePath })
       : undefined,
     remove: reach ? { label: removeRowText(reach, name), run: () => void remove() } : undefined,
+    addSectionBelow: editable ? () => pane.openAddSection({ after: blockId }) : undefined,
+    rolls: rollsIn(input.element),
   };
 }

@@ -1,7 +1,8 @@
 /**
- * Opening the template editor (§4.6, §7.4): in its own tab, or in the tab it
- * already has for that template. Every way in is behind the `statblockEditor`
- * experimental switch.
+ * Opening the template editor (§4.6, §7.4, §8.4): in its own tab, in the tab
+ * it already has for that template, or in a note's own leaf ("Edit template"
+ * from a note), which can go back to the note. Every way in is behind the
+ * `statblockEditor` experimental switch.
  */
 
 import { Notice, type App, type WorkspaceLeaf } from 'obsidian';
@@ -20,10 +21,10 @@ export interface OpenTemplateEditorOptions {
   collectionId?: string | null | undefined;
   /** A block to select once the editor shows. */
   select?: string | undefined;
-  /** A copy of this built-in: the editor asks whether what used it moves over. */
-  copiedFrom?: TemplateId | undefined;
   /** The leaf to open in; a new tab (or the template's own) when unset. */
   leaf?: WorkspaceLeaf | undefined;
+  /** The note whose leaf this is ("Edit template" from a note, §8.4): the editor offers to go back to it. */
+  fromNote?: string | null | undefined;
 }
 
 /** The leaf already editing the template, in any window. */
@@ -52,11 +53,10 @@ export async function openTemplateEditor(app: App, options: OpenTemplateEditorOp
     return null;
   }
   const leaf = options.leaf ?? editorLeafFor(app, id, path) ?? app.workspace.getLeaf('tab');
-  const common = { previewPath: options.previewPath ?? null, collectionId: options.collectionId ?? null };
+  const common = { previewPath: options.previewPath ?? null, collectionId: options.collectionId ?? null, fromNote: options.fromNote ?? null };
   const state = path ? { file: path, ...common } : { templateId: id, ...common };
   const ephemeral: TemplateEditorEphemeral = {
     ...(options.select && { select: options.select }),
-    ...(options.copiedFrom && { copiedFrom: options.copiedFrom }),
   };
   await leaf.setViewState({ type: TEMPLATE_EDITOR_VIEW_TYPE, state, active: true }, ephemeral);
   app.workspace.setActiveLeaf(leaf, { focus: true });

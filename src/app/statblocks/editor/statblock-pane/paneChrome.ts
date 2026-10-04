@@ -14,9 +14,10 @@ function clickedInside(target: EventTarget | null, selector: string): Element | 
 
 /** The ordinal of the entry clicked in an Entries block, as it shows; undefined outside an entry. */
 function clickedEntry(event: MouseEvent<HTMLDivElement>): number | undefined {
-  const entry = clickedInside(event.target, '.atlas-sb-trait');
+  const drawn = '.atlas-sb-trait:not(.atlas-sb-pane-entry-editor--new)';
+  const entry = clickedInside(event.target, drawn);
   if (!entry) return undefined;
-  const index = [...event.currentTarget.querySelectorAll('.atlas-sb-trait')].indexOf(entry);
+  const index = [...event.currentTarget.querySelectorAll(drawn)].indexOf(entry);
   return index < 0 ? undefined : index;
 }
 
@@ -35,8 +36,21 @@ export function paneChrome(
     decorate(block: TemplateBlock): BlockDecoration | null {
       const [first, ...rest] = spots.byBlock.get(block.id) ?? [];
       if (!first || !writable) return null;
-      if (editing?.blockId === block.id) return { className: 'atlas-sb-pane-editing' };
       const begin = (entry?: number): void => start({ blockId: block.id, field: first.key, entry });
+      if (editing?.blockId === block.id) {
+        // A list of abilities stays drawn while one is typed: a click on another one types that one.
+        if (block.type !== 'entries') return { className: 'atlas-sb-pane-editing' };
+        return {
+          className: 'atlas-sb-pane-editing atlas-sb-pane-editing--list',
+          handlers: {
+            onClick: (event: MouseEvent<HTMLDivElement>) => {
+              if (clickedInside(event.target, `${OWN_CLICKS}, .atlas-sb-pane-entry-editor`)) return;
+              const entry = clickedEntry(event);
+              if (entry !== undefined) begin(entry);
+            },
+          },
+        };
+      }
       return {
         className: 'atlas-sb-pane-value',
         tabIndex: 0,

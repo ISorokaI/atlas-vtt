@@ -4,7 +4,8 @@ import { blockDisplay } from '../../render/blockDisplay';
 import { ChoiceValueInput } from './ChoiceValueInput';
 import { ConflictChip } from './ConflictChip';
 import { DerivedMark, patternInWords } from './DerivedMark';
-import { EntriesEditor } from './EntriesEditor';
+import { entryList, shownEntryIndexes } from './entryPatches';
+import { EntryInlineEditor } from './EntryInlineEditor';
 import { focusStaysIn } from './focusWithin';
 import { ListValueInput } from './ListValueInput';
 import { MarkdownValueInput } from './MarkdownValueInput';
@@ -33,26 +34,30 @@ interface BlockEditorProps {
 /**
  * What stands where a block's values show while one of its fields is edited:
  * an input per field, in the order the block writes them, focus on the one
- * clicked or reached with Tab. Focus leaving the block ends editing.
+ * clicked or reached with Tab. Focus leaving the block ends editing. A list
+ * of abilities is not replaced: its one ability being typed has its editor
+ * in its own place (`PaneEntry`), and an empty list its first new one.
  */
-function BlockEditor({ block, fields, target }: BlockEditorProps): React.JSX.Element {
+function BlockEditor({ block, fields, target, values }: BlockEditorProps & { values: React.ReactNode }): React.ReactNode {
   const pane = usePaneEdit();
   const ref = useRef<HTMLSpanElement>(null);
-  const entries = fields.find((field) => field.type === 'entries' && field.key === target.field);
+  const entries = block.type === 'entries' ? fields.find((field) => field.type === 'entries' && field.key === target.field) : undefined;
+  if (block.type === 'entries' && entries) {
+    const shown = shownEntryIndexes(entryList(pane.read(entries).value), entries.entry);
+    return shown.length > 0 ? values : <EntryInlineEditor block={block} field={entries} editing={{ kind: 'new', afterIndex: null, shown: 0 }} />;
+  }
   const onBlur = (event: React.FocusEvent): void => {
     if (!focusStaysIn(ref.current, event.relatedTarget)) pane.leave(block.id);
   };
 
   return (
     <span ref={ref} className="atlas-sb-pane-editor" onBlur={onBlur}>
-      {entries
-        ? <EntriesEditor field={entries} entry={target.entry} add={target.add} addLabel={block.type === 'entries' ? block.addLabel : undefined} />
-        : fields.map((field, index) => (
-          <React.Fragment key={field.key}>
-            {index > 0 && ' '}
-            <FieldInput field={field} autoFocus={field.key === target.field} />
-          </React.Fragment>
-        ))}
+      {fields.map((field, index) => (
+        <React.Fragment key={field.key}>
+          {index > 0 && ' '}
+          <FieldInput field={field} autoFocus={field.key === target.field} />
+        </React.Fragment>
+      ))}
     </span>
   );
 }
@@ -68,15 +73,18 @@ function PaneSlot({ block, values }: { block: TemplateBlock; values: React.React
   const pane = usePaneEdit();
   if (block.type === 'image') return <TokenSocket block={block} art={values} />;
   const fields = pane.spots.byBlock.get(block.id) ?? [];
-  if (pane.editing?.blockId === block.id && fields.length) return <BlockEditor block={block} fields={fields} target={pane.editing} />;
   // A value that does not fit its type has its chip from the renderer, inside `values`.
   const marks = fields.flatMap((field) => {
     const conflict = pane.conflicts.get(field.key);
     return conflict ? [<ConflictChip key={field.key} field={field} conflict={conflict} />] : [];
   });
-  const words = derivedWords(block, pane);
+  const editing = pane.editing?.blockId === block.id && fields.length > 0 ? pane.editing : null;
+  // A list stays drawn while one of its abilities is typed, with what the pane has to say about it.
+  if (editing && block.type !== 'entries') return <BlockEditor block={block} fields={fields} target={editing} values={values} />;
+  const shown = editing ? <BlockEditor block={block} fields={fields} target={editing} values={values} /> : values;
+  const words = editing ? null : derivedWords(block, pane);
   if (words) marks.push(<DerivedMark key="derived" words={words} />);
-  return marks.length ? <>{values}{marks}</> : values;
+  return marks.length ? <>{shown}{marks}</> : shown;
 }
 
 /** The pane's `ValueEditing.slot`: one element type, so a block's values keep their place in the tree. */

@@ -39,6 +39,10 @@ export interface SelectionToolbarProps {
   onAddBelow: () => void;
   onDelete: () => void;
   onMore: (button: HTMLElement) => void;
+  /** The block's menu is open: the toolbar keeps out of its way until it closes. */
+  menuOpen: boolean;
+  /** A right-click on the toolbar: the toolbar has no menu, so it opens the menu of the block under it. */
+  onMenuBelow: (point: { x: number; y: number }) => void;
 }
 
 function measure(stage: HTMLElement, layer: HTMLElement, blockId: string, toolbar: HTMLElement | null): ToolbarPlacement {
@@ -57,8 +61,10 @@ function measure(stage: HTMLElement, layer: HTMLElement, blockId: string, toolba
  * view. The type chip turns the block into another, Settings opens its
  * settings (a dot while any further setting is in use), then Add below,
  * Delete and More, which opens the block's menu. It steps aside while the
- * pointer is over another block it covers, and never takes focus from the
- * block, so the block's keys keep working.
+ * pointer is over another block it covers (only its buttons take the pointer,
+ * so moving in over its edge reaches the block below), hands a right-click to
+ * the block under it, hides while the block's menu is open, and never takes
+ * focus from the block, so the block's keys keep working.
  */
 export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Element {
   const { layer, stage, block, revision, editable, hover } = props;
@@ -103,11 +109,15 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
       aria-label={`${chipLabel} toolbar`}
       style={style}
       {...{ [CHROME_ATTRIBUTE]: '' }}
-      data-hidden={placement.hidden || undefined}
+      data-hidden={placement.hidden || props.menuOpen || undefined}
       data-above={placement.above || undefined}
       data-stepped-aside={covered || undefined}
       // Focus stays on the block: its keys (Delete, arrows, Shift+F10) go on working after a click here.
       onMouseDown={(event) => event.preventDefault()}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        props.onMenuBelow({ x: event.clientX, y: event.clientY });
+      }}
     >
       <LabelTooltip label={props.count > 1 ? chipLabel : `${type} · Turn into…`}>
         <Button

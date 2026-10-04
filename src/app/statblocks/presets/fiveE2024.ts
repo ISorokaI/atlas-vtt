@@ -15,7 +15,7 @@ import { builtIn, headerRow, nameField, portraitField, runInStat, sizeField } fr
 const MODIFIER = 'floor((value - 10) / 2)';
 const DEXTERITY_MODIFIER = 'floor((stats.1 - 10) / 2)';
 
-export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-monster', '5E (2024 rules)', 1, {
+export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-monster', '5E (2024 rules)', 2, {
   source: SRD_5_2_1_SOURCE,
   fields: [
     nameField(),
@@ -49,6 +49,7 @@ export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-mon
     { key: 'reactions', label: 'Reactions', type: 'entries' },
     { key: 'legendary_description', label: 'Legendary Actions intro', type: 'markdown' },
     { key: 'legendary_actions', label: 'Legendary Actions', type: 'entries' },
+    { key: 'spells', label: 'Spells', type: 'spells' },
   ],
   layout: {
     maxColumns: 2,
@@ -92,6 +93,8 @@ export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-mon
       { id: 'b5cr0000', type: 'stat', field: 'cr', look: 'run-in', pattern: '{cr}[ (XP {cr|lookup:xp}; PB {cr|lookup:pb})]' },
       { id: 'b5trait0', type: 'entries', field: 'traits', heading: 'Traits' },
       { id: 'b5actio0', type: 'entries', field: 'actions', heading: 'Actions', addLabel: 'Add action' },
+      // Hidden while empty: a statblock gains spells without its template changing (revision 2).
+      { id: 'b5spell0', type: 'spells', field: 'spells', heading: 'Spellcasting' },
       { id: 'b5bonus0', type: 'entries', field: 'bonus_actions', heading: 'Bonus Actions' },
       { id: 'b5react0', type: 'entries', field: 'reactions', heading: 'Reactions' },
       {
@@ -101,5 +104,5 @@ export const FIVE_E_2024_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2024-mon
     ],
   },
   lookups: { xp: experienceTable(), pb: proficiencyTable() },
-  sample: { name: 'Creature name', ac: 13, hp: 22, stats: [10, 10, 10, 10, 10, 10] },
+  sample: { name: 'Creature name', ac: 13, hp: 22, stats: [14, 12, 13, 10, 11, 8] },
 });

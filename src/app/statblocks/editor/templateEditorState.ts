@@ -15,12 +15,13 @@ export interface TemplateEditorState {
   previewMode: ShowWithMode | null;
   /** The collection the editor works for (§7.1); null for the default one. */
   collectionId: string | null;
+  /** The note "Edit template" swapped this leaf from (§8.4): "Back to <note>" returns to it. */
+  fromNote: string | null;
 }
 
-/** What `openTemplateEditor` asks of the view once, never saved: the block to select, the built-in a copy came from. */
+/** What `openTemplateEditor` asks of the view once, never saved: the block to select. */
 export interface TemplateEditorEphemeral {
   select?: string | undefined;
-  copiedFrom?: TemplateId | undefined;
 }
 
 const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
@@ -28,12 +29,13 @@ const isText = (value: unknown): value is string => typeof value === 'string' &&
 /** The editor's state from a saved workspace or a `setViewState` call; only a built-in's id is taken from it. */
 export function readTemplateEditorState(state: unknown): TemplateEditorState {
   const record = state !== null && typeof state === 'object' ? state as Record<string, unknown> : {};
-  const { templateId, previewPath, previewMode, collectionId } = record;
+  const { templateId, previewPath, previewMode, collectionId, fromNote } = record;
   return {
     templateId: isText(templateId) && isBuiltInTemplateId(templateId) ? templateId : null,
     previewPath: isText(previewPath) ? previewPath : null,
     previewMode: previewMode === 'sample' || previewMode === 'empty' ? previewMode : null,
     collectionId: isText(collectionId) ? collectionId : null,
+    fromNote: isText(fromNote) ? fromNote : null,
   };
 }
 
@@ -41,6 +43,5 @@ export function readTemplateEditorEphemeral(state: unknown): TemplateEditorEphem
   const record = state !== null && typeof state === 'object' ? state as Record<string, unknown> : {};
   return {
     ...(isText(record.select) && { select: record.select }),
-    ...(isText(record.copiedFrom) && { copiedFrom: record.copiedFrom }),
   };
 }

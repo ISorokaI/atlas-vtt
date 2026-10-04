@@ -12,7 +12,7 @@ import { SRD_5_1_SOURCE } from './attributions';
 import { experienceTable } from './fiveEChallenge';
 import { builtIn, headerRow, nameField, portraitField, runInStat, sizeField } from './presetParts';
 
-export const FIVE_E_2014_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2014-monster', '5E (2014 rules)', 1, {
+export const FIVE_E_2014_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2014-monster', '5E (2014 rules)', 2, {
   source: SRD_5_1_SOURCE,
   fields: [
     nameField(),
@@ -44,6 +44,7 @@ export const FIVE_E_2014_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2014-mon
     { key: 'reactions', label: 'Reactions', type: 'entries' },
     { key: 'legendary_description', label: 'Legendary Actions intro', type: 'markdown' },
     { key: 'legendary_actions', label: 'Legendary Actions', type: 'entries' },
+    { key: 'spells', label: 'Spells', type: 'spells' },
   ],
   layout: {
     maxColumns: 2,
@@ -77,6 +78,8 @@ export const FIVE_E_2014_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2014-mon
       { id: 'e4cr0000', type: 'stat', field: 'cr', look: 'run-in', pattern: '{cr}[ ({cr|lookup:xp} XP)]' },
       { id: 'e4divid3', type: 'divider' },
       { id: 'e4trait0', type: 'entries', field: 'traits' },
+      // Hidden while empty: a statblock gains spells without its template changing (revision 2).
+      { id: 'e4spell0', type: 'spells', field: 'spells', heading: 'Spellcasting' },
       { id: 'e4actio0', type: 'entries', field: 'actions', heading: 'Actions', addLabel: 'Add action' },
       { id: 'e4bonus0', type: 'entries', field: 'bonus_actions', heading: 'Bonus Actions' },
       { id: 'e4react0', type: 'entries', field: 'reactions', heading: 'Reactions' },
@@ -87,5 +90,5 @@ export const FIVE_E_2014_MONSTER: BuiltInTemplate = builtIn('builtin:5e-2014-mon
     ],
   },
   lookups: { xp: experienceTable() },
-  sample: { name: 'Creature name', ac: 13, hp: 22, stats: [10, 10, 10, 10, 10, 10] },
+  sample: { name: 'Creature name', ac: 13, hp: 22, stats: [14, 12, 13, 10, 11, 8] },
 });

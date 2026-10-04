@@ -38,6 +38,8 @@ export interface CanvasProps {
   empty?: React.ReactNode;
   /** The card at another surface's width (Show as a hover card, the DM screen); unset, the panel's. */
   shownWidth?: number | undefined;
+  /** Empty headed sections folded into chips under the card, as the note view folds them (§8.2, J6). */
+  folded?: ReadonlySet<string> | undefined;
 }
 
 /** A block just inserted fades in and rises 4 px (§7.6); only its opacity where motion is reduced. */
@@ -164,6 +166,7 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
       app={props.app}
       sourcePath={props.sourcePath}
       shownWidth={props.shownWidth}
+      folded={props.folded}
       around={stage}
     />
   );

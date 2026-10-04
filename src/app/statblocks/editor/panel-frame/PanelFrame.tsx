@@ -64,14 +64,16 @@ interface FramedSheetProps {
   record: FieldRecord;
   app: App | undefined;
   sourcePath: string | undefined;
+  /** Empty headed sections folded into chips under the card (`foldRule.ts`). */
+  folded?: ReadonlySet<string> | undefined;
 }
 
 /** The runtime card under a surface's chrome; it renders again only when one of these changes, never on hover. */
-const FramedSheet = memo(function FramedSheet({ chrome, valueEditing, template, name, record, app, sourcePath }: FramedSheetProps): React.JSX.Element {
+const FramedSheet = memo(function FramedSheet({ chrome, valueEditing, template, name, record, app, sourcePath, folded }: FramedSheetProps): React.JSX.Element {
   return (
     <BlockChromeContext.Provider value={chrome}>
       <ValueEditingContext.Provider value={valueEditing}>
-        <StatblockSheet template={template} name={name} fields={record} variant="full" mode="editing" app={app} sourcePath={sourcePath} />
+        <StatblockSheet template={template} name={name} fields={record} variant="full" mode="editing" app={app} sourcePath={sourcePath} folded={folded} />
       </ValueEditingContext.Provider>
     </BlockChromeContext.Provider>
   );

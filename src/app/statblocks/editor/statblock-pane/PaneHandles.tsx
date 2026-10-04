@@ -17,7 +17,6 @@ import { entryMenuInput } from './paneEntryActions';
 import { usePaneEdit } from './paneEditContext';
 import { paneBlockMenu, paneEntryMenu } from './paneMenus';
 import type { StatblockPaneActions } from './paneTypes';
-import { usePanelSessions } from './usePanelSessions';
 import { usePaneItemDrag } from './usePaneItemDrag';
 import '../interaction/interaction.scss';
 
@@ -55,10 +54,9 @@ export function PaneHandles({ paneRef, template, entry, services, actions }: Pan
   const [store] = useState(() => new HoverStore());
   const cardRef = useRef<HTMLElement | null>(null);
   const [host, setHost] = useState<HTMLElement | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const menu = useSurfaceMenu();
-  const sessions = usePanelSessions(pane.app);
+  const { sessions, showToast: setToast } = pane;
   const latest = useRef({ pane, template, entry, actions });
   latest.current = { pane, template, entry, actions };
 
@@ -87,7 +85,7 @@ export function PaneHandles({ paneRef, template, entry, services, actions }: Pan
   const menuFor = useCallback((target: HoverTarget, onValue = false) => {
     const { pane: now, template: shown, entry: current, actions: wired } = latest.current;
     if (target.kind === 'item' && target.itemKey) {
-      const input = entryMenuInput({ pane: now, template: shown, target: { blockId: target.blockId, itemKey: target.itemKey }, copy, toast: setToast });
+      const input = entryMenuInput({ pane: now, template: shown, target: { blockId: target.blockId, itemKey: target.itemKey }, element: target.element, copy, toast: setToast });
       return input ? paneEntryMenu(input) : null;
     }
     const input = blockMenuInput({
@@ -164,7 +162,7 @@ export function PaneHandles({ paneRef, template, entry, services, actions }: Pan
           />
           {hint && <div className="atlas-sb-drag-hint" role="note">{hint}</div>}
           <AnimatePresence>
-            {toast && <UndoToast key={toast} text={toast} onUndo={undo} onDismiss={() => setToast(null)} />}
+            {pane.toast && <UndoToast key={pane.toast} text={pane.toast} onUndo={undo} onDismiss={() => setToast(null)} />}
           </AnimatePresence>
         </>
       )}

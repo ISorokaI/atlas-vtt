@@ -1,5 +1,6 @@
-// Values edited in place (§7.6): at rest no chrome, a hover wash that changes
-// no box; while editing, an input in the value's own typographic spot.
+// Values edited in place (§6.3): at rest no chrome, a hover wash that changes
+// no box; while editing, a borderless input in the value's own typographic
+// spot, and the selection ring around what is being typed: the card keeps its look.
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
@@ -37,8 +38,7 @@
     border: none;
     border-radius: 0;
     background: transparent;
-    // An underline that takes no room, so the card does not move.
-    box-shadow: 0 1px 0 var(--interactive-accent);
+    box-shadow: none;
     field-sizing: content;
     vertical-align: baseline;
 
@@ -52,7 +52,7 @@
     &:focus-visible {
       outline: none;
       border: none;
-      box-shadow: 0 1px 0 var(--interactive-accent);
+      box-shadow: none;
     }
 
     &.has-problem {
@@ -68,6 +68,30 @@
 
   .atlas-sb-pane-editor {
     display: contents;
+  }
+
+  // The ring of what is being typed: a value's block, or the one ability of a list (§6.3).
+  .atlas-sb-sheet .atlas-sb-item.atlas-sb-pane-editing:not(.atlas-sb-pane-editing--list),
+  .atlas-sb-sheet .atlas-sb-pane-entry-editor {
+    border-radius: $radius-s;
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: $spacing-xs;
+  }
+
+  // An ability's text, typed in the card's own line after its name.
+  .atlas-sb-pane-entry__text {
+    white-space: pre-wrap;
+    outline: none;
+    cursor: text;
+
+    &:empty::before {
+      content: attr(data-placeholder);
+      color: var(--text-faint);
+    }
+  }
+
+  .atlas-sb-trait-name > input.atlas-sb-pane-entry__name {
+    font: inherit;
   }
 
   .atlas-sb-pane-field {

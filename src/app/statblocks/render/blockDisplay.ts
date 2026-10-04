@@ -75,7 +75,7 @@ function containerShows(block: ContainerBlock, sheet: SheetState): boolean {
 }
 
 function decide(block: TemplateBlock, sheet: SheetState): BlockDisplay | null {
-  if (block.type === 'opaque') return null;
+  if (block.type === 'opaque' || sheet.folded.has(block.id)) return null;
   if (block.showWhen && !evaluateCondition(block.showWhen, sheet.reader)) return null;
   if (isContainerBlock(block)) return containerShows(block, sheet) ? VALUE : null;
   if (block.type === 'script' || block.type === 'divider') return VALUE;

@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { chooseCollection, linkingCollectionIds, roleNameFor } from '../../../../src/app/statblocks/editor/collectionContext';
+import { describe, expect, it, vi } from 'vitest';
+import type { App } from 'obsidian';
+import { chooseCollection, linkingCollectionIds, resolveCollectionContext, roleNameFor } from '../../../../src/app/statblocks/editor/collectionContext';
 import { choiceOptions } from '../../../../src/app/statblocks/editor/statblock-pane/ChoiceValueInput';
-import { singular } from '../../../../src/app/statblocks/editor/statblock-pane/EntriesEditor';
+import { singular } from '../../../../src/app/statblocks/editor/statblock-pane/entryNoun';
 import { keysOutsideTemplate, templateGroups, unshownKeys } from '../../../../src/app/statblocks/editor/statblock-pane/templateChoices';
 import { builtInEntry } from '../../../../src/app/statblocks/library/templateFiles';
 import { GENERIC_CREATURE, GENERIC_NPC, GENERIC_HAZARD } from '../../../../src/app/statblocks/presets/generic';
@@ -19,6 +20,21 @@ describe('the collection context', () => {
     expect(chooseCollection(null, known, linkingCollectionIds(tokens, 'Warden.md'), 'c')).toBe('a');
     expect(chooseCollection(null, known, ['a', 'b'], 'c')).toBe('c');
     expect(chooseCollection('gone', known, [], 'c')).toBe('c');
+  });
+
+  it('shows the collection in the header whenever there are several, also once a token links the note', async () => {
+    const assets = {
+      getCollections: async () => [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+      getAssets: async () => tokens,
+      getDefaultCollectionId: () => 'b',
+    };
+    vi.doMock('../../../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => assets } }));
+    vi.resetModules();
+    const fresh = await import('../../../../src/app/statblocks/editor/collectionContext');
+    const context = await fresh.resolveCollectionContext({} as App, 'Warden.md', null);
+    expect(context).toMatchObject({ collectionId: 'a', linking: ['a'], switchable: true });
+    vi.doUnmock('../../../../src/app/services/AssetService');
+    expect(resolveCollectionContext).toBeTypeOf('function');
   });
 
   it('names a role only when exactly one role uses the template', () => {

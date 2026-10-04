@@ -85,20 +85,67 @@ function openFirstAction(harness: PaneHarness): HTMLInputElement {
   return name;
 }
 
-const rowOf = (element: Element | null): string | null => element?.closest('[data-entry-row]')?.getAttribute('data-entry-row') ?? null;
+/** The place in the stored list of the ability being typed. */
+const editedAt = (element: Element | null): string | null => element?.closest('.atlas-sb-pane-entry-editor')?.getAttribute('data-item-index') ?? null;
+const lines = (harness: PaneHarness): string[] => [...blockOf(harness.result.container, 'gcaction').querySelectorAll('.atlas-sb-trait')]
+  .map((line) => (line.classList.contains('atlas-sb-pane-entry-editor') ? 'editing' : line.textContent ?? ''));
+
+describe('one ability typed at a time (spec §6.3)', () => {
+  it('opens only the clicked ability; the rest of the list stays drawn as the card draws it', async () => {
+    const { harness } = await pane();
+    openFirstAction(harness);
+    expect(lines(harness)).toEqual(['editing', 'Lash.It lashes.']);
+    expect(harness.result.container.querySelectorAll('textarea')).toHaveLength(0);
+  });
+
+  it('goes from the name to the text with Enter, writes the ability and starts the next with Enter there', async () => {
+    const { harness, note } = await pane();
+    const name = openFirstAction(harness);
+    fireEvent.keyDown(name, { key: 'Enter' });
+    const text = document.activeElement as HTMLElement;
+    expect(text.getAttribute('data-entry-part')).toBe('text');
+    text.textContent = 'It bites hard.';
+    fireEvent.input(text);
+    await act(async () => { fireEvent.keyDown(text, { key: 'Enter' }); });
+    expect(harness.writer.patches()).toEqual([{ op: 'set', path: ['actions', 0, 'desc'], base: 'It bites.', next: 'It bites hard.' }]);
+    note.tell();
+    const next = document.activeElement as HTMLInputElement;
+    expect(next.closest('.atlas-sb-pane-entry-editor--new')).not.toBeNull();
+    fireEvent.change(next, { target: { value: 'Claw' } });
+    fireEvent.keyDown(next, { key: 'Enter' });
+    (document.activeElement as HTMLElement).textContent = 'It claws.';
+    fireEvent.input(document.activeElement!);
+    await act(async () => { fireEvent.keyDown(document.activeElement!, { key: 'Enter' }); });
+    expect(harness.writer.patches().at(-1)).toEqual({ op: 'insert', list: 'actions', after: { name: 'Bite', desc: 'It bites hard.' }, item: { name: 'Claw', desc: 'It claws.' } });
+  });
+
+  it('deletes an ability left empty with Backspace and goes on in the one before', async () => {
+    const { harness, note } = await pane();
+    fireEvent.click(blockOf(harness.result.container, 'gcaction').querySelectorAll('.atlas-sb-trait')[1]!);
+    const name = document.activeElement as HTMLInputElement;
+    fireEvent.focus(name);
+    fireEvent.change(name, { target: { value: '' } });
+    const text = name.closest('.atlas-sb-pane-entry-editor')!.querySelector<HTMLElement>('[data-entry-part="text"]')!;
+    text.textContent = '';
+    await act(async () => { fireEvent.keyDown(name, { key: 'Backspace' }); });
+    expect(harness.writer.patches()).toEqual([{ op: 'remove', list: 'actions', item: LASH }]);
+    note.tell();
+    expect(editedAt(document.activeElement)).toBe('0');
+    expect(document.activeElement?.getAttribute('data-entry-part')).toBe('text');
+  });
+});
 
 describe('entries moved or copied with the keyboard', () => {
-  it('moves focus with the entry only once the note holds the move, and writes nothing into its neighbour', async () => {
+  it('moves the ability with Alt+↓ and keeps typing in it, writing nothing into its neighbour', async () => {
     const { harness, note } = await pane();
     const name = openFirstAction(harness);
     await act(async () => { fireEvent.keyDown(name, { key: 'ArrowDown', altKey: true }); });
-    // The row below still shows Lash: focus stays until the note holds the move.
-    expect(document.activeElement).toBe(name);
-    expect(rowOf(document.activeElement)).toBe('0');
+    // The ability below still shows Lash: the editor stays until the note holds the move.
+    expect(editedAt(document.activeElement)).toBe('0');
 
     note.tell();
     const focused = document.activeElement as HTMLInputElement;
-    expect(rowOf(focused)).toBe('1');
+    expect(editedAt(focused)).toBe('1');
     expect(focused.value).toBe('Bite');
     await act(async () => { fireEvent.blur(focused); });
 
@@ -106,17 +153,13 @@ describe('entries moved or copied with the keyboard', () => {
     expect(note.values().actions).toEqual([LASH, BITE]);
   });
 
-  it('focuses a duplicate once the note holds it, and leaves the next entry as it was', async () => {
+  it('duplicates the ability with Mod+D and goes on typing in the original', async () => {
     const { harness, note } = await pane();
     const name = openFirstAction(harness);
     await act(async () => { fireEvent.keyDown(name, { key: 'd', ctrlKey: true, metaKey: true }); });
-    expect(rowOf(document.activeElement)).toBe('0');
-
     note.tell();
-    const focused = document.activeElement as HTMLInputElement;
-    expect(rowOf(focused)).toBe('1');
-    expect(focused.value).toBe('Bite');
-    await act(async () => { fireEvent.blur(focused); });
+    expect(editedAt(document.activeElement)).toBe('0');
+    await act(async () => { fireEvent.blur(document.activeElement!); });
 
     expect(harness.writer.patches()).toEqual([{ op: 'insert', list: 'actions', after: BITE, item: BITE }]);
     expect(note.values().actions).toEqual([BITE, BITE, LASH]);
@@ -130,7 +173,8 @@ describe('entries moved or copied with the keyboard', () => {
     note.external([{ op: 'move', list: 'actions', item: BITE, after: LASH }]);
     await act(async () => { fireEvent.blur(name); });
 
-    expect(harness.writer.patches()).toEqual([{ op: 'set', path: ['actions', 0, 'name'], base: 'Bite', next: 'Big bite' }]);
+    // The editor followed Bite to its new place.
+    expect(harness.writer.patches()).toEqual([{ op: 'set', path: ['actions', 1, 'name'], base: 'Bite', next: 'Big bite' }]);
     expect(note.values().actions).toEqual([LASH, { name: 'Big bite', desc: 'It bites.' }]);
   });
 });
@@ -139,9 +183,9 @@ describe('commits based on the value typing started from', () => {
   it('reports an entry\'s text that changed in the note meanwhile, never overwriting it', async () => {
     const { harness, note } = await pane();
     openFirstAction(harness);
-    const text = screen.getAllByRole('textbox', { name: 'Action description' })[0] as HTMLTextAreaElement;
-    fireEvent.focus(text);
-    fireEvent.change(text, { target: { value: 'Mine.' } });
+    const text = screen.getByRole('textbox', { name: 'Action description' });
+    text.textContent = 'Mine.';
+    fireEvent.input(text);
     note.external([{ op: 'set', path: ['actions', 0, 'desc'], base: 'It bites.', next: 'Theirs.' }]);
     await act(async () => { fireEvent.blur(text); });
 

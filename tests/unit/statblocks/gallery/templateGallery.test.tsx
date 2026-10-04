@@ -97,18 +97,16 @@ describe('the template gallery', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('makes an editable copy with Use template, its first block to select, and the built-in it came from', async () => {
+  it('makes an editable copy with Use template, recording the built-in it came from in the copy', async () => {
     open([], []);
     fireEvent.click(card('Creature'));
     await useTemplate();
     const [created, roleId] = onCreated.mock.calls[0]!;
     expect(roleId).toBeNull();
     expect(created.path).toBe(`${TEMPLATE_FOLDER}/Creature.atlastemplate`);
-    expect(created.copiedFrom).toBe('builtin:generic-creature');
     const copy = read(created.path);
     expect(copy.id).toBe(created.id);
     expect(copy.derivedFrom).toEqual({ templateId: 'builtin:generic-creature', revision: 1 });
-    expect(created.firstBlock).toBe(copy.layout.blocks[0]!.id);
     expect(TemplateLibrary.forApp(vault.app).get(created.id)?.builtIn).toBe(false);
   });
 
@@ -118,7 +116,7 @@ describe('the template gallery', () => {
     expect(card('NPC').getAttribute('aria-checked')).toBe('true');
     await act(async () => { fireEvent.doubleClick(card('NPC').closest('li')!); });
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
-    expect(onCreated.mock.calls[0]![0].copiedFrom).toBe('builtin:generic-npc');
+    expect(read(onCreated.mock.calls[0]![0].path).derivedFrom?.templateId).toBe('builtin:generic-npc');
   });
 
   it('offers a role without a template of its own, starting on the one that uses the chosen card', async () => {
@@ -153,7 +151,7 @@ describe('the template gallery', () => {
     const [created] = onCreated.mock.calls[0]!;
     expect(created.path).toBe(`${TEMPLATE_FOLDER}/Marsh Warden.atlastemplate`);
     expect(read(created.path).fields.map((field) => field.key)).toEqual(['name', 'hp', 'actions']);
-    expect(created.copiedFrom).toBeNull();
+    expect(read(created.path).derivedFrom).toBeUndefined();
   });
 
   it('starts a blank template with no blocks', async () => {
@@ -162,7 +160,6 @@ describe('the template gallery', () => {
     expect(card('Blank').closest('li')!.textContent).toContain('Actions');
     await useTemplate();
     const [created] = onCreated.mock.calls[0]!;
-    expect(created.firstBlock).toBeNull();
     expect(read(created.path).layout.blocks).toEqual([]);
     await vault.settled();
     expect(TemplateLibrary.forApp(vault.app).get(created.id)?.status).toBe('ok');

@@ -179,11 +179,9 @@ export default class AtlasVTTPlugin extends Plugin {
       services: appPaneServices,
       actions: {
         ...paneTokenLinkActions(this.app),
-        editTemplate: (templateId, collectionId, notePath) => {
-          void openTemplateEditor(this.app, { templateId, collectionId, previewPath: notePath });
-        },
-        openTemplateAt: ({ templateId, path, blockId, collectionId, notePath }) => {
-          void openTemplateEditor(this.app, { templateId, path, collectionId, previewPath: notePath, select: blockId });
+        // In the note's own leaf (§8.4): the editor shows the note, and Back returns to it.
+        openTemplate: ({ templateId, path, blockId, collectionId, notePath }, leaf) => {
+          void openTemplateEditor(this.app, { templateId, path, collectionId, previewPath: notePath, select: blockId, leaf, fromNote: notePath });
         },
       },
     });

@@ -122,6 +122,6 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   ];
   // Quick choices give way first, so the menu never runs past twelve rows.
   const room = MAX_MENU_ROWS - rowCount(tidy([...head, ...body]));
-  const quick = editable && !many ? quickChoices(ctx.session, block).slice(0, Math.max(0, Math.min(2, room))) : [];
+  const quick = editable && !many ? quickChoices(ctx.session, block, ctx.openSettings).slice(0, Math.max(0, Math.min(2, room))) : [];
   return tidy([...head, ...quick, ...body]);
 }

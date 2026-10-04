@@ -192,15 +192,15 @@ describe('TemplateEditor', () => {
     expect(session.template.layout.blocks[0]?.type).toBe('row');
   });
 
-  it('shows a built-in read-only, with Make a copy, and takes no edit', () => {
-    const session = new FakeSession(sampleTemplate(), { readOnly: true, readOnlyReason: 'built-in', path: null });
+  it('edits a built-in like any template, saying first that the change makes your own copy (§9.3)', () => {
+    const session = new FakeSession(sampleTemplate(), { path: null, name: '5E (2014 rules)' });
+    session.patch({ copyOnWrite: { builtInId: 'builtin:5e-2014-monster', builtInName: '5E (2014 rules)' } });
     const { frame } = setup(session);
-    expect(screen.getByText('Built-in template. Make a copy to change it.')).toBeTruthy();
+    expect(screen.getByText('Built in. Your first change makes your own copy.')).toBeTruthy();
     fireEvent.click(frame('stat-ac1'));
     act(() => frame('stat-ac1').focus());
     key(frame('stat-ac1'), 'Delete');
-    expect(session.steps).toBe(0);
-    expect(document.querySelector('.atlas-te-live')?.textContent).toBe('Built-in template. Make a copy to change it.');
+    expect(session.steps).toBe(1);
   });
 
   it('saves quietly, and offers Retry after a failure', () => {

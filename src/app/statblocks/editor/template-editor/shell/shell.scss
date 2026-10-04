@@ -226,4 +226,50 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     font-size: $font-ui-smaller;
     text-align: center;
   }
+
+  // "11 more on 5E (2014 rules) · Switch…" and the popover that names them (§9.1): quiet, never primary.
+  .atlas-te-switch {
+    position: relative;
+  }
+
+  .atlas-te-switch__chip.btn {
+    height: auto;
+    min-height: 24px;
+    border: $border-width-s dashed var(--background-modifier-border);
+    border-radius: $radius-full;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-te-switch__popover {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($menu-radius);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + #{$spacing-xs});
+    z-index: $z-popover;
+    @include atlas-flex-col($spacing-s);
+    align-items: stretch;
+    width: 280px;
+    translate: -50% 0;
+    padding: $spacing-s;
+    box-shadow: $shadow-md;
+    color: var(--text-normal);
+    text-align: start;
+  }
+
+  .atlas-te-switch__text {
+    margin: 0;
+  }
+
+  .atlas-te-switch__list {
+    margin: 0;
+    padding-inline-start: $spacing-l;
+    color: var(--text-muted);
+  }
+
+  .atlas-te-switch__actions {
+    @include atlas-flex-row($spacing-s);
+    justify-content: flex-end;
+  }
 }

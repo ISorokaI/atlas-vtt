@@ -1,9 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import { deleteTemplate } from '../../library/templateActions';
-import type { TemplateId } from '../../model/templateTypes';
+import { noteName } from '../../../utils/pathUtils';
 import { TemplateDragAndDrop } from '../dnd/DndProvider';
+import { foldedBlocks } from '../../render/foldRule';
+import { FoldedChips } from '../panel-frame/FoldedChips';
 import { BlankCard } from './BlankCard';
 import { Canvas } from './Canvas';
 import { DeleteTemplateDialog } from './DeleteTemplateDialog';
@@ -35,9 +37,11 @@ import './template-editor.scss';
 
 /** What the editor asks of the view that hosts it. */
 export interface TemplateEditorHost {
-  /** Opens a template: in this tab (the copy of a built-in, asking about its use) or in a new one. */
-  openTemplate: (target: TemplateTarget, where: 'here' | 'tab', copiedFrom?: TemplateId) => void;
+  /** Opens a template: in this tab or in a new one. */
+  openTemplate: (target: TemplateTarget, where: 'here' | 'tab') => void;
   openNote: (path: string) => void;
+  /** Back to the note this leaf showed before "Edit template" (§8.4). */
+  backToNote?: (() => void) | undefined;
   /** The template was deleted from here. */
   close: () => void;
 }
@@ -54,9 +58,8 @@ export interface TemplateEditorProps {
   collectionId: string | null;
   onCollectionChange: (collectionId: string) => void;
   initialSelection?: BlockSelection | undefined;
-  /** The built-in this template was just copied from: the editor asks whether its statblocks move over. */
-  copiedFrom?: TemplateId | null | undefined;
-  onCopyQuestionDone?: (() => void) | undefined;
+  /** The note this leaf showed before "Edit template" (§8.4); null when it opened on its own. */
+  fromNote?: string | null | undefined;
   /** The view's key scope asks this handler first (§7.7). */
   registerKeys?: ((handler: KeyHandler | null) => void) | undefined;
 }
@@ -93,6 +96,15 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
   const showAs = useShowAs(rootRef);
   const floats = useFloatingPanels(app, room.editorWidth, room.noteColumn);
   const state = useEditorState({ session, snapshot, collectionKeys, stageRef, layer, initialSelection: props.initialSelection });
+  // Sections unfolded here stay open while the editor lives; the rest fold as in the note view (§8.2, J6).
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set());
+  const folded = useMemo(() => foldedBlocks(snapshot.template, preview.record, unfolded), [snapshot.template, preview.record, unfolded]);
+  const foldedKey = folded.map((block) => block.blockId).join(' ');
+  const foldedSet = useMemo(() => new Set(foldedKey ? foldedKey.split(' ') : []), [foldedKey]);
+  const unfold = (blockId: string): void => {
+    setUnfolded((now) => new Set([...now, blockId]));
+    state.select([blockId], true);
+  };
 
   const target: KeyboardTarget = {
     rootRef, session, selection: state.selection, drawn: state.drawn, select: state.select, settle: state.settle,
@@ -113,13 +125,14 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
     editLabel: state.editLabel, announce: state.announce, collectionId, collectionKeys, openSettings: floats.openSettings,
   };
   const newStatblock = app ? (): void => { void newStatblockFromTemplate(app, snapshot.id, collectionId); } : undefined;
-  const makeCopy = app && !copying ? (where: 'here' | 'tab'): void => {
+  const makeCopy = app && !copying ? (): void => {
     setCopying(true);
     void duplicateTemplate(app, snapshot.id).then((made) => {
       setCopying(false);
-      if (made) host.openTemplate(made, where, where === 'here' ? snapshot.id : undefined);
+      if (made) host.openTemplate(made, 'tab');
     });
   } : undefined;
+  const fromNote = props.fromNote ?? null;
 
   return (
     <TemplateEditorContext.Provider value={context}>
@@ -167,21 +180,15 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
                   showAsChoices: showAs.choices,
                   onShowAs: showAs.setChoice,
                   newStatblock,
-                  makeCopy: makeCopy ? () => makeCopy('tab') : undefined,
+                  makeCopy,
+                  backToNote: fromNote && host.backToNote ? { name: noteName(fromNote), go: host.backToNote } : undefined,
                   deleteTemplate: snapshot.path !== null && app ? () => setDeleting(true) : undefined,
                   dock: room.editorWidth === 'stacked' ? dockMenuEntries(floats.openDock) : undefined,
                 }}
               />
             )}
             stateBars={(
-              <TemplateStateBars
-                app={app}
-                session={session}
-                snapshot={snapshot}
-                collectionId={collectionId}
-                copiedFrom={props.copiedFrom ?? null}
-                onCopyQuestionDone={() => props.onCopyQuestionDone?.()}
-              />
+              <TemplateStateBars session={session} snapshot={snapshot} />
             )}
             card={(
               <Canvas
@@ -202,15 +209,21 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
                 focusRequest={state.focusRequest}
                 empty={<BlankCard onInsert={snapshot.readOnly ? undefined : (item) => context.insert(item)} />}
                 shownWidth={showAs.width}
+                folded={foldedSet}
               />
             )}
             footer={(
-              <TemplateFooterLine
+              <>
+                <FoldedChips folded={folded} onUnfold={unfold} />
+                <TemplateFooterLine
+                app={app}
                 snapshot={snapshot}
+                collectionId={collectionId}
+                fromNote={fromNote}
                 showAsLine={showAs.line}
                 onBackToNote={() => showAs.setChoice('note')}
-                onMakeCopy={makeCopy ? () => makeCopy('here') : undefined}
-              />
+                />
+              </>
             )}
           />
           <EditorFloats

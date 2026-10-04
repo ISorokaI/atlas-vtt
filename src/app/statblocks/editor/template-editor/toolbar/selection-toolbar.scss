@@ -29,14 +29,28 @@ $dot: 6px;
     border-radius: $toolbar-height * 0.5;
     box-shadow: $shadow-md;
     transition: opacity $transition-fast $transition-ease-out;
+    // Only the controls take the pointer: its edge and the gaps between them
+    // belong to the block it covers, so the pointer reaches that block there.
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
 
     &[data-hidden] {
       visibility: hidden;
+
+      > * {
+        pointer-events: none;
+      }
     }
 
     &[data-stepped-aside] {
       opacity: 0;
-      pointer-events: none;
+
+      > * {
+        pointer-events: none;
+      }
     }
 
     .atlas-tool-button button.btn,

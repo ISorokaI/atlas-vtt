@@ -55,13 +55,13 @@ describe('TemplateEditorView', () => {
     expect(view.canAcceptExtension('atlasmap')).toBe(false);
   });
 
-  it('opens a built-in by id, read-only, and saves the state it restores', async () => {
+  it('opens a built-in by id, editable over its own copy to be, and saves the state it restores without writing', async () => {
     const { view, files } = await open();
     const before = new Map(files);
-    const state = { templateId: BUILT_IN, previewPath: 'Bestiary/Bog Hag.md', collectionId: 'campaign' };
+    const state = { templateId: BUILT_IN, previewPath: 'Bestiary/Bog Hag.md', collectionId: 'campaign', fromNote: 'Bestiary/Bog Hag.md' };
     await act(async () => { await view.setState(state, { history: false }); });
     expect(view.getState()).toEqual({ ...state, previewMode: null });
-    expect(screen.getByText('Built-in template. Make a copy to change it.')).toBeTruthy();
+    expect(screen.getByText('Built in. Your first change makes your own copy for Bog Hag.')).toBeTruthy();
     expect(files).toEqual(before);
   });
 
@@ -70,7 +70,7 @@ describe('TemplateEditorView', () => {
     const before = files.get(MARSH_PATH);
     await act(async () => { await view.setState({ file: MARSH_PATH, previewPath: null, collectionId: null }, { history: false }); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Marsh creature' })).toBeTruthy());
-    expect(view.getState()).toEqual({ file: MARSH_PATH, previewPath: null, previewMode: null, collectionId: null });
+    expect(view.getState()).toEqual({ file: MARSH_PATH, previewPath: null, previewMode: null, collectionId: null, fromNote: null });
     expect(view.getDisplayText()).toBe('Marsh creature');
     expect(files.get(MARSH_PATH)).toBe(before);
   });
@@ -102,7 +102,7 @@ describe('openTemplateEditor', () => {
     const [leaf] = fake.leaves;
     expect(leaf?.getViewState()).toEqual({
       type: TEMPLATE_EDITOR_VIEW_TYPE,
-      state: { templateId: BUILT_IN, previewPath: 'Bestiary/Bog Hag.md', collectionId: 'campaign' },
+      state: { templateId: BUILT_IN, previewPath: 'Bestiary/Bog Hag.md', collectionId: 'campaign', fromNote: null },
       active: true,
     });
     expect(leaf?.eState).toEqual({ select: 'abc' });
@@ -120,6 +120,18 @@ describe('openTemplateEditor', () => {
     app.workspace = fake.workspace;
     await waitFor(() => expect(TemplateLibrary.forApp(app).get(MARSH_ID)).not.toBeNull());
     await openTemplateEditor(app, { templateId: MARSH_ID });
-    expect(fake.leaves[0]?.getViewState().state).toEqual({ file: MARSH_PATH, previewPath: null, collectionId: null });
+    expect(fake.leaves[0]?.getViewState().state).toEqual({ file: MARSH_PATH, previewPath: null, collectionId: null, fromNote: null });
+  });
+
+  it('opens in a note\'s own leaf from "Edit template", which can go back to the note', async () => {
+    const { app } = createInMemoryApp({ files: { [MARSH_PATH]: marshText() } });
+    apps.push(app);
+    withStatblockEditor(app);
+    const fake = fakeWorkspace([], null);
+    app.workspace = fake.workspace;
+    const noteLeaf = new FakeLeaf({ type: 'markdown', state: { file: 'Bestiary/Bog Hag.md' } }, app);
+    await openTemplateEditor(app, { templateId: BUILT_IN, previewPath: 'Bestiary/Bog Hag.md', leaf: noteLeaf as unknown as WorkspaceLeaf, fromNote: 'Bestiary/Bog Hag.md' });
+    expect(noteLeaf.getViewState()).toMatchObject({ type: TEMPLATE_EDITOR_VIEW_TYPE, state: { templateId: BUILT_IN, fromNote: 'Bestiary/Bog Hag.md' } });
+    expect(fake.leaves).toHaveLength(0);
   });
 });

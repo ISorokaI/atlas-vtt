@@ -47,15 +47,13 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-const created = { id: 'creature-abc123', path: `${TEMPLATE_FOLDER}/Creature.atlastemplate`, firstBlock: 'gctitle0', copiedFrom: 'builtin:generic-creature' };
+const created = { id: 'creature-abc123', path: `${TEMPLATE_FOLDER}/Creature.atlastemplate` };
 
 describe('after the gallery', () => {
-  it('opens the new template in the editor with its first block selected and the built-in it came from', async () => {
+  it('opens the new template in the editor with nothing selected, asking nothing about other statblocks', async () => {
     await openCreatedTemplate(vault.app, created, 'marsh', null);
     expect(updateCollectionSettings).not.toHaveBeenCalled();
-    expect(openTemplateEditor).toHaveBeenCalledWith(vault.app, {
-      templateId: created.id, path: created.path, collectionId: 'marsh', select: 'gctitle0', copiedFrom: 'builtin:generic-creature',
-    });
+    expect(openTemplateEditor).toHaveBeenCalledWith(vault.app, { templateId: created.id, path: created.path, collectionId: 'marsh' });
   });
 
   it('gives the template to the role first, storing the collection\'s own roles', async () => {

@@ -24,7 +24,11 @@ export interface CollectionContext {
   collections: readonly CollectionChoice[];
   /** The collections whose tokens link the note. */
   linking: readonly string[];
-  /** Whether the header offers to switch: there is a choice, and no single linking collection decided it. */
+  /**
+   * Whether the header shows the collection and offers to switch it: there is
+   * more than one. Always the same for a note view and the template editor,
+   * so their capsules match (§2.3); a linking collection only comes first.
+   */
   switchable: boolean;
 }
 
@@ -57,7 +61,7 @@ export async function resolveCollectionContext(app: App, notePath: string, reque
   const choices = collections.map(({ id, name }) => ({ id, name }));
   const linking = linkingCollectionIds(tokens, notePath);
   const collectionId = chooseCollection(requested, new Set(choices.map((choice) => choice.id)), linking, assets.getDefaultCollectionId());
-  return { collectionId, collections: choices, linking, switchable: choices.length > 1 && linking.length !== 1 };
+  return { collectionId, collections: choices, linking, switchable: choices.length > 1 };
 }
 
 /** The roles of a collection, through its settings and the vault's presets. */

@@ -58,6 +58,11 @@ function runEntryAction(entry: ContextMenuItemEntry): void {
 
 // ── Icon helper ─────────────────────────────────────────────────────────────
 
+/** An Obsidian icon in a menu row's icon slot; an empty name keeps the slot, so labels line up. */
+export function MenuIcon({ name }: { name: string }): React.ReactElement {
+  return name ? <ObsidianIcon name={name} /> : <span className="atlas-ctx-icon-spacer" />;
+}
+
 function ObsidianIcon({ name }: { name: string }): React.ReactElement {
   const ref = useRef<HTMLSpanElement>(null);
 

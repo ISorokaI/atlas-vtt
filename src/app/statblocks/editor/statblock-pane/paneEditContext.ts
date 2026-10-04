@@ -2,18 +2,33 @@ import { createContext, useContext } from 'react';
 import type { App } from 'obsidian';
 import type { FieldKey, FieldValue, TemplateField } from '../../model/templateTypes';
 import type { NotePatch } from '../../notes/patchTypes';
+import type { LibraryTemplate } from '../../model/resolvedTypes';
+import type { StatblockTemplate } from '../../model/templateTypes';
+import type { FoldedBlock } from '../../render/foldRule';
+import type { SectionChoice } from './sectionChoices';
+import type { PanelSessions } from './usePanelSessions';
 import type { SheetState } from '../../render/sheetState';
 import type { FieldRead, FieldRecord } from '../../values/fieldValues';
 import type { EditableSpots } from './editableSpots';
 import type { PanelHistory } from './panelHistory';
 
-/** The value being edited: a field in one block, and for entries the entry clicked. */
+/** The value being edited: a field in one block, and for entries the one ability being typed. */
 export interface EditTarget {
   blockId: string;
   field: FieldKey;
+  /** Entries: the ability edited, counted as the card draws them; the first when unset. */
   entry?: number | undefined;
-  /** Entries: a new entry starts right after `entry` ("Add action below"). */
+  /** Entries: a new ability starts right after `entry` ("Add action below"), or first in an empty list. */
   add?: boolean | undefined;
+  /**
+   * Entries: the ability is found by its value rather than its place, once the
+   * note holds it (a move or a new ability being written): until then the
+   * list is drawn as it is and nothing is typed into a neighbour.
+   */
+  anchor?: FieldValue | undefined;
+  /** Entries: the part focused, and where its caret stands. */
+  part?: 'name' | 'text' | undefined;
+  caret?: readonly [number, number] | undefined;
 }
 
 /** Moves an entry of a list from one stored place to another; the list editor's takes the text being typed along. */
@@ -72,6 +87,25 @@ export interface PaneEditController {
   registerMover: (key: FieldKey, mover: ListMover) => () => void;
   /** Which history took each of the panel's actions: the note's or a template's (§8.5). */
   history: PanelHistory;
+  /** Sections folded into chips under the card (§8.2), in reading order. */
+  folded: readonly FoldedBlock[];
+  /** Their ids, as the card takes them. */
+  foldedSet: ReadonlySet<string>;
+  /** Unfolds a section in place, sticky for the panel's life on this note; false folds it again (after Clear). */
+  setUnfolded: (blockId: string, unfolded: boolean) => void;
+  /** The note's template, and as the library holds it (null while it can't change: missing, newer, loading). */
+  template: StatblockTemplate | null;
+  entry: LibraryTemplate | null;
+  /** The template sessions the panel holds for its structural changes (§8.5). */
+  sessions: PanelSessions;
+  /** "Add a section…" is open, adding after a block or (null) in the section's place; null while closed. */
+  addingSection: { after: string | null } | null;
+  openAddSection: (place: { after: string | null } | null) => void;
+  /** Adds or unfolds a section (§8.3). */
+  addSection: (choice: SectionChoice, after: string | null) => Promise<void>;
+  /** The toast under the panel: what the last change did, with Undo. */
+  toast: string | null;
+  showToast: (text: string | null) => void;
 }
 
 export const PaneEditContext = createContext<PaneEditController | null>(null);

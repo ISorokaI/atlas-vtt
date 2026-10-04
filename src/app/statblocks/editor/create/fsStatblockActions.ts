@@ -22,7 +22,7 @@ import { resolveCollectionContext } from '../collectionContext';
 import { saveStatblockAsTemplate } from '../gallery/galleryActions';
 import { showImportOutcome } from '../fs-import/layoutImportFlow';
 import { openStatblockEditor } from '../openStatblockEditor';
-import { templateKeyPatch } from '../statblock-pane/addFieldFlow';
+import { templateKeyPatch } from '../statblock-pane/templateKeyPatch';
 import { copyFenceIntoStatblock } from '../statblock-pane/fenceCopy';
 import { chosenRole, roleChoicesFor, roleTemplateId } from './collectionRoles';
 

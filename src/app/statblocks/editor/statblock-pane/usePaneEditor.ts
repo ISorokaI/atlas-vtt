@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { App } from 'obsidian';
+import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { FieldKey, FieldValue, StatblockTemplate, TemplateField } from '../../model/templateTypes';
 import type { NotePatch } from '../../notes/patchTypes';
 import type { BlockChrome } from '../../render/blockChrome';
+import { foldedIds, type FoldedBlock } from '../../render/foldRule';
 import { sheetState } from '../../render/sheetState';
 import type { ValueEditing } from '../../render/valueSlot';
 import { readField, type FieldRecord } from '../../values/fieldValues';
@@ -12,8 +14,11 @@ import { entryList, moveEntryToPatch } from './entryPatches';
 import type { EditTarget, FieldConflict, ListMover, PaneEditController } from './paneEditContext';
 import { PanelHistory } from './panelHistory';
 import { paneChrome } from './paneChrome';
+import { renderPaneEntry } from './PaneEntry';
 import { renderPaneSlot } from './PaneSlot';
 import type { PendingCommit } from './paneTypes';
+import { useAddSection } from './useAddSection';
+import { usePanelSessions } from './usePanelSessions';
 import { fieldPatches } from './valuePatches';
 
 export interface PaneEditorOptions {
@@ -27,6 +32,12 @@ export interface PaneEditorOptions {
   pendingCommit: PendingCommit;
   /** The card's element, where focus returns after editing. */
   cardRef: RefObject<HTMLElement | null>;
+  /** Sections folded into chips under the card: not drawn, so none of their values is a stop. */
+  folded: readonly FoldedBlock[];
+  /** Unfolds a section in place (a chip), or folds it again once its values were cleared. */
+  setUnfolded: (blockId: string, unfolded: boolean) => void;
+  /** The note's template as the library holds it; null while it can't change. */
+  entry: LibraryTemplate | null;
   /** Tab past the last value, or Shift+Tab before the first. */
   onExit: (step: 1 | -1) => void;
   /** A commit reached the note (the first one dismisses the first-visit hint). */
@@ -42,8 +53,12 @@ export interface PaneEditor {
   valueEditing: ValueEditing;
 }
 
+function sameIds(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  return a.size === b.size && [...a].every((id) => b.has(id));
+}
+
 /** Rendering a value's slot never changes: what it shows comes from the controller's context. */
-const VALUE_EDITING: ValueEditing = { slot: renderPaneSlot };
+const VALUE_EDITING: ValueEditing = { slot: renderPaneSlot, entry: renderPaneEntry };
 
 /**
  * The pane's editing state (§7.6, §8.5, §8.6): which value is being edited,
@@ -51,16 +66,29 @@ const VALUE_EDITING: ValueEditing = { slot: renderPaneSlot };
  * whose base is the value the edit started from.
  */
 export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
-  const { app, services, notePath, collectionId, template, record, writable, pendingCommit, cardRef } = options;
+  const { app, services, notePath, collectionId, template, record, writable, pendingCommit, cardRef, folded, setUnfolded, entry } = options;
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [conflicts, setConflicts] = useState<ReadonlyMap<FieldKey, FieldConflict>>(new Map());
-  const sheet = useMemo(() => sheetState({ template, record, mode: 'editing' }), [template, record]);
+  // The same set while the same sections are folded, so the card renders again only when that changes.
+  const foldedRef = useRef<ReadonlySet<string>>(new Set());
+  const foldedNow = foldedIds(folded);
+  if (!sameIds(foldedRef.current, foldedNow)) foldedRef.current = foldedNow;
+  const foldedSet = foldedRef.current;
+  const sheet = useMemo(() => sheetState({ template, record, mode: 'editing', folded: foldedSet }), [template, record, foldedSet]);
   const spots = useMemo(() => editableSpots(template, sheet), [template, sheet]);
   const latest = useRef({ record, options, conflicts });
   latest.current = { record, options, conflicts };
   const refocus = useRef<string | null>(null);
   const movers = useRef(new Map<FieldKey, ListMover>());
   const [history] = useState(() => new PanelHistory());
+  const sessions = usePanelSessions(app);
+  const [toast, showToast] = useState<string | null>(null);
+  const [addingSection, openAddSection] = useState<{ after: string | null } | null>(null);
+  const unfold = useCallback((blockId: string) => setUnfolded(blockId, true), [setUnfolded]);
+  const announce = useCallback((text: string) => latest.current.options.announce(text), []);
+  const addSection = useAddSection({
+    app, notePath, record, collectionId, writer: services.writer, entry, sessions, history, announce, toast: showToast, unfold,
+  });
 
   useEffect(() => {
     const blockId = refocus.current;
@@ -163,7 +191,19 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
       };
     },
     history,
-  }), [app, notePath, collectionId, spots, sheet, editing, writable, record, conflicts, read, stop, write, setConflict, pendingCommit, history]);
+    folded,
+    foldedSet,
+    setUnfolded,
+    template,
+    entry,
+    sessions,
+    addingSection,
+    openAddSection,
+    addSection,
+    toast,
+    showToast,
+  }), [app, notePath, collectionId, spots, sheet, editing, writable, record, conflicts, read, stop, write, setConflict, pendingCommit, history, folded, foldedSet, setUnfolded,
+    template, entry, sessions, addingSection, addSection, toast]);
 
   const chrome = useMemo(() => paneChrome(spots, editing, writable, controller.start), [spots, editing, writable, controller.start]);
   return { controller, chrome, valueEditing: VALUE_EDITING };

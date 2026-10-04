@@ -1,11 +1,11 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { setIcon, type App, type MarkdownView } from 'obsidian';
+import { setIcon, type App, type MarkdownView, type WorkspaceLeaf } from 'obsidian';
 import { noteName } from '../../../utils/pathUtils';
 import { STATBLOCK_NOTE_CLASS } from '../../notes/openEditors';
 import { observeResize } from '../../../utils/observeResize';
 import type { PaneServices } from '../paneServices';
-import type { PendingCommit, StatblockPaneActions } from '../statblock-pane/paneTypes';
+import type { PendingCommit, StatblockPaneActions, TemplateBlockTarget } from '../statblock-pane/paneTypes';
 import { NotePanelRoot } from './NotePanelRoot';
 import { measureNoteRoom, watchNoteRoom } from './noteRoom';
 import { STACK_BELOW, panelWidth, type PanelPrefs } from './panelPrefs';
@@ -22,7 +22,13 @@ export const STACKED_CLASS = 'atlas-sb-note--stacked';
 export interface PanelContext {
   app: App;
   services: PaneServices;
-  actions: Pick<StatblockPaneActions, 'editTemplate' | 'linkToToken' | 'openTemplateAt'>;
+  actions: Pick<StatblockPaneActions, 'linkToToken'> & {
+    /**
+     * Opens the template editor on the note's template, in the note's own
+     * leaf (§8.4), showing the note and, from a block's menu, that block.
+     */
+    openTemplate?: ((target: Omit<TemplateBlockTarget, 'blockId' | 'path'> & Partial<Pick<TemplateBlockTarget, 'blockId' | 'path'>>, leaf: WorkspaceLeaf) => void) | undefined;
+  };
   prefs: () => PanelPrefs;
   /** A new width while dragging (`done` false) and once let go, which stores it. */
   setWidth: (width: number, done: boolean) => void;
@@ -72,8 +78,13 @@ export class NoteStatblockPanel {
         this.render();
       },
     });
+    const open = context.actions.openTemplate;
     this.paneActions = {
-      ...context.actions,
+      linkToToken: context.actions.linkToToken,
+      ...(open && {
+        editTemplate: (templateId: string, collectionId: string | null, notePath: string) => open({ templateId, collectionId, notePath }, this.view.leaf),
+        openTemplateAt: (target: TemplateBlockTarget) => open(target, this.view.leaf),
+      }),
       registerHistory: (router) => this.keys.setRouter(router),
       showProperties: () => {
         this.propertiesShown = true;

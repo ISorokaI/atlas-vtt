@@ -27,7 +27,7 @@ interface TrayValueRowProps {
 
 /**
  * A key the template does not show: its value as raw text (a list or a map
- * shows read-only), Add to template, and Remove from note, a `delete` patch
+ * shows read-only), Put on the card, and Remove from note, a `delete` patch
  * that the note's own undo takes back. A commit is based on the value typing
  * started from, so a change in the note meanwhile is a conflict (§8.1).
  */
@@ -77,7 +77,7 @@ export function TrayValueRow({ field, onAddToTemplate }: TrayValueRowProps): Rea
       )}
       {conflict && <ConflictChip field={field} conflict={conflict} />}
       <span className="atlas-sb-pane-tray__actions">
-        {onAddToTemplate && <Button type="button" variant="ghost" size="sm" onClick={onAddToTemplate}>Add to template</Button>}
+        {onAddToTemplate && <Button type="button" variant="ghost" size="sm" onClick={onAddToTemplate}>Put on the card</Button>}
         {read.value !== undefined && (
           <Button
             type="button"

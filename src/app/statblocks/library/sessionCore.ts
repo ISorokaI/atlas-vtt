@@ -35,6 +35,11 @@ export interface SessionSnapshot {
   conflict: SessionConflict | null;
   canUndo: boolean;
   canRedo: boolean;
+  /**
+   * A built-in shown editable (`copyOnWriteSession.ts`): its first change
+   * makes the collection's own copy, which the editor shows from then on.
+   */
+  copyOnWrite?: { builtInId: TemplateId; builtInName: string } | undefined;
 }
 
 function sameSnapshot(a: SessionSnapshot, b: SessionSnapshot): boolean {

@@ -7,8 +7,12 @@ describe('placeBelow', () => {
   const layer = { left: 0, top: 0, right: 600, bottom: 700 };
   const size = { width: 180, height: 36 };
 
-  it('stands below the block, 8 px past its outline, left-aligned with it', () => {
-    expect(placeBelow({ left: 40, top: 300, right: 200, bottom: 340 }, view, layer, size)).toEqual({ left: 40, top: 352, above: false, hidden: false });
+  it('stands below the block, 8 px past its outline, its right edge on the block\'s', () => {
+    expect(placeBelow({ left: 40, top: 300, right: 400, bottom: 340 }, view, layer, size)).toEqual({ left: 220, top: 352, above: false, hidden: false });
+  });
+
+  it('starts at the block\'s left edge where the block is narrower than the toolbar', () => {
+    expect(placeBelow({ left: 40, top: 300, right: 200, bottom: 340 }, view, layer, size).left).toBe(40);
   });
 
   it('flips above where the view has no room below, and never covers the block', () => {

@@ -39,7 +39,7 @@ describe('sample values as text', () => {
   it('names entries as typed and keeps what each held at its place', () => {
     const entries = field('entries');
     const before = [{ name: 'Bite', desc: 'Ouch.' }];
-    expect(textToSample(entries, 'Claws, Tail', before)).toEqual([{ name: 'Claws', desc: 'Ouch.' }, { name: 'Tail', desc: 'A line of text.' }]);
+    expect(textToSample(entries, 'Claws, Tail', before)).toEqual([{ name: 'Claws', desc: 'Ouch.' }, { name: 'Tail', desc: 'What the feature does, in a sentence.' }]);
     expect(sampleToText(entries, before)).toBe('Bite');
   });
 
@@ -50,9 +50,9 @@ describe('sample values as text', () => {
     expect(set.sample).toEqual({ ac: 14 });
     expect(hasOwnSample(set, 'ac')).toBe(true);
     expect(withSample(set, number, 14)).toBe(set);
-    expect(withSample(base, number, 10)).toBe(base);
+    expect(withSample(base, number, 13)).toBe(base);
     expect('sample' in withSample(set, number, undefined)).toBe(false);
-    expect('sample' in withSample(set, number, 10)).toBe(false);
+    expect('sample' in withSample(set, number, 13)).toBe(false);
   });
 });
 
@@ -87,7 +87,7 @@ describe('the Fields tab', () => {
     mountEditor(session);
     const list = openFields();
     const input = within(rowOf(list, 'Armor class')).getByRole<HTMLInputElement>('textbox');
-    expect(input.value).toBe('10');
+    expect(input.value).toBe('13');
     typeAndLeave(input, '1', '14');
     expect(session.template.sample).toEqual({ ac: 14 });
     expect(session.steps).toBe(1);
@@ -101,10 +101,10 @@ describe('the Fields tab', () => {
     const session = new FakeSession(sampleTemplate());
     mountEditor(session);
     const input = within(rowOf(openFields(), 'Speed')).getByRole<HTMLInputElement>('textbox');
-    fireEvent.change(input, { target: { value: '30 ft.' } });
+    fireEvent.change(input, { target: { value: '40 ft.' } });
     key(input, 'Escape');
     expect(session.template.sample).toBeUndefined();
-    expect(input.value).toBe('speed');
+    expect(input.value).toBe('30 ft.');
     expect(session.steps).toBe(0);
   });
 

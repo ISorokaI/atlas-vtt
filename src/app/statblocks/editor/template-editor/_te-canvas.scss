@@ -37,6 +37,12 @@ $tag-height: 18px;
       outline: $border-width-s solid var(--background-modifier-border-hover);
     }
 
+    // What the hovered handle's menu would act on (§3.5): accent, with a faint wash.
+    &[data-sb-menu-target]:not([data-te-selected]) {
+      outline: $border-width-s solid var(--interactive-accent);
+      background-color: color-mix(in oklch, var(--interactive-accent) 6%, transparent);
+    }
+
     // Shown at once, never faded in.
     &[data-te-selected] {
       outline: $border-width-l solid var(--interactive-accent);

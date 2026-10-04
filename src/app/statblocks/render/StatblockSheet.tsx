@@ -41,6 +41,8 @@ export interface StatblockSheetProps {
   header?: React.ReactNode;
   /** Shown under the blocks, across the card (the DM screen's token resources). */
   footer?: React.ReactNode;
+  /** Empty headed sections folded into chips under the card (`foldRule.ts`); keep the set while it is unchanged. */
+  folded?: ReadonlySet<string> | undefined;
 }
 
 /**
@@ -64,10 +66,11 @@ export function StatblockSheet({
   sourcePath,
   header,
   footer,
+  folded,
 }: StatblockSheetProps): React.JSX.Element {
   const state = useMemo(
-    () => sheetState({ template, record: fields, lookups, mode, token }),
-    [template, fields, lookups, mode, token],
+    () => sheetState({ template, record: fields, lookups, mode, token, folded }),
+    [template, fields, lookups, mode, token, folded],
   );
   const sheet = useMemo((): SheetContextValue => ({ state, app, sourcePath }), [state, app, sourcePath]);
   const diceRef = useStatblockDiceRolling({

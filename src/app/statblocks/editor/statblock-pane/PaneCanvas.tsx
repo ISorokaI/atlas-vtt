@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { App } from 'obsidian';
+import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { StatblockTemplate } from '../../model/templateTypes';
 import { isEmptyValue } from '../../values/emptyValue';
 import { readField, type FieldRecord } from '../../values/fieldValues';
+import { foldedBlocks } from '../../render/foldRule';
+import { FoldedChips } from '../panel-frame/FoldedChips';
 import { PanelCard } from '../panel-frame/PanelFrame';
 import type { PaneServices } from '../paneServices';
 import { PaneEditContext } from './paneEditContext';
 import type { PendingCommit } from './paneTypes';
 import { usePaneEditor } from './usePaneEditor';
+import { holdTypingFocus } from './typingFocus';
 
 export interface PaneCanvasProps {
   app: App;
@@ -16,12 +20,14 @@ export interface PaneCanvasProps {
   /** The pane's collection, whose tokens the token socket links. */
   collectionId: string | null;
   template: StatblockTemplate;
+  /** The note's template as the library holds it; null while it can't change (missing, newer, loading). */
+  entry: LibraryTemplate | null;
   /** The template's name: `data-template` on the card. */
   templateName: string;
   record: FieldRecord;
   writable: boolean;
   pendingCommit: PendingCommit;
-  /** Shown under the card: "Add a field…". */
+  /** Last in the row under the card, after the folded sections' chips: "Add a section…". */
   footer?: React.ReactNode;
   /** Raised to move focus to the first empty value (a statblock just created); 0 never does. */
   focusRequest: number;
@@ -47,16 +53,47 @@ export interface PaneCanvasProps {
 export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
   const { app, notePath, template, templateName, record, footer, focusRequest, handledFocusRequest, writable } = props;
   const cardRef = useRef<HTMLDivElement>(null);
-  const editor = usePaneEditor({ ...props, cardRef });
+  // Sections unfolded on this card stay open for its life, empty or not (§8.2): no focus decides it.
+  const [unfolded, setUnfoldedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const folded = useMemo(() => (writable ? foldedBlocks(template, record, unfolded) : []), [writable, template, record, unfolded]);
+  const opening = useRef<string | null>(null);
+  const setUnfolded = useCallback((blockId: string, open: boolean): void => {
+    if (open) opening.current = blockId;
+    setUnfoldedIds((now) => {
+      if (now.has(blockId) === open) return now;
+      const next = new Set(now);
+      if (open) next.add(blockId);
+      else next.delete(blockId);
+      return next;
+    });
+  }, []);
+  const editor = usePaneEditor({ ...props, cardRef, folded, setUnfolded });
   const { spots } = editor.controller;
 
-  // A statblock just created opens with focus on the first empty value; a restored workspace never moves focus.
+  // A chip unfolds its section with focus in its first value ("Add spell").
+  useEffect(() => {
+    const blockId = opening.current;
+    const first = blockId ? spots.byBlock.get(blockId)?.[0] : undefined;
+    if (!blockId || !first) return;
+    opening.current = null;
+    editor.controller.start({ blockId, field: first.key });
+  }, [spots, editor.controller]);
+
+  // A statblock just created opens with its first empty value being typed; a restored workspace never moves focus.
+  const startRef = useRef(editor.controller.start);
+  startRef.current = editor.controller.start;
+  const holding = useRef<(() => void) | null>(null);
+  useEffect(() => () => holding.current?.(), []);
   useEffect(() => {
     if (focusRequest === handledFocusRequest.current || !writable) return;
     handledFocusRequest.current = focusRequest;
     const empty = spots.order.find((spot) => isEmptyValue(readField(record, spot.field).value)) ?? spots.order[0];
-    if (!empty) return;
-    cardRef.current?.querySelector<HTMLElement>(`[data-block-id="${empty.blockId}"]`)?.focus({ preventScroll: true });
+    const card = cardRef.current;
+    if (!empty || !card) return;
+    const target = { blockId: empty.blockId, field: empty.field.key };
+    startRef.current(target);
+    holding.current?.();
+    holding.current = holdTypingFocus(card, () => startRef.current(target));
   }, [focusRequest, handledFocusRequest, writable, spots, record]);
 
   return (
@@ -70,8 +107,9 @@ export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
         record={record}
         app={app}
         sourcePath={notePath}
+        folded={editor.controller.foldedSet}
       />
-      {footer}
+      {writable && <FoldedChips folded={folded} onUnfold={(blockId) => setUnfolded(blockId, true)}>{footer}</FoldedChips>}
       {props.children}
     </PaneEditContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { findBlock } from '../../model/treeQueries';
 import type { TemplateBlock } from '../../model/templateTypes';
 import { useBlockHandleDrag } from '../dnd/useDragSources';
@@ -80,10 +80,12 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
     });
   }, [onSettings, copy]);
 
+  const [menuShown, setMenuShown] = useState(false);
   const open = useCallback((rows: SurfaceAction[], place: Place, mark: HTMLElement | null, returnFocus: HTMLElement | null): void => {
     if (!menu || rows.length === 0) return;
     store.menuOpenedOn(mark);
-    const options = { returnFocus, onClose: () => store.menuClosed() };
+    setMenuShown(true);
+    const options = { returnFocus, onClose: () => { store.menuClosed(); setMenuShown(false); } };
     if ('at' in place) menu.openAt(rows, place.at, options);
     else menu.openFrom(rows, place.from, options);
   }, [menu, store]);
@@ -123,6 +125,13 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
     if (primary && frame) open(menuOf(primary), { from: frame }, frame, frame);
   }, [menuOpen, onMenuOpenChange, open, menuOf, stage]);
 
+  // The toolbar covers the line below its block; a right-click on it is meant for that line.
+  const menuBelow = (point: { x: number; y: number }): void => {
+    const under = stage.ownerDocument.elementsFromPoint(point.x, point.y).find((element) => stage.contains(element));
+    const found = under ? targetAt(stage, under, false) : null;
+    if (found) open(menuOf(found.blockId), { at: point }, found.element, null);
+  };
+
   const primary = primaryOf(state.selection);
   const block = primary ? findBlock(snapshot.template.layout.blocks, primary)?.block : undefined;
   const frameOf = (id: string): HTMLElement | null => blockFrame(stage, id);
@@ -155,6 +164,8 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
           onAddBelow={() => state.openInsert({ after: primary })}
           onDelete={() => runBlockCommand(target, 'delete')}
           onMore={(button) => open(menuOf(primary), { from: button }, frameOf(primary), frameOf(primary))}
+          menuOpen={menuShown}
+          onMenuBelow={menuBelow}
         />
       )}
     </>

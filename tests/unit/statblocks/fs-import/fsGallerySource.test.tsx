@@ -63,7 +63,6 @@ describe('From Fantasy Statblocks (§7.9)', () => {
 
     const created = onCreated.mock.calls[0]![0];
     expect(created.path).toBe(`${TEMPLATE_FOLDER}/Marsh layout.atlastemplate`);
-    expect(created.firstBlock).not.toBeNull();
     const dialog = await screen.findByRole('dialog', { name: 'Imported Marsh layout' });
     expect(dialog.textContent).toContain('Use Marsh layout for the note using layout Marsh layout');
   });

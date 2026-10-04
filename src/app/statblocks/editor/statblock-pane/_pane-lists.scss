@@ -1,6 +1,6 @@
-// Lists edited in place (§7.6): chips for a list field, and an entries
-// field's rows, name over text. A row's menu and drag handle stand in the
-// card's gutter (interaction/, spec §3).
+// Lists edited in place (§7.6): chips for a list field. An ability of a list
+// is typed in its own line (`EntryInlineEditor`, _pane-inputs.scss); its menu
+// and drag handle stand in the card's gutter (interaction/, spec §3).
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
@@ -47,30 +47,6 @@
     &:hover {
       background: var(--background-modifier-active-hover);
       color: var(--text-normal);
-    }
-  }
-
-  // ── Entries ─────────────────────────────────────────────────────────────
-  .atlas-sb-pane-entries {
-    @include atlas-flex-col($spacing-s);
-  }
-
-  .atlas-sb-pane-entry {
-    @include atlas-flex-col($spacing-xs);
-  }
-
-  input.atlas-sb-pane-input.atlas-sb-pane-entry__name {
-    font-weight: $font-weight-semibold;
-    font-style: italic;
-  }
-
-  .atlas-sb-pane-entries__add {
-    align-self: flex-start;
-    color: var(--text-muted);
-
-    svg {
-      width: $icon-xs;
-      height: $icon-xs;
     }
   }
 }

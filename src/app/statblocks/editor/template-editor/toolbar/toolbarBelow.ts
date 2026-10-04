@@ -1,8 +1,10 @@
 /**
  * Where the selected block's toolbar stands (spec §4.2): 8 px below the
- * block's selection outline, left edges aligned, inside the panel's visible
- * box; above the block only where the room below runs out. Pure, all in
- * window coordinates.
+ * block's selection outline, inside the panel's visible box; above the block
+ * only where the room below runs out. Its right edge meets the block's: a
+ * statblock's lines start at the left, so the toolbar covers the empty end of
+ * the line below rather than its words, and never the handles in the gutter.
+ * Pure, all in window coordinates.
  */
 
 export interface Box {
@@ -44,7 +46,7 @@ export function placeBelow(block: Box, view: Box, layer: Box, size: { width: num
   const fitsAbove = above >= view.top;
   const top = fitsBelow ? below : fitsAbove ? above : view.bottom - size.height - TOOLBAR_GAP;
   const maxLeft = Math.max(view.left, view.right - size.width);
-  const left = Math.min(Math.max(block.left, view.left), maxLeft);
+  const left = Math.min(Math.max(block.right - size.width, block.left, view.left), maxLeft);
   return { left: left - layer.left, top: top - layer.top, above: !fitsBelow && fitsAbove, hidden };
 }
 

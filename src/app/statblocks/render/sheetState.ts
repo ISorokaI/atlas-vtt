@@ -15,6 +15,8 @@ export interface SheetState {
   mode: SheetMode;
   /** The token the statblock is shown for: its art and resource values show in Image and Track blocks. */
   token: StatblockTokenContext | undefined;
+  /** Blocks folded into chips under the card (`foldRule.ts`): not drawn, and no value of theirs is edited. */
+  folded: ReadonlySet<string>;
 }
 
 export interface SheetStateInput {
@@ -24,9 +26,12 @@ export interface SheetStateInput {
   lookups?: Lookups | undefined;
   mode: SheetMode;
   token?: StatblockTokenContext | undefined;
+  folded?: ReadonlySet<string> | undefined;
 }
 
-export function sheetState({ template, record, lookups, mode, token }: SheetStateInput): SheetState {
+const NONE_FOLDED: ReadonlySet<string> = new Set();
+
+export function sheetState({ template, record, lookups, mode, token, folded }: SheetStateInput): SheetState {
   return {
     record,
     reader: readerFor(record, template.fields),
@@ -37,5 +42,6 @@ export function sheetState({ template, record, lookups, mode, token }: SheetStat
     },
     mode,
     token,
+    folded: folded ?? NONE_FOLDED,
   };
 }

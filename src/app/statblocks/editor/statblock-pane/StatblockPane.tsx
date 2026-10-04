@@ -6,10 +6,10 @@ import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import type { TemplateId } from '../../model/templateTypes';
 import { flattenReadingOrder } from '../../model/treeQueries';
 import { setStatblockPaneSettings, statblockPaneSettings } from '../paneSettings';
-import { templateKeyPatch } from './addFieldFlow';
-import { AddFieldRow } from './AddFieldRow';
+import { makeSeparateTemplate } from './separateTemplate';
+import { templateKeyPatch } from './templateKeyPatch';
+import { AddSectionMenu } from './AddSectionMenu';
 import { ChangeTemplateDialog } from './ChangeTemplateDialog';
-import { noteKeyChoice } from './fieldChoices';
 import { PanelFrame } from '../panel-frame/PanelFrame';
 import { MorePropertiesTray } from './MorePropertiesTray';
 import { PaneCanvas } from './PaneCanvas';
@@ -22,7 +22,6 @@ import type { StatblockPaneProps } from './paneTypes';
 import { usePaneCollection } from './usePaneCollection';
 import { usePaneNote } from './usePaneNote';
 import { usePaneTemplate } from './usePaneTemplate';
-import { useAddField } from './useAddField';
 import './statblock-pane.scss';
 
 /**
@@ -51,6 +50,13 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
 
   useEffect(() => setWriteProblem(null), [notePath]);
 
+  // "Make a separate template for this statblock…" (§5.5): the one explicit way to a copy for one statblock.
+  const makeSeparate = useCallback((): void => {
+    const templateId = note.templateId;
+    if (!templateId) return;
+    void makeSeparateTemplate(app, services.writer, notePath, note.record, templateId).then(setSaid);
+  }, [app, services.writer, notePath, note.record, note.templateId]);
+
   const applyTemplate = useCallback((templateId: TemplateId): void => {
     setChoosing(false);
     void services.writer.write(notePath, [templateKeyPatch(note.record, templateId)]).then((outcome) => {
@@ -66,10 +72,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
   }, [settings]);
 
   const writable = note.kind === 'atlas' && paneTemplate.status !== 'loading';
-  const adder = useAddField({
-    app, notePath, record: note.record, collectionId, writer: services.writer, announce: setSaid, openTemplate: actions.openTemplateAt,
-    entry: writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null,
-  });
+  const entry = writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null;
   const hasSocket = writable && paneTemplate.status === 'ok'
     && flattenReadingOrder(paneTemplate.template.layout.blocks).some((block) => block.type === 'image');
   // "Link to a token…" opens the card's token socket; a template without one keeps the token picker.
@@ -119,20 +122,12 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           notePath={notePath}
           collectionId={collectionId}
           template={paneTemplate.template}
+          entry={entry}
           templateName={paneTemplate.name}
           record={note.record}
           writable={writable}
           pendingCommit={props.pendingCommit}
-          footer={writable && paneTemplate.status === 'ok' && (
-            <AddFieldRow
-              app={app}
-              adder={adder}
-              collectionId={collectionId}
-              template={paneTemplate.template}
-              templateName={paneTemplate.name}
-              record={note.record}
-            />
-          )}
+          footer={entry && <AddSectionMenu />}
           focusRequest={props.focusRequest}
           handledFocusRequest={handledFocusRequest}
           onExit={onExit}
@@ -145,7 +140,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
               ref={trayRef}
               record={note.record}
               template={paneTemplate.template}
-              onAddToTemplate={actions.openTemplateAt && paneTemplate.status === 'ok' ? (key) => adder.choose(noteKeyChoice(key, note.record), true) : undefined}
+              addToCard={Boolean(entry)}
             />
           )}
           <PaneHandles
@@ -172,6 +167,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           template={header}
           showProperties={note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
           linkToToken={note.kind === 'atlas' && (hasSocket || (actions.linkToToken && collectionId)) ? linkToToken : undefined}
+          makeSeparate={entry ? makeSeparate : undefined}
           hide={actions.hide}
         />
       )}

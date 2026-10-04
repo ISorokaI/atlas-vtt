@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import type { TemplateBlock } from '../model/templateTypes';
+import type { FieldValue, TemplateBlock } from '../model/templateTypes';
 import { useSheet } from './sheetContext';
 import { blockMisfits } from './values/blockMisfits';
 import { MisfitChip } from './values/MisfitChip';
@@ -13,6 +13,20 @@ import { MisfitChip } from './values/MisfitChip';
 export interface ValueEditing {
   /** What shows where `block`'s values show: `values` themselves, or the pane's input in their place or beside them. */
   slot(block: TemplateBlock, values: React.ReactNode): React.ReactNode;
+  /**
+   * What shows where one ability of a list shows: `line` itself, or the
+   * pane's editor of that one ability in its place (§6.3), so the rest of the
+   * list stays drawn while one is typed.
+   */
+  entry?(block: TemplateBlock, entry: EntrySlotInfo, line: React.ReactNode): React.ReactNode;
+}
+
+/** One ability as its list draws it: the stored item, its identity, its place in the stored list and among those drawn. */
+export interface EntrySlotInfo {
+  item: FieldValue;
+  key: string;
+  index: number;
+  shown: number;
 }
 
 export const ValueEditingContext = createContext<ValueEditing | null>(null);

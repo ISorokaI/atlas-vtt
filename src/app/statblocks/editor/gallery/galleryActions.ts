@@ -10,7 +10,6 @@ import { systemPresetsOf } from '../../../services/mapCollectionRules';
 import { identityOf, importFsLayout, type FsLayoutImport, type LayoutIdentity } from '../../fs/fsImport';
 import type { FsLayout } from '../../fs/fsLayoutTypes';
 import { copyTemplate, createTemplateFile } from '../../library/templateActions';
-import { TemplateLibrary } from '../../library/TemplateLibrary';
 import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { StatblockTemplate, TemplateId } from '../../model/templateTypes';
 import type { FrontmatterRecord } from '../../notes/statblockSource';
@@ -31,10 +30,6 @@ export type GalleryPick =
 export interface CreatedTemplate {
   id: TemplateId;
   path: string;
-  /** The block selected when the editor opens; null for a blank template. */
-  firstBlock: string | null;
-  /** The built-in it was copied from: the editor asks whether what used it moves to the copy (§7.4). */
-  copiedFrom: TemplateId | null;
   /** A Fantasy Statblocks layout's template, imported now or before: the gallery shows the report as it closes. */
   fsImport?: { layout: LayoutIdentity; imported: FsLayoutImport } | undefined;
 }
@@ -44,28 +39,17 @@ const BLANK_NAME = 'New template';
 /** Writes the picked template into the library as a template of its own. */
 export async function createFromPick(app: App, pick: GalleryPick): Promise<CreatedTemplate> {
   switch (pick.kind) {
-    case 'template': {
-      const { entry } = pick;
-      const created = await copyTemplate(app, entry.template.id, entry.name);
-      return { ...created, firstBlock: firstBlockId(entry.template), copiedFrom: entry.builtIn ? entry.template.id : null };
-    }
-    case 'statblock': {
-      const created = await createTemplateFile(app, noteName(pick.path), pick.template);
-      return { ...created, firstBlock: firstBlockId(pick.template), copiedFrom: null };
-    }
+    case 'template':
+      return copyTemplate(app, pick.entry.template.id, pick.entry.name);
+    case 'statblock':
+      return createTemplateFile(app, noteName(pick.path), pick.template);
     case 'fs-layout': {
       // A layout is imported once: picked again, it opens the template it gave.
       const imported = await importFsLayout(app, pick.layout);
-      const template = TemplateLibrary.forApp(app).get(imported.id)?.template;
-      return {
-        id: imported.id, path: imported.path, firstBlock: template ? firstBlockId(template) : null, copiedFrom: null,
-        fsImport: { layout: identityOf(pick.layout), imported },
-      };
+      return { id: imported.id, path: imported.path, fsImport: { layout: identityOf(pick.layout), imported } };
     }
-    case 'blank': {
-      const created = await createTemplateFile(app, BLANK_NAME, blankTemplate());
-      return { ...created, firstBlock: null, copiedFrom: null };
-    }
+    case 'blank':
+      return createTemplateFile(app, BLANK_NAME, blankTemplate());
   }
 }
 
@@ -79,16 +63,14 @@ export async function assignRoleTemplate(app: App, collectionId: string, roleId:
   await assets.updateCollectionSettings(collectionId, { statblockRoles: editedStatblockRoles(roles, system) });
 }
 
-/** After the gallery: the role takes the template, and the template editor opens on it with its first block selected. */
+/**
+ * After the gallery: the role takes the template, and the template editor
+ * opens on it with nothing selected, so the card shows as a note shows it
+ * and no toolbar covers a line. A copy made here switches no statblock.
+ */
 export async function openCreatedTemplate(app: App, created: CreatedTemplate, collectionId: string | null, roleId: string | null): Promise<void> {
   if (collectionId !== null && roleId !== null) await assignRoleTemplate(app, collectionId, roleId, created.id);
-  await openTemplateEditor(app, {
-    templateId: created.id,
-    path: created.path,
-    collectionId,
-    select: created.firstBlock ?? undefined,
-    copiedFrom: created.copiedFrom ?? undefined,
-  });
+  await openTemplateEditor(app, { templateId: created.id, path: created.path, collectionId });
 }
 
 /**

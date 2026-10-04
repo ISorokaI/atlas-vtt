@@ -65,7 +65,7 @@ describe('a pattern as text and chips', () => {
 
   it('previews with the sample values and says what is wrong in plain words', () => {
     const base = sampleTemplate();
-    expect(patternPreview('{ac} ({hp})', base)).toEqual({ text: '10 (10)', problem: null });
+    expect(patternPreview('{ac} ({hp})', base)).toEqual({ text: '13 (22)', problem: null });
     expect(patternPreview('{=speed + 1}', base)?.problem).toBe('Speed isn\'t a number.');
     expect(patternPreview('{ac', base)?.problem).toBe('A “{” is never closed.');
     expect(patternPreview('  ', base)).toBeNull();
@@ -113,7 +113,7 @@ describe('the pattern editor', () => {
     expect(findBlock(session.template.layout.blocks, 'stat-ac1')?.block).toMatchObject({ pattern: 'AC {ac}' });
     fireEvent.blur(line);
     expect(session.steps).toBe(1);
-    expect(screen.getByText('Shows “AC 10”')).toBeTruthy();
+    expect(screen.getByText('Shows “AC 13”')).toBeTruthy();
   });
 
   it('turns a value typed whole into a chip, and puts everything back with Escape', () => {

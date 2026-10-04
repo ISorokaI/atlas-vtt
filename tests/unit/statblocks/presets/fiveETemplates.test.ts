@@ -30,9 +30,18 @@ function proficiencyOf(rating: string): string {
   return '+9';
 }
 
-function withoutLookupsAndSource(template: StatblockTemplate): Omit<StatblockTemplate, 'lookups' | 'source'> {
-  const { lookups: _lookups, source: _source, ...rest } = template;
-  return JSON.parse(JSON.stringify(rest)) as Omit<StatblockTemplate, 'lookups' | 'source'>;
+function withoutLookupsAndSource(template: StatblockTemplate): Omit<StatblockTemplate, 'lookups' | 'source' | 'sample'> {
+  const { lookups: _lookups, source: _source, sample: _sample, ...rest } = template;
+  return JSON.parse(JSON.stringify(rest)) as Omit<StatblockTemplate, 'lookups' | 'source' | 'sample'>;
+}
+
+/** The template as revision 1 had it: revision 2 added the hidden Spells block and its property, nothing else. */
+function revisionOne(template: StatblockTemplate): StatblockTemplate {
+  return {
+    ...template,
+    fields: template.fields.filter((field) => field.key !== 'spells'),
+    layout: { ...template.layout, blocks: template.layout.blocks.filter((block) => block.type !== 'spells') },
+  };
 }
 
 function challengeLine(template: StatblockTemplate, cr: string | number): string {
@@ -65,7 +74,7 @@ describe('the 5E challenge tables', () => {
 
 describe('the 5E (2024 rules) template', () => {
   it('is §5.8 of the plan: the plan fixture with its block ids, its tables written out and its source', () => {
-    expect(withoutLookupsAndSource(FIVE_E_2024_MONSTER.template)).toEqual(withoutLookupsAndSource(FIVE_E_2024));
+    expect(withoutLookupsAndSource(revisionOne(FIVE_E_2024_MONSTER.template))).toEqual(withoutLookupsAndSource(FIVE_E_2024));
     expect(FIVE_E_2024_MONSTER.template.lookups).toEqual({ xp: experienceTable(), pb: proficiencyTable() });
   });
 
@@ -73,6 +82,20 @@ describe('the 5E (2024 rules) template', () => {
     expect(challengeLine(FIVE_E_2024_MONSTER.template, 10)).toBe('10 (XP 5,900; PB +4)');
     expect(challengeLine(FIVE_E_2024_MONSTER.template, '1/4')).toBe('1/4 (XP 50; PB +2)');
     expect(challengeLine(FIVE_E_2024_MONSTER.template, 'unrated')).toBe('unrated');
+  });
+});
+
+describe('the 5E templates\' revision 2', () => {
+  it.each([
+    [FIVE_E_2014_MONSTER, 'e4spell0', 'traits'],
+    [FIVE_E_2024_MONSTER, 'b5spell0', 'actions'],
+  ] as const)('%s adds a Spellcasting block that hides while empty, after its %s', (builtIn, id, after) => {
+    const blocks = builtIn.template.layout.blocks;
+    const index = blocks.findIndex((block) => block.id === id);
+    expect(builtIn.revision).toBe(2);
+    expect(blocks[index]).toEqual({ id, type: 'spells', field: 'spells', heading: 'Spellcasting' });
+    expect(blocks[index - 1]).toMatchObject({ type: 'entries', field: after });
+    expect(builtIn.template.fields.at(-1)).toEqual({ key: 'spells', label: 'Spells', type: 'spells' });
   });
 });
 

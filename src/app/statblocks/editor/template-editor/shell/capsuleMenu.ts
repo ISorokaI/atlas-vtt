@@ -3,6 +3,7 @@
 import type { ContextMenuEntry } from '../../../../react/components/context-menu/AtlasContextMenu';
 import { noteName } from '../../../../utils/pathUtils';
 import type { CollectionContext } from '../../collectionContext';
+import { alignedEntries } from '../../interaction/surfaceActions';
 import type { ShowAs, ShowAsChoice } from './showAs';
 
 /** The statblocks the menu lists under "Used by"; the count says how many there are. */
@@ -21,6 +22,8 @@ export interface CapsuleMenuInput {
   onShowAs: (choice: ShowAs) => void;
   newStatblock?: (() => void) | undefined;
   makeCopy?: (() => void) | undefined;
+  /** "Back to Aboleth": the note this leaf showed before "Edit template" (§8.4). */
+  backToNote?: { name: string; go: () => void } | undefined;
   /** Unset where the template cannot be deleted (a built-in). */
   deleteTemplate?: (() => void) | undefined;
   /** The dock's panels, in a stacked view. */
@@ -58,6 +61,10 @@ function collectionEntry({ context, onChange }: NonNullable<CapsuleMenuInput['co
 }
 
 export function capsuleMenuEntries(input: CapsuleMenuInput): ContextMenuEntry[] {
+  return alignedEntries(capsuleRows(input));
+}
+
+function capsuleRows(input: CapsuleMenuInput): ContextMenuEntry[] {
   const entries: ContextMenuEntry[] = (input.dock ?? []).map((panel) => ({ type: 'item', label: panel.label, icon: panel.icon, onClick: panel.open }));
   entries.push({
     type: 'submenu',
@@ -72,6 +79,7 @@ export function capsuleMenuEntries(input: CapsuleMenuInput): ContextMenuEntry[] 
   });
   if (input.newStatblock) entries.push({ type: 'item', label: 'New statblock with this template', icon: 'file-plus', onClick: input.newStatblock });
   if (input.makeCopy) entries.push({ type: 'item', label: 'Make a copy', icon: 'copy', onClick: input.makeCopy });
+  if (input.backToNote) entries.push({ type: 'item', label: `Back to ${input.backToNote.name}`, icon: 'arrow-left', onClick: input.backToNote.go });
   if (input.usedBy) entries.push(usedByEntry(input.usedBy));
   if (input.collection?.context.switchable) entries.push(collectionEntry(input.collection));
   entries.push({

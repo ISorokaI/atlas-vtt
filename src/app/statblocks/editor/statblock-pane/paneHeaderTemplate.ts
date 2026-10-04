@@ -34,12 +34,13 @@ export function headerTemplate({ app, note, paneTemplate, roles, collectionId, a
   if (note.kind !== 'atlas' || !templateId || paneTemplate.status === 'loading') return null;
   if (paneTemplate.status === 'missing') return { name: 'Template not found', roleName: null, locked: false, change: choose };
   const { entry } = paneTemplate;
-  const edit = choose ? actions.editTemplate : undefined;
+  const edit = choose && paneTemplate.status !== 'newer' ? actions.editTemplate : undefined;
   return {
     name: entry.name,
     roleName: roleNameFor(roles, templateId),
     locked: entry.builtIn || paneTemplate.status === 'newer',
-    edit: edit && collectionId ? () => edit(templateId, collectionId, note.snapshot.path) : undefined,
+    // A built-in opens too: its first change there makes the collection's own copy (§9.3).
+    edit: edit ? () => edit(templateId, collectionId, note.snapshot.path) : undefined,
     change: choose,
     openFile: entry.path ? () => openTemplateFile(app, entry.path ?? '') : undefined,
   };

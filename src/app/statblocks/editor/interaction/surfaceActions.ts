@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
+import { MenuIcon, type ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 
 /** At most this many rows in one menu; a submenu counts on its own (J11). */
 export const MAX_MENU_ROWS = 12;
@@ -62,9 +62,15 @@ export function fitsMenuLimit(actions: readonly SurfaceAction[]): boolean {
     && actions.every((action) => action.kind !== 'submenu' || fitsMenuLimit(action.children));
 }
 
-/** The descriptors as Atlas' context menu draws them. */
+/**
+ * The descriptors as Atlas' context menu draws them. A menu where any row has
+ * an icon (a submenu always keeps an icon slot) gives every row one, empty
+ * where it has none, so every label starts on one edge.
+ */
 export function toMenuEntries(actions: readonly SurfaceAction[]): ContextMenuEntry[] {
-  return tidy(actions).map((action): ContextMenuEntry => {
+  const tidied = tidy(actions);
+  const slots = tidied.some((action) => action.kind === 'submenu' || (action.kind === 'item' && action.icon));
+  return tidied.map((action): ContextMenuEntry => {
     switch (action.kind) {
       case 'separator': return { type: 'custom', render: separatorRow };
       case 'submenu': return { type: 'submenu', label: action.label, ...(action.icon && { icon: action.icon }), children: toMenuEntries(action.children) };
@@ -72,7 +78,7 @@ export function toMenuEntries(actions: readonly SurfaceAction[]): ContextMenuEnt
         type: 'item',
         label: action.label,
         onClick: action.run,
-        ...(action.icon && { icon: action.icon }),
+        ...(slots && { leading: React.createElement(MenuIcon, { name: action.icon ?? '' }) }),
         ...(action.hint && { hint: action.hint }),
         ...(action.disabled !== undefined && { disabled: action.disabled }),
         ...(action.destructive && { destructive: true }),
@@ -92,4 +98,20 @@ export function findAction(actions: readonly SurfaceAction[], id: string): Surfa
     }
   }
   return null;
+}
+
+/**
+ * Atlas' menus draw an item's icon only as `leading`: entries written with
+ * `icon` get it there, and once any row of a menu has an icon (a submenu
+ * always keeps an icon slot) every row gets a slot, empty where it has none.
+ */
+export function alignedEntries(entries: readonly ContextMenuEntry[]): ContextMenuEntry[] {
+  const slots = entries.some((entry) => entry.type === 'submenu' || (entry.type === 'item' && (entry.icon || entry.leading)));
+  return entries.map((entry): ContextMenuEntry => {
+    if (entry.type === 'submenu') {
+      return Array.isArray(entry.children) ? { ...entry, children: alignedEntries(entry.children) } : entry;
+    }
+    if (entry.type !== 'item' || !slots || entry.leading) return entry;
+    return { ...entry, leading: React.createElement(MenuIcon, { name: entry.icon ?? '' }) };
+  });
 }

@@ -1,11 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import type { App } from 'obsidian';
-import type { TemplateId } from '../../../model/templateTypes';
+import React, { useEffect, useState } from 'react';
 import { ConflictBar } from '../ConflictBar';
-import { copySwitchFor, switchToCopy } from '../copySwitch';
 import { EditorBar } from '../EditorBar';
 import type { EditorSession, SessionSnapshot } from '../sessionTypes';
-import { CopySwitchBar } from './CopySwitchBar';
 
 /** Autosave is quiet: "Saving…" shows only once a write has taken this long. */
 const SAVING_SHOWN_AFTER_MS = 1000;
@@ -23,25 +19,17 @@ function useAfter(waiting: boolean, ms: number): boolean {
 }
 
 export interface TemplateStateBarsProps {
-  app: App | undefined;
   session: EditorSession;
   snapshot: SessionSnapshot;
-  collectionId: string | null;
-  /** The built-in this template was just copied from: the question whether its statblocks move over. */
-  copiedFrom: TemplateId | null;
-  onCopyQuestionDone: () => void;
 }
 
 /**
  * The template editor's lines above the card (§2.3), in the state-bar slot
- * where a note shows its own: a conflict with the file, a save that failed or
- * takes long, and after a copy of a built-in the question about its statblocks.
+ * where a note shows its own: a conflict with the file, and a save that
+ * failed or takes long. Nothing else stands here, so the card starts where
+ * the note view's does (§9.1: switching statblocks to a copy is offered under it).
  */
-export function TemplateStateBars({ app, session, snapshot, collectionId, copiedFrom, onCopyQuestionDone }: TemplateStateBarsProps): React.JSX.Element {
-  const question = useMemo(
-    () => (app && copiedFrom ? copySwitchFor(app, copiedFrom, snapshot.id, collectionId) : null),
-    [app, copiedFrom, snapshot.id, collectionId],
-  );
+export function TemplateStateBars({ session, snapshot }: TemplateStateBarsProps): React.JSX.Element {
   const saving = useAfter(!snapshot.readOnly && snapshot.saveState === 'saving', SAVING_SHOWN_AFTER_MS);
 
   return (
@@ -55,16 +43,6 @@ export function TemplateStateBars({ app, session, snapshot, collectionId, copied
         />
       )}
       {saving && <p className="atlas-te-saving" role="status">Saving…</p>}
-      {question && app && (
-        <CopySwitchBar
-          question={question}
-          onSwitch={async () => {
-            await switchToCopy(app, question);
-            onCopyQuestionDone();
-          }}
-          onKeep={onCopyQuestionDone}
-        />
-      )}
     </>
   );
 }

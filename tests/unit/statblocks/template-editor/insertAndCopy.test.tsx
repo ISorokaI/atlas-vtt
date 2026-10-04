@@ -1,13 +1,17 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CopySwitchBar } from '../../../../src/app/statblocks/editor/template-editor/shell/CopySwitchBar';
-import { copySwitchQuestion, type CopySwitch } from '../../../../src/app/statblocks/editor/template-editor/copySwitch';
+import type { App } from 'obsidian';
+import { builtInLine, switchChipText } from '../../../../src/app/statblocks/editor/template-editor/shell/builtInLine';
+import { SwitchStatblocksChip } from '../../../../src/app/statblocks/editor/template-editor/shell/SwitchStatblocksChip';
+import { switchTemplates } from '../../../../src/app/statblocks/notes/templateSwitch';
 import { bestMatch, findItems, groupItems, insertItems, previewTemplate } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
 import { InsertMenu } from '../../../../src/app/statblocks/editor/template-editor/InsertMenu';
 import { handleTemplateKey, type KeyboardTarget } from '../../../../src/app/statblocks/editor/template-editor/useTemplateKeyboard';
 import { turnIntoTypes } from '../../../../src/app/statblocks/editor/template-editor/menus/blockMenu';
 import { FakeSession, sampleTemplate } from './editorKit';
+
+vi.mock('../../../../src/app/statblocks/notes/templateSwitch', () => ({ switchTemplates: vi.fn(async () => undefined) }));
 
 afterEach(cleanup);
 
@@ -61,30 +65,24 @@ describe('the insert menu\'s items', () => {
   });
 });
 
-describe('the question after a copy', () => {
-  const question = (change: Partial<CopySwitch> = {}): CopySwitch => ({
-    from: 'builtin:x', to: 'copy-abc123', notes: ['A.md', 'B.md'], roleNames: ['Monster'], collectionId: 'marsh', collectionName: 'Marsh campaign', ...change,
+describe('a built-in and its copy in the footer (spec §9.1, §9.3)', () => {
+  it('says where the first change goes before it is made', () => {
+    expect(builtInLine({ builtInName: '5E (2014 rules)', copy: null, fromNote: null })).toBe('Built in. Your first change makes your own copy.');
+    expect(builtInLine({ builtInName: '5E (2014 rules)', copy: null, fromNote: 'Aboleth' })).toBe('Built in. Your first change makes your own copy for Aboleth.');
+    expect(builtInLine({ builtInName: '5E (2014 rules)', copy: { name: '5E (2014 rules) copy', usage: 3 }, fromNote: 'Aboleth' }))
+      .toBe('Built in. Your changes go to your copy of 5E (2014 rules) · 3 statblocks.');
   });
 
-  it('names the statblocks and the roles of the collection', () => {
-    expect(copySwitchQuestion(question())).toBe('Use the copy for the 2 statblocks and the role Monster of Marsh campaign?');
-    expect(copySwitchQuestion(question({ notes: ['A.md'], roleNames: [] }))).toBe('Use the copy for the statblock?');
-    expect(copySwitchQuestion(question({ notes: [], roleNames: ['Monster', 'NPC', 'Boss'] }))).toBe('Use the copy for the roles Monster, NPC and Boss of Marsh campaign?');
-    expect(copySwitchQuestion(question({ notes: [], roleNames: [] }))).toBeNull();
-  });
-
-  it('lists the statblocks before switching, and answers Switch or Keep', async () => {
-    const onSwitch = vi.fn(async () => undefined);
-    const onKeep = vi.fn();
-    render(<CopySwitchBar question={question()} onSwitch={onSwitch} onKeep={onKeep} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Show statblocks' }));
-    expect(screen.getByRole('list', { name: 'Statblocks that would switch' }).textContent).toBe('AB');
-    fireEvent.click(screen.getByRole('button', { name: 'Keep' }));
-    expect(onKeep).toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Switch' }));
-    expect(onSwitch).toHaveBeenCalled();
-    // While the batch runs, neither answer can be given again.
-    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Keep' }).disabled).toBe(true);
+  it('switches the statblocks still on the built-in only after naming them and being asked', async () => {
+    expect(switchChipText('5E (2014 rules)', 11)).toBe('11 more on 5E (2014 rules) · Switch…');
+    render(<SwitchStatblocksChip app={{} as App} from="builtin:x" to="copy-abc123" builtInName="X" notes={['A.md', 'B.md']} />);
+    fireEvent.click(screen.getByRole('button', { name: '2 more on X · Switch…' }));
+    expect(screen.getByRole('dialog').textContent).toContain('AB');
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(switchTemplates).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '2 more on X · Switch…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch them' }));
+    expect(switchTemplates).toHaveBeenCalledWith({}, [{ path: 'A.md', from: 'builtin:x' }, { path: 'B.md', from: 'builtin:x' }], 'copy-abc123');
   });
 });
 

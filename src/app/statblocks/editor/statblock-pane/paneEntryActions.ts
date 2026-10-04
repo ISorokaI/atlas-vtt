@@ -12,7 +12,8 @@ import type { NotePatch } from '../../notes/patchTypes';
 import { keyedEntryItems } from '../../values/entryKeys';
 import { entryName, entryNameKey, entryText, entryTextKey } from '../../values/entryValues';
 import { removedMessage } from './announcements';
-import { singular } from './EntriesEditor';
+import { rollsIn } from './diceRolls';
+import { singular } from './entryNoun';
 import { entryList, insertEntryPatch, moveEntryPatch, removeEntryPatch } from './entryPatches';
 import type { EntryMenuInput } from './paneMenus';
 import type { PaneEditController } from './paneEditContext';
@@ -68,13 +69,15 @@ export interface EntryActionInput {
   pane: PaneEditController;
   template: StatblockTemplate;
   target: EntryTarget;
+  /** The ability's drawn element, whose dice links its menu rolls. */
+  element?: HTMLElement | undefined;
   /** Copies text to the clipboard of the panel's window. */
   copy: (text: string) => void;
   /** Says what happened, with Undo where the note's history can take it back. */
   toast: (text: string) => void;
 }
 
-export function entryMenuInput({ pane, template, target, copy, toast }: EntryActionInput): EntryMenuInput | null {
+export function entryMenuInput({ pane, template, target, element, copy, toast }: EntryActionInput): EntryMenuInput | null {
   const found = findEntry(template, pane, target);
   if (!found) return null;
   const { field, items, item, index, shown, name, noun } = found;
@@ -101,6 +104,7 @@ export function entryMenuInput({ pane, template, target, copy, toast }: EntryAct
     addBelow: () => pane.start({ blockId: target.blockId, field: field.key, entry: shown, add: true }),
     duplicate: () => write([insertEntryPatch(list, items, index, item)], `Duplicated ${name}.`),
     copyText: () => copy([entryName(item, field.entry), entryText(item, field.entry)].filter(Boolean).join('. ')),
+    rolls: element ? rollsIn(element) : [],
     remove: () => {
       write([removeEntryPatch(list, item)], removedMessage(name));
       toast(`Deleted ${name}.`);

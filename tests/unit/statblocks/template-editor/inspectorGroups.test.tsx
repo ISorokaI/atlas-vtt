@@ -88,7 +88,7 @@ describe('the inspector', () => {
     typeAndLeave(within(group('When empty')).getByRole('textbox', { name: 'Fallback' }), '{', '{ac', '{ac}');
     expect(blockOf(session, 'stat-hp1')).toMatchObject({ fallback: '{ac}' });
     expect(session.steps).toBe(2);
-    expect(within(group('When empty')).getByText('Shows “10”')).toBeTruthy();
+    expect(within(group('When empty')).getByText('Shows “13”')).toBeTruthy();
     typeAndLeave(within(group('When empty')).getByRole('textbox', { name: 'Prompt' }), 'Add hit points');
     expect(fieldOf(session, 'hp')).toMatchObject({ prompt: 'Add hit points' });
   });

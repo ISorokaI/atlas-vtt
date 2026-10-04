@@ -6,6 +6,7 @@ import { isEmptyValue } from '../../values/emptyValue';
 import { readField, type FieldRecord } from '../../values/fieldValues';
 import { ChipsEditor } from './ListValueInput';
 import { usePaneEdit } from './paneEditContext';
+import { noteSectionChoice } from './sectionChoices';
 import { keysOutsideTemplate } from './templateChoices';
 import { TrayValueRow } from './TrayValueRow';
 
@@ -19,8 +20,8 @@ const NOTE_FIELDS: readonly TemplateField[] = [
 interface MorePropertiesTrayProps {
   record: FieldRecord;
   template: StatblockTemplate;
-  /** Opens the template editor with a field for the key; offered once the template editor is wired in. */
-  onAddToTemplate?: ((key: string) => void) | undefined;
+  /** Whether a value of the note can be put on the card: its template can change. */
+  addToCard: boolean;
 }
 
 /**
@@ -28,7 +29,7 @@ interface MorePropertiesTrayProps {
  * and CSS classes as chips, and every key the template does not show, each
  * editable as raw text and removable from the note. Collapsed until opened.
  */
-export const MorePropertiesTray = forwardRef<HTMLButtonElement, MorePropertiesTrayProps>(({ record, template, onAddToTemplate }, toggleRef) => {
+export const MorePropertiesTray = forwardRef<HTMLButtonElement, MorePropertiesTrayProps>(({ record, template, addToCard }, toggleRef) => {
   const pane = usePaneEdit();
   const [open, setOpen] = useState(false);
   const contentId = useId();
@@ -65,7 +66,7 @@ export const MorePropertiesTray = forwardRef<HTMLButtonElement, MorePropertiesTr
             <TrayValueRow
               key={key}
               field={{ key, label: key, type: 'text' }}
-              onAddToTemplate={onAddToTemplate ? () => onAddToTemplate(key) : undefined}
+              onAddToTemplate={addToCard ? () => void pane.addSection(noteSectionChoice(key, record), null) : undefined}
             />
           ))}
         </div>

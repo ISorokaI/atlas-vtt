@@ -23,4 +23,13 @@ describe('menu descriptors (spec §5.1)', () => {
     expect(entries[1]?.type).toBe('custom');
     expect(entries[2]).toMatchObject({ type: 'item', label: 'copy' });
   });
+
+  it('gives every row an icon slot once one row has an icon or a submenu, so every label starts on one edge', () => {
+    const plain = toMenuEntries([item('a'), item('b')]);
+    expect(plain.every((entry) => entry.type === 'item' && entry.leading === undefined)).toBe(true);
+    const mixed = toMenuEntries([item('settings'), item('delete', { icon: 'trash-2' }), { kind: 'submenu', id: 'names', label: 'Names', children: [item('x')] }]);
+    const leading = mixed.flatMap((entry) => (entry.type === 'item' ? [entry.leading] : []));
+    expect(leading).toHaveLength(2);
+    expect(leading.every((node) => node !== undefined)).toBe(true);
+  });
 });

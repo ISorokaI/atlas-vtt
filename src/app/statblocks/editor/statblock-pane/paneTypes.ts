@@ -27,10 +27,10 @@ export interface StatblockPaneActions {
   changeCollection: (collectionId: string) => void;
   /** Hides the statblock beside its note (on this device, for every note). */
   hide?: (() => void) | undefined;
-  /** Opens the template editor, previewing the note's statblock. */
-  editTemplate?: ((templateId: string, collectionId: string, notePath: string) => void) | undefined;
+  /** Opens the template editor in this note's leaf, showing the note's statblock (§8.4). */
+  editTemplate?: ((templateId: string, collectionId: string | null, notePath: string) => void) | undefined;
   linkToToken?: ((notePath: string, collectionId: string) => void) | undefined;
-  /** Opens the template editor on a block just added to the template (the tray's Add to template). */
+  /** Opens the template editor in this note's leaf with a block selected ("Edit in template"). */
   openTemplateAt?: ((target: TemplateBlockTarget) => void) | undefined;
   /** The panel's Mod+Z asks this first; null takes it back. Unset where the host routes no keys. */
   registerHistory?: ((router: PanelHistoryRouter | null) => void) | undefined;

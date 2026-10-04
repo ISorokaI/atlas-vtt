@@ -46,4 +46,22 @@ describe('the pane\'s focus request', () => {
     expect(document.activeElement).toBe(note);
     note.remove();
   });
+
+  it('opens the first empty value\'s input, and takes focus back from the note focusing as its leaf opens', async () => {
+    const harness = await renderPane({ frontmatter: native('Marsh Warden'), focusRequest: 1 });
+    apps.push(harness.app);
+    const card = harness.result.container.querySelector<HTMLElement>('.atlas-sb-pane-card');
+    const input = document.activeElement as HTMLElement | null;
+    expect(input?.matches('input, textarea')).toBe(true);
+    expect(input?.closest('.atlas-sb-pane-editor')).not.toBeNull();
+
+    // Obsidian focuses the note's editor as the leaf becomes active.
+    const note = document.body.appendChild(document.createElement('textarea'));
+    note.focus();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 120)); });
+
+    expect(card?.contains(document.activeElement)).toBe(true);
+    expect((document.activeElement as HTMLElement).matches('input, textarea')).toBe(true);
+    note.remove();
+  });
 });

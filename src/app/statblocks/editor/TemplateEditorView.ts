@@ -1,11 +1,15 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { FileView, Scope, TFile, type Modifier, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
+import { FileView, Notice, Scope, TFile, type Modifier, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
 import { experimentalFeatureOn } from '../../experimental/experimentalFeatures';
 import { TemplateLibrary } from '../library/TemplateLibrary';
 import { TemplateSession } from '../library/TemplateSession';
 import { TEMPLATE_EXTENSION } from '../library/templateFiles';
-import type { TemplateId } from '../model/templateTypes';
+import type { OwnCopy } from '../library/ownCopy';
+import { isBuiltInTemplateId, type TemplateId } from '../model/templateTypes';
+import { NoteFieldWriter } from '../notes/NoteFieldWriter';
+import { TEMPLATE_KEY } from '../notes/statblockSource';
+import { CopyOnWriteSession, type HeldEditorSession } from './template-editor/copyOnWriteSession';
 import { StatblockEditorRoot } from './StatblockEditorRoot';
 import { openTemplateEditor } from './openTemplateEditor';
 import type { TemplateEditorProblem } from './template-editor/TemplateEditorSurface';
@@ -38,9 +42,10 @@ export class TemplateEditorView extends FileView {
   private previewPath: string | null = null;
   private previewMode: ShowWithMode | null = null;
   private collectionId: string | null = null;
+  private fromNote: string | null = null;
   private ephemeral: TemplateEditorEphemeral = {};
   private selectRequests = 0;
-  private session: TemplateSession | null = null;
+  private session: HeldEditorSession | null = null;
   private problem: TemplateEditorProblem | null = { kind: 'loading' };
   private root: Root | null = null;
   private keyHandler: KeyHandler | null = null;
@@ -57,20 +62,20 @@ export class TemplateEditorView extends FileView {
       this.scope.register(modifiers, key, (event) => !(this.keyHandler?.(event, true) ?? false));
     }
     this.host = {
-      openTemplate: (target, where, copiedFrom) => {
+      openTemplate: (target, where) => {
         void openTemplateEditor(this.app, {
           templateId: target.id,
           path: target.path,
           collectionId: this.collectionId,
           previewPath: where === 'here' ? this.previewPath : null,
           leaf: where === 'here' ? this.leaf : undefined,
-          copiedFrom,
         });
       },
       openNote: (path) => {
         const file = this.app.vault.getAbstractFileByPath(path);
         if (file instanceof TFile) void this.app.workspace.getLeaf('tab').openFile(file);
       },
+      backToNote: () => this.backToNote(),
       close: () => this.leaf.detach(),
     };
   }
@@ -93,7 +98,7 @@ export class TemplateEditorView extends FileView {
   }
 
   getState(): Record<string, unknown> {
-    const own = { previewPath: this.previewPath, previewMode: this.previewMode, collectionId: this.collectionId };
+    const own = { previewPath: this.previewPath, previewMode: this.previewMode, collectionId: this.collectionId, fromNote: this.fromNote };
     return this.builtInId ? { templateId: this.builtInId, ...own } : { ...super.getState(), ...own };
   }
 
@@ -103,16 +108,17 @@ export class TemplateEditorView extends FileView {
     this.previewPath = next.previewPath;
     this.previewMode = next.previewMode;
     this.collectionId = next.collectionId;
+    this.fromNote = next.fromNote;
     await super.setState(state, result);
     this.resolve();
   }
 
-  /** `openTemplateEditor` asks once: a block to select, the built-in a copy came from. Never restored. */
+  /** `openTemplateEditor` asks once: a block to select. Never restored. */
   setEphemeralState(state: unknown): void {
     super.setEphemeralState(state);
     const next = readTemplateEditorEphemeral(state);
     if (next.select) this.selectRequests += 1;
-    if (next.select || next.copiedFrom) this.ephemeral = { ...this.ephemeral, ...next };
+    if (next.select) this.ephemeral = { ...this.ephemeral, ...next };
     this.render();
   }
 
@@ -168,10 +174,40 @@ export class TemplateEditorView extends FileView {
     }
     if (id !== (this.session?.getSnapshot().id ?? null)) {
       this.releaseSession();
-      this.session = id ? TemplateSession.open(this.app, id) : null;
+      this.session = id ? this.openSession(id) : null;
     }
     this.problem = this.session ? null : problem ?? { kind: 'loading' };
     this.render();
+  }
+
+  /** A vault template's session; a built-in's, shown editable, makes the collection's copy on its first change (§9.3). */
+  private openSession(id: TemplateId): HeldEditorSession | null {
+    const session = TemplateSession.open(this.app, id);
+    if (!session || !isBuiltInTemplateId(id)) return session;
+    return new CopyOnWriteSession(session, {
+      app: this.app,
+      collectionId: () => this.collectionId,
+      fromNote: () => this.fromNote ?? this.previewPath,
+      switchNote: async (path, from, to) => {
+        const outcome = await NoteFieldWriter.forApp(this.app).write(path, [{ op: 'set', path: [TEMPLATE_KEY], base: from, next: to }]);
+        return outcome.problem === null && outcome.conflicts.length === 0 && outcome.applied.length > 0;
+      },
+      onCopied: (copy) => this.showCopy(copy),
+      notify: (text) => new Notice(text),
+    });
+  }
+
+  /** The built-in's copy exists: the view shows its file; the session (which now edits the copy) stays. */
+  private showCopy(copy: OwnCopy): void {
+    if (!copy.path) return;
+    const state = { file: copy.path, previewPath: this.previewPath, previewMode: this.previewMode, collectionId: this.collectionId, fromNote: this.fromNote };
+    void this.leaf.setViewState({ type: TEMPLATE_EDITOR_VIEW_TYPE, state, active: true });
+  }
+
+  /** Back to the note "Edit template" came from, in this leaf (§8.4). */
+  private backToNote(): void {
+    const file = this.fromNote ? this.app.vault.getAbstractFileByPath(this.fromNote) : null;
+    if (file instanceof TFile) void this.leaf.openFile(file);
   }
 
   private releaseSession(): void {
@@ -181,7 +217,7 @@ export class TemplateEditorView extends FileView {
 
   private render(): void {
     if (!this.root) return;
-    const { select, copiedFrom } = this.ephemeral;
+    const { select } = this.ephemeral;
     this.root.render(React.createElement(StatblockEditorRoot, {
       surface: {
         kind: 'template-editor',
@@ -192,16 +228,12 @@ export class TemplateEditorView extends FileView {
           host: this.host,
           previewPath: this.previewPath,
           previewMode: this.previewMode,
+          fromNote: this.fromNote,
           onShowWithChange: (choice: ShowWith) => this.changeState(showWithState(choice)),
           collectionId: this.collectionId,
           onCollectionChange: (collectionId) => this.changeState({ collectionId }),
           initialSelection: select ? [select] : undefined,
           selectRequest: this.selectRequests,
-          copiedFrom: copiedFrom ?? null,
-          onCopyQuestionDone: () => {
-            this.ephemeral = { ...this.ephemeral, copiedFrom: undefined };
-            this.render();
-          },
           registerKeys: this.registerKeys,
         },
       },

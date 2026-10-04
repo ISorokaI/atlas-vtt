@@ -18,8 +18,9 @@ import { isContainerBlock, type StatblockTemplate, type TemplateBlock, type Temp
 import type { NotePatch } from '../../notes/patchTypes';
 import { readField, type FieldRecord } from '../../values/fieldValues';
 import type { PaneServices } from '../paneServices';
-import { templateKeyPatch } from './addFieldFlow';
+import { templateKeyPatch } from './templateKeyPatch';
 import type { TemplateStep } from './panelHistory';
+import { sectionAddition, type NewSection } from './sectionChoices';
 import { fieldPatches } from './valuePatches';
 
 /** Every block a block stands for: itself, and a container's blocks all the way down. */
@@ -104,15 +105,20 @@ function backToBuiltIn(input: TemplateEditInput, copied: Copied): () => void {
   };
 }
 
-/** Removes a block from the note's template as one step of its session; the block's id stays the same in a copy. */
-export async function removeBlockFromTemplate(input: TemplateEditInput, blockId: string): Promise<RemoveResult> {
+/** A change of the note's template as one step of its session, in the template it lands in. */
+async function changeTemplate(
+  input: TemplateEditInput,
+  check: (template: StatblockTemplate) => string | null,
+  edit: (template: StatblockTemplate) => StatblockTemplate,
+): Promise<RemoveResult> {
   const landing = await landingTemplate(input);
   if ('problem' in landing) return { ok: false, problem: landing.problem };
   const session = input.hold(landing.id);
   if (!session) return { ok: false, problem: 'The template could not be opened.' };
   const before = session.getSnapshot().template;
-  if (!findBlock(before.layout.blocks, blockId)) return { ok: false, problem: 'The template no longer has that block.' };
-  session.apply((template) => withoutBlock(template, blockId));
+  const problem = check(before);
+  if (problem) return { ok: false, problem };
+  session.apply(edit);
   const after = session.getSnapshot().template;
   if (after === before) return { ok: false, problem: 'This template can\'t be changed here.' };
   const { copied } = landing;
@@ -130,4 +136,32 @@ export async function removeBlockFromTemplate(input: TemplateEditInput, blockId:
     }),
   };
   return { ok: true, step, copied };
+}
+
+/** Removes a block from the note's template as one step of its session; the block's id stays the same in a copy. */
+export function removeBlockFromTemplate(input: TemplateEditInput, blockId: string): Promise<RemoveResult> {
+  return changeTemplate(
+    input,
+    (template) => (findBlock(template.layout.blocks, blockId) ? null : 'The template no longer has that block.'),
+    (template) => withoutBlock(template, blockId),
+  );
+}
+
+export type AddResult = (RemoveResult & { ok: false }) | (RemoveResult & { ok: true; blockId: string });
+
+/**
+ * Adds a section to the note's template (§8.3) as one step of its session,
+ * after `after` or in its place among the book's sections. A shared template
+ * changes for all its statblocks, which hide the section while it is empty; a
+ * built-in's change goes to the collection's own copy.
+ */
+export async function addSectionToTemplate(input: TemplateEditInput, section: NewSection, after: string | null): Promise<AddResult> {
+  let blockId: string | null = null;
+  const result = await changeTemplate(input, () => null, (template) => {
+    const addition = sectionAddition(template, section, after !== null && findBlock(template.layout.blocks, after) ? after : null);
+    blockId = addition?.blockId ?? null;
+    return addition?.template ?? template;
+  });
+  if (!result.ok) return result;
+  return blockId ? { ...result, blockId } : { ok: false, problem: `Couldn't add ${section.label}.` };
 }
