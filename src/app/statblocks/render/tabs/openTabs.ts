@@ -50,12 +50,8 @@ export function useOpenTabsState(layout: TemplateLayout, reveal: string | null):
 /** The tab a strip shows among `tabs` (the chosen one while it is there, else the first) and how to choose another. */
 export function useOpenTab(strip: string, tabs: readonly string[]): [string | undefined, (tab: string) => void] {
   const open = useContext(OpenTabsContext);
-  const [own, setOwn] = useState<string | undefined>(undefined);
-  const chosen = open ? open.chosen.get(strip) : own;
+  const chosen = open?.chosen.get(strip);
   const shown = chosen !== undefined && tabs.includes(chosen) ? chosen : tabs[0];
-  const choose = useCallback((tab: string): void => {
-    if (open) open.choose(strip, tab);
-    else setOwn(tab);
-  }, [open, strip]);
+  const choose = useCallback((tab: string): void => open?.choose(strip, tab), [open, strip]);
   return [shown, choose];
 }
