@@ -54,7 +54,7 @@ export class SettingsService {
     this.storageReady = storageReady;
     SettingsService.instances.set(app, this);
     this.settings = { ...DEFAULT_SETTINGS, navigation: { inputMode: this.deviceInputMode() } };
-    this.saved = this.settings;
+    this.saved = structuredClone(this.settings);
   }
 
   /**
@@ -98,7 +98,8 @@ export class SettingsService {
     }
     const read = readStoredSettings(stored, this.deviceInputMode());
     this.settings = read.settings;
-    this.saved = read.settings;
+    // A copy: setters change the settings in place.
+    this.saved = structuredClone(read.settings);
     this.foreignHotkeys = read.foreignHotkeys;
   }
 
@@ -108,8 +109,9 @@ export class SettingsService {
     if (!this.data) return;
     const settings = this.settings;
     try {
-      await this.data.saveData(storedSettings(settings, this.foreignHotkeys));
-      this.saved = settings;
+      const stored = structuredClone(settings);
+      await this.data.saveData(storedSettings(stored, this.foreignHotkeys));
+      this.saved = stored;
     } catch (error) {
       console.error('[SettingsService] Failed to save settings:', error);
     }

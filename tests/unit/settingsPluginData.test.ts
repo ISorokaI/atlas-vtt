@@ -82,6 +82,22 @@ describe('Atlas settings in the plugin data', () => {
     expect(data.saveData).not.toHaveBeenCalled();
   });
 
+  it('keeps a change made here and not saved yet when another device\'s settings arrive, and saves it over them', async () => {
+    vi.useFakeTimers();
+    try {
+      const { settings, data } = await loaded({ diceColour: 'light', diceFont: 'medieval' });
+      settings.setDiceLook({ colour: 'dark' });
+      data.set({ diceColour: 'light', diceFont: 'scifi' });
+      await settings.reload();
+      expect(settings.getDiceLook()).toMatchObject({ colour: 'dark', font: 'scifi' });
+
+      await vi.runAllTimersAsync();
+      expect(data.stored()).toMatchObject({ diceColour: 'dark', diceFont: 'scifi' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('waits for the first load before reading a change from disk', async () => {
     let finish!: () => void;
     const data = memoryPluginData({ diceDisplay: 'card' });
