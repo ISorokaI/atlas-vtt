@@ -15,7 +15,9 @@ describe('links of bestiary values', () => {
   it('reads as the note wrote them', () => {
     expect(decodeStatblockLinks(`${WIKI} 30 feet, ${MARKDOWN} +7`))
       .toBe('[[Senses/Scent|scent]] 30 feet, [Perception](<rules/my skills.md#Perception>) +7');
-    expect(decodeStatblockLinks('<STATBLOCK-MARKDOWN-LINK>rules/a.md<STATBLOCK-MARKDOWN-LINK>')).toBe('[](<rules/a.md>)');
+    expect(decodeStatblockLinks('<STATBLOCK-MARKDOWN-LINK>rules/a.md<STATBLOCK-MARKDOWN-LINK>')).toBe('[](rules/a.md)');
+    expect(decodeStatblockLinks('<STATBLOCK-MARKDOWN-LINK>https://x.com "Site"|site<STATBLOCK-MARKDOWN-LINK>'))
+      .toBe('[site](https://x.com "Site")');
   });
 
   it('keeps a bracketed destination in one pair of brackets', () => {

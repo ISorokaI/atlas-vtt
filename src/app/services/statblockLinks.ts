@@ -8,6 +8,8 @@ const ENCODED_WIKI_LINK = /<STATBLOCK-WIKI-LINK>([\s\S]+?)<STATBLOCK-WIKI-LINK>/
 const ENCODED_MARKDOWN_LINK = /<STATBLOCK-MARKDOWN-LINK>([\s\S]+?)(?:\|([\s\S]+?))?<STATBLOCK-MARKDOWN-LINK>/g;
 /** A destination the note wrote in angle brackets (`[a](<my notes/a.md>)`), which the marker keeps. */
 const BRACKETED_PATH = /^<([\s\S]*)>$/;
+/** A destination followed by a link title (`https://x.com "Title"`). */
+const TITLED_DESTINATION = /^\S+\s+(?:"[^"]*"|'[^']*'|\([^)]*\))$/;
 
 const WIKI_LINK = /!?\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g;
 const MARKDOWN_LINK = /!?\[([^\]]*)\]\(<?([^)>]*)>?\)/g;
@@ -16,9 +18,14 @@ const MARKDOWN_LINK = /!?\[([^\]]*)\]\(<?([^)>]*)>?\)/g;
 export function decodeStatblockLinks(text: string): string {
   return text
     .replace(ENCODED_WIKI_LINK, (_match, link: string) => `[[${link}]]`)
-    // Angle brackets keep a path with spaces one link destination.
     .replace(ENCODED_MARKDOWN_LINK, (_match, path: string, alias: string | undefined) =>
-      `[${alias ?? ''}](<${path.replace(BRACKETED_PATH, '$1')}>)`);
+      `[${alias ?? ''}](${linkDestination(path)})`);
+}
+
+/** Angle brackets keep a path with spaces one link destination; any other stays as the note wrote it. */
+function linkDestination(path: string): string {
+  if (BRACKETED_PATH.test(path)) return path;
+  return /\s/.test(path) && !TITLED_DESTINATION.test(path) ? `<${path}>` : path;
 }
 
 /** A linked note by its name: no folders, no heading, no extension, no URL escapes. */
