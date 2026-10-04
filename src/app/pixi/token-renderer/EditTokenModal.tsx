@@ -8,6 +8,7 @@ import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { Button } from '../../packages/components/primitives/button';
 import { TooltipProvider } from '../../packages/components/primitives/tooltip';
 import { AssetService } from '../../services/AssetService';
+import { mapMeasurementSettings } from '../../services/mapMeasurementSettings';
 import type { SenseRules } from '../../creatures/tokenSensesResolver';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { mapSenseRules } from '../../services/mapSenseRules';
@@ -148,7 +149,7 @@ function takesEnter(target: EventTarget | null): boolean {
 
 /** What the token's map and its collection say about vision and light. */
 function lightingContext(state: ViewAtlasState, app: App, rules: SenseRules): TokenLightingContext {
-  const { unitType, unitDistance } = rules.unit;
+  const { unitType, unitDistance } = mapMeasurementSettings(AssetService.getInstance(app), state);
   return {
     unit: unitLabelFor(unitType),
     unitDistance,
