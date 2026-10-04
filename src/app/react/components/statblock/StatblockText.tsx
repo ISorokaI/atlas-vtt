@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Component, MarkdownRenderer, type App } from 'obsidian';
+import { Component, Keymap, MarkdownRenderer, type App } from 'obsidian';
 import { diceLinkProps, linkDiceIn, splitDiceSegments } from '../../../services/statblockDiceLinks';
-import { decodeStatblockLinks } from '../../../services/statblockLinks';
+import { decodeStatblockLinks, statblockLinksAsText } from '../../../services/statblockLinks';
 import { runInBackground } from '../../../utils/backgroundTask';
 
 interface MarkdownTextProps {
@@ -9,10 +9,13 @@ interface MarkdownTextProps {
   text: string;
   app?: App | undefined;
   sourcePath?: string | undefined;
-  /** Render markdown; when false the text is shown as-is */
+  /** Render markdown; when false the text is shown as it reads, links as the words they show */
   markdown?: boolean | undefined;
   className?: string | undefined;
 }
+
+/** Obsidian follows the links of its own rendered notes (reading view, Live Preview, embeds). */
+const OBSIDIAN_LINK_ROOTS = '.markdown-preview-view, .cm-content';
 
 /** Text with dice notation rendered as clickable spans. */
 function DiceText({ text }: { text: string }): React.JSX.Element {
@@ -62,18 +65,23 @@ export function StatblockMarkdown({
     // effect rebuilds from scratch on every run. React never owns these nodes.
     linkDiceIn(el);
 
-    // Rendered outside a note, Obsidian does not follow its links. A new tab keeps the map open.
+    // Elsewhere nothing follows them. A new tab keeps the map open; Obsidian's modifiers pick another pane.
     const openLink = (event: MouseEvent): void => {
-      const link = (event.target as HTMLElement | null)?.closest?.('a.internal-link');
-      const target = link?.getAttribute('data-href') ?? link?.getAttribute('href');
+      if (event.button !== (event.type === 'auxclick' ? 1 : 0)) return;
+      const link = (event.target as Element | null)?.closest?.('a.internal-link');
+      if (!link || link.closest(OBSIDIAN_LINK_ROOTS)) return;
+      const target = link.getAttribute('data-href') ?? link.getAttribute('href');
       if (!target) return;
       event.preventDefault();
-      runInBackground(app.workspace.openLinkText(target, sourcePath, true), `Opening ${target}`, 'Could not open the linked note');
+      const pane = Keymap.isModEvent(event) || 'tab';
+      runInBackground(app.workspace.openLinkText(target, sourcePath, pane), `Opening ${target}`, 'Could not open the linked note');
     };
     el.addEventListener('click', openLink);
+    el.addEventListener('auxclick', openLink);
 
     return () => {
       el.removeEventListener('click', openLink);
+      el.removeEventListener('auxclick', openLink);
       component.unload();
       el.replaceChildren();
     };
@@ -82,7 +90,7 @@ export function StatblockMarkdown({
   if (!markdown || !app) {
     return (
       <span className={className}>
-        <DiceText text={text} />
+        <DiceText text={statblockLinksAsText(text)} />
       </span>
     );
   }
