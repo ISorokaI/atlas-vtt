@@ -59,13 +59,15 @@ const REBUILT_FIELDS = new Set(['id', 'type', 'name', 'imagePath', 'tags', 'coll
  * Passes to `owner` what the user did with a token an older version rebuilt from
  * the same art: a name other than the one its file gives, its tags, and every
  * field rebuilding never sets (a statblock link, a size). A name or field the
- * owner was edited to later stays.
+ * owner was edited to later stays; one the owner lacks is always passed.
  */
 function passEdits(rebuilt: TokenAsset, owner: TokenAsset): void {
   const later = rebuilt.modifiedAt > owner.modifiedAt;
   const stem = stemOf(rebuilt.imagePath);
   const named = rebuilt.name !== recoveredTokenName(rebuilt.imagePath) && rebuilt.name !== stem && rebuilt.name !== prettifyIdentifier(stem);
-  const edits: Partial<TokenAsset> = later ? Object.fromEntries(Object.entries(rebuilt).filter(([key]) => !REBUILT_FIELDS.has(key))) : {};
+  const held = new Set(Object.entries(owner).filter(([, value]) => value !== undefined).map(([key]) => key));
+  const edits: Partial<TokenAsset> = Object.fromEntries(Object.entries(rebuilt)
+    .filter(([key]) => !REBUILT_FIELDS.has(key) && (later || !held.has(key))));
   if (later && named) edits.name = rebuilt.name;
   const ownTags = owner.tags ?? [];
   const tags = [...new Set([...ownTags, ...(rebuilt.tags ?? [])])];
@@ -75,8 +77,9 @@ function passEdits(rebuilt: TokenAsset, owner: TokenAsset): void {
   owner.modifiedAt = Math.max(owner.modifiedAt, rebuilt.modifiedAt);
 }
 
-/** Points every encounter and player group at `to` where it names `from`. */
-function moveGroupRefs(metadata: AssetMetadata, from: string, to: string, now: number): void {
+/** Points every encounter and player group at `to` where it names `from`; no edit of theirs, so `modifiedAt` stays and a real edit elsewhere still wins. */
+function moveGroupRefs(metadata: AssetMetadata, from: string, to: string): boolean {
+  let changed = false;
   for (const asset of Object.values(metadata.assets)) {
     if (asset.type !== 'encounter' && asset.type !== 'player') continue;
     const lists = [asset.tokens, asset.data?.tokens].filter((list): list is GroupTokenRef[] => Array.isArray(list));
@@ -88,8 +91,9 @@ function moveGroupRefs(metadata: AssetMetadata, from: string, to: string, now: n
         moved = true;
       }
     }
-    if (moved) asset.modifiedAt = now;
+    changed ||= moved;
   }
+  return changed;
 }
 
 /**
@@ -100,7 +104,7 @@ function moveGroupRefs(metadata: AssetMetadata, from: string, to: string, now: n
  * (`passEdits`), and encounters and player groups that name it name the real
  * record instead. Returns whether anything changed.
  */
-export function dropShadowedRecoveries(metadata: AssetMetadata, now: number): boolean {
+export function dropShadowedRecoveries(metadata: AssetMetadata): boolean {
   const owners = new Map<string, Asset>();
   for (const asset of Object.values(metadata.assets)) {
     if (!isRecoveredId(asset.id)) for (const path of ownedPaths(asset)) owners.set(path, asset);
@@ -112,7 +116,7 @@ export function dropShadowedRecoveries(metadata: AssetMetadata, now: number): bo
     if (!isRecoveredId(id) || !owner) continue;
     if (asset.type === 'token' && owner.type === 'token') {
       passEdits(asset, owner);
-      moveGroupRefs(metadata, id, owner.id, now);
+      moveGroupRefs(metadata, id, owner.id);
     }
     delete metadata.assets[id];
     changed = true;

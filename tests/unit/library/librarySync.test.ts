@@ -122,6 +122,22 @@ describe('the first start of this version', () => {
     expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: hag });
   });
 
+  it('keeps an art rename another device followed on an older version, which left the encounter\'s time as it was', async () => {
+    const shared = olderVault();
+    const indexOn = (imagePath: string): string => {
+      const index = JSON.parse(shared[CACHE]!);
+      const tokens = [{ id: 'token-1', name: 'Bog hag', imagePath }];
+      index.assets['encounter-1'] = { ...index.assets['encounter-1'], tokens, data: { description: 'At the ford', tokens } };
+      return JSON.stringify(index);
+    };
+    const renamed = `${FEN}/tokens/bog-hag.webp`;
+
+    const b = await device({ ...shared, [CACHE]: indexOn(ART) });
+    const a = await device({ ...syncedFiles(b), [CACHE]: indexOn(renamed) });
+
+    expect(await a.assets.getAssetById('encounter-1')).toMatchObject({ tokens: [{ imagePath: renamed }] });
+  });
+
   it('keeps a record this device edited after the version another device migrated, and writes it', async () => {
     const a = await device(olderVault());
     const files = { ...syncedFiles(a), [CACHE]: olderVault()[CACHE]! };

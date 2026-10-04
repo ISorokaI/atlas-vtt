@@ -77,7 +77,7 @@ function mergeRecords(context: MergeContext, readings: readonly RecordReading[])
 /**
  * Takes a record in from the file it lives in; a file that stood for a copy until now hands it back to its record.
  * Before this device has written its library files, its index was its own copy of the library, so an entry
- * edited here after the file's version stays and is written over the file at the first save.
+ * edited here no earlier than the file's version stays and is written over the file at the first save.
  */
 function takeIn(context: MergeContext, record: Asset, reading: RecordReading, upserted: Set<string>): void {
   const { metadata, state, result } = context;
@@ -85,7 +85,8 @@ function takeIn(context: MergeContext, record: Asset, reading: RecordReading, up
   stamp(state, reading, assetKey(record.id));
   delete state.derived[assetKey(record.id)];
   const indexed = metadata.assets[record.id];
-  if (!context.migrated && indexed && indexed.modifiedAt > record.modifiedAt) {
+  // A tie stays too: an older version followed an art rename into encounter refs without stamping `modifiedAt`.
+  if (!context.migrated && indexed && indexed.modifiedAt >= record.modifiedAt) {
     upserted.add(record.id);
     return;
   }
