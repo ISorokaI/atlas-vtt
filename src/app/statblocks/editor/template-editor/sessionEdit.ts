@@ -27,10 +27,14 @@ export function readOnlyMessage(snapshot: Pick<SessionSnapshot, 'readOnly' | 're
   return snapshot.readOnlyReason === 'newer' ? 'Update Atlas to edit this template.' : 'Built-in template. Make a copy to change it.';
 }
 
+/** Why the Name or the token picture stays. */
+export const CORE_SLOT_MESSAGE = 'Every statblock has a name and token art. Move them, but they stay.';
+
 /** A refused edit in plain words, where the refusal is one the user can act on. */
 export function refusalMessage(reason: TreeRefusal): string | null {
   switch (reason) {
     case 'not-allowed-here': return "That block can't go there.";
+    case 'core-slot': return CORE_SLOT_MESSAGE;
     case 'not-siblings': return 'Select blocks that stand in the same place.';
     case 'not-adjacent': return 'Select blocks that stand next to each other.';
     case 'cannot-turn-into': return "This block can't turn into that.";

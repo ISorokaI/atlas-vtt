@@ -12,7 +12,7 @@ import { deleteTemplate } from '../../library/templateActions';
 import { forgetOwnCopy, ensureOwnCopy } from '../../library/ownCopy';
 import type { TemplateSession } from '../../library/TemplateSession';
 import { templateNotes } from '../../library/templateUsage';
-import { removeBlock } from '../../model/treeOps';
+import { deleteBlock } from '../../model/coreSlots';
 import { fieldsShownBy, findBlock, flattenReadingOrder } from '../../model/treeQueries';
 import { isContainerBlock, type StatblockTemplate, type TemplateBlock, type TemplateId } from '../../model/templateTypes';
 import type { NotePatch } from '../../notes/patchTypes';
@@ -45,7 +45,7 @@ export function hasValues(template: StatblockTemplate, block: TemplateBlock, rec
 
 /** The template without the block; the properties it showed stay (their values stay in every note). */
 function withoutBlock(template: StatblockTemplate, blockId: string): StatblockTemplate {
-  const edit = removeBlock(template.layout, blockId);
+  const edit = deleteBlock(template.layout, blockId);
   return edit.ok && edit.layout !== template.layout ? { ...template, layout: edit.layout } : template;
 }
 

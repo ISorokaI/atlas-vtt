@@ -71,6 +71,22 @@ describe('dropTargetAt', () => {
     expect(dropTargetAt(scene(), moving('D', 'divider'), { x: 150, y: 98 })).toMatchObject({ kind: 'between', parentId: 'S' });
   });
 
+  it('goes beside a group without a heading that shares the edge, and into its Row where it stands in one', () => {
+    const name: TemplateBlock = { id: 'name', type: 'title', field: 'name', level: 1 };
+    const line: TemplateBlock = { id: 'line', type: 'line', fields: ['size'] };
+    const art: TemplateBlock = { id: 'art', type: 'image', field: 'image', shape: 'token' };
+    const boxes = new Map<string, Box>([['G', box(0, 0, 300, 60)], ['name', box(0, 0, 300, 30)], ['line', box(0, 34, 300, 60)], ['art', box(0, 70, 80, 150)]]);
+    const loose: DropScene = { layout: template([{ id: 'G', type: 'section', blocks: [name, line] }, art]).layout, boxes, card: box(0, 0, 300, 150) };
+    expect(dropTargetAt(loose, moving('art', 'image'), { x: 290, y: 15 })).toMatchObject({ kind: 'beside', targetId: 'G', side: 'end' });
+    const headed: DropScene = { ...loose, layout: template([{ id: 'G', type: 'section', heading: 'Lore', blocks: [name, line] }, art]).layout };
+    expect(dropTargetAt(headed, moving('art', 'image'), { x: 290, y: 15 })).toMatchObject({ kind: 'beside', targetId: 'name' });
+    const inRow: DropScene = {
+      layout: template([{ id: 'R', type: 'row', blocks: [{ id: 'G', type: 'section', blocks: [name, line] }] }, art]).layout,
+      boxes: new Map(boxes).set('R', box(0, 0, 300, 60)), card: loose.card,
+    };
+    expect(dropTargetAt(inRow, moving('art', 'image'), { x: 290, y: 15 })).toMatchObject({ kind: 'between', parentId: 'R', index: 1 });
+  });
+
   it('offers no beside where the pair may not stand side by side: inside a Row, or for a block a Row does not take', () => {
     expect(dropTargetAt(scene(), moving('D', 'divider'), { x: 135, y: 175 })).toMatchObject({ kind: 'between', parentId: 'R' });
     expect(dropTargetAt(scene(), moving('R', 'row'), { x: 290, y: 15 })).toMatchObject({ kind: 'between', parentId: null });

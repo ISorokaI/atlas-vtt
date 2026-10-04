@@ -11,6 +11,7 @@ import { AssetService } from '../../../services/AssetService';
 import { ownCopyOf } from '../../library/ownCopy';
 import { TemplateLibrary } from '../../library/TemplateLibrary';
 import { templateNotes } from '../../library/templateUsage';
+import { coreSlotOf } from '../../model/coreSlots';
 import type { LibraryTemplate } from '../../model/resolvedTypes';
 import { findBlock } from '../../model/treeQueries';
 import type { StatblockTemplate } from '../../model/templateTypes';
@@ -105,7 +106,8 @@ export function blockMenuInput(input: BlockActionInput): BlockMenuInput | null {
     editInTemplate: input.openTemplateAt && entry
       ? () => input.openTemplateAt?.({ templateId: entry.template.id, path: entry.path, blockId, collectionId: pane.collectionId, notePath: pane.notePath })
       : undefined,
-    remove: reach ? { label: removeRowText(reach, name), run: () => void remove() } : undefined,
+    // The Name and the token picture stay in every template (`coreSlots`).
+    remove: reach && !coreSlotOf(template.layout, blockId) ? { label: removeRowText(reach, name), run: () => void remove() } : undefined,
     addSectionBelow: editable ? () => pane.openAddSection({ after: blockId }) : undefined,
     rolls: rollsIn(input.element),
   };

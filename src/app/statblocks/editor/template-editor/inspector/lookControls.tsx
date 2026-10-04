@@ -1,5 +1,6 @@
 import React from 'react';
 import { blockSpec, primitiveOf, rowSizeOf, type AuthorableBlockType } from '../../../model/blockCatalogue';
+import { coreSlotOf } from '../../../model/coreSlots';
 import { turnInto } from '../../../model/turnInto';
 import { wordsStandAlone, type TagsBlock, type TemplateBlock } from '../../../model/templateTypes';
 import { boundFieldOf, editBlock } from './blockEdits';
@@ -42,9 +43,9 @@ export function ShowLabel({ block, template, session, readOnly }: GroupProps & {
  * property, what a List's items are. Choosing one turns the block into that
  * type in one step, keeping what the two share.
  */
-export function KindSetting({ block, session, readOnly }: GroupProps): React.JSX.Element | null {
+export function KindSetting({ block, template, session, readOnly }: GroupProps): React.JSX.Element | null {
   const primitive = primitiveOf(block.type);
-  if (!primitive?.kindSetting) return null;
+  if (!primitive?.kindSetting || coreSlotOf(template.layout, block.id)) return null;
   const current = primitive.kinds.find((type) => type === block.type);
   if (!current) return null;
   const options = primitive.kinds.map((type) => ({ value: type, label: blockSpec(type).kind ?? blockSpec(type).label }));

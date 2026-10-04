@@ -18,6 +18,7 @@ import { primaryOf, type BlockSelection } from './selection';
 import type { SessionSnapshot } from './sessionTypes';
 import { addTabTo, splitListIntoTabs } from './tabActions';
 import { SelectionToolbar } from './toolbar/SelectionToolbar';
+import { CORE_SLOTS, coreSlotOf, type CoreSlotId } from '../../model/coreSlots';
 import type { EditorState } from './useEditorState';
 import { runBlockCommand, type KeyboardTarget } from './useTemplateKeyboard';
 import '../interaction/interaction.scss';
@@ -32,6 +33,11 @@ export interface TeSurfaceChromeProps {
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
   onSettings?: (() => void) | undefined;
+}
+
+/** What the toolbar calls a core slot. */
+function coreLabelOf(slot: CoreSlotId | null): string | null {
+  return slot ? CORE_SLOTS[slot].label : null;
 }
 
 /** Where a menu opens: at a right-click's point, or hanging from an element. */
@@ -155,6 +161,7 @@ export function TeSurfaceChrome({ layer, stage, snapshot, state, target, menuOpe
           editable={editable}
           revision={snapshot.template}
           settingsInUse={moreOptionsInUse(block)}
+          coreLabel={coreLabelOf(state.selection.length === 1 ? coreSlotOf(snapshot.template.layout, block.id) : null)}
           onTurnInto={(chip) => {
             const turn = menuOf(primary).find((row) => row.kind === 'submenu' && row.id === 'turn-into');
             if (turn?.kind === 'submenu') open(turn.children, { from: chip }, frameOf(primary), frameOf(primary));

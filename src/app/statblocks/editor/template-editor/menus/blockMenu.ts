@@ -8,6 +8,7 @@
  */
 
 import { PRIMITIVES, canContain, type AuthorableBlockType, type PrimitiveId } from '../../../model/blockCatalogue';
+import { coreSlotOf } from '../../../model/coreSlots';
 import { childrenOf, parentTypeOf } from '../../../model/treeEdit';
 import { boundField, findBlock } from '../../../model/treeQueries';
 import { isListBlockType } from '../../../model/treeTabs';
@@ -101,7 +102,9 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   const what = many ? `${ctx.selection.length} blocks` : blockName(block, template.fields);
   const ordered = inSiblingOrder(template.layout, ctx.selection);
   const last = ordered.at(-1) ?? ctx.blockId;
-  const turnable = editable && !many ? turnablePrimitives(template, block) : [];
+  // The Name and the token picture stay what they are (`coreSlots`).
+  const core = !many && coreSlotOf(template.layout, block.id) !== null;
+  const turnable = editable && !many && !core ? turnablePrimitives(template, block) : [];
   const tabs = many ? { head: [], arrange: [] } : tabRows(ctx, block, found.parentId);
   const head: SurfaceAction[] = [
     ...(ctx.openSettings && !many ? [item('settings', 'Settings…', ctx.openSettings, { icon: 'settings-2', hint: shortcutText(['Shift'], '⏎') })] : []),
@@ -138,7 +141,7 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
     ...(ctx.canPaste ? [item('paste', 'Paste below', () => ctx.run('paste'), { icon: 'clipboard-paste', hint: shortcutText(['Mod'], 'V'), disabled: !editable })] : []),
     ...(many ? [] : [{ kind: 'submenu' as const, id: 'advanced', label: 'Advanced', icon: 'sliders-horizontal', children: advancedRows(ctx, block) }]),
     SEPARATOR,
-    item('delete', many ? `Delete ${what}` : 'Delete', () => ctx.run('delete'), { icon: 'trash-2', hint: 'Del', destructive: true, disabled: !editable }),
+    item('delete', many ? `Delete ${what}` : 'Delete', () => ctx.run('delete'), { icon: 'trash-2', hint: 'Del', destructive: true, disabled: !editable || core }),
   ];
   // Quick choices give way first, so the menu never runs past twelve rows.
   const room = MAX_MENU_ROWS - rowCount(tidy([...head, ...body]));

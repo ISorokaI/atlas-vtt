@@ -192,14 +192,14 @@ describe('the Settings panel in layers (spec §10)', () => {
   });
 
   it('takes a Heading\'s text from a property or has it typed', () => {
-    const session = new FakeSession(template([{ id: 'head0001', type: 'heading', text: 'Name', level: 'section' }], [{ key: 'name', label: 'Name', type: 'text' }]));
+    const session = new FakeSession(template([{ id: 'head0001', type: 'heading', text: 'Speed', level: 'section' }], [{ key: 'speed', label: 'Speed', type: 'text' }]));
     const { frame } = mountEditor(session);
     fireEvent.click(frame('head0001'));
     expect(within(group('Basics')).getByRole('textbox', { name: 'Heading' })).toBeTruthy();
     fireEvent.click(within(group('Basics')).getByRole('radio', { name: 'From a property' }));
-    expect(blockOf(session, 'head0001')).toEqual({ id: 'head0001', type: 'title', field: 'name', level: 2 });
+    expect(blockOf(session, 'head0001')).toEqual({ id: 'head0001', type: 'title', field: 'speed', level: 2 });
     fireEvent.click(within(group('Basics')).getByRole('radio', { name: 'Typed' }));
-    expect(blockOf(session, 'head0001')).toEqual({ id: 'head0001', type: 'heading', text: 'Name', level: 'section' });
+    expect(blockOf(session, 'head0001')).toEqual({ id: 'head0001', type: 'heading', text: 'Speed', level: 'section' });
     expect(session.steps).toBe(2);
   });
 

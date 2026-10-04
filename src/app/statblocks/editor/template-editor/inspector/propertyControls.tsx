@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '../../../../packages/components/primitives/button';
+import { isCoreSlotKey } from '../../../model/coreSlots';
 import { FIELD_MEANINGS, type FieldMeaning, type TemplateField } from '../../../model/templateTypes';
 import { useTemplateEditor } from '../editorContext';
 import { MEANING_LABELS } from '../editorGlyphs';
@@ -27,12 +28,13 @@ export function KeySetting({ field, readOnly }: { field: TemplateField; readOnly
         {() => (
           <div className="atlas-te-setting__inline">
             <code className="atlas-te-setting__key">{field.key}</code>
-            <Button ref={buttonRef} type="button" variant="ghost" size="sm" disabled={readOnly} onClick={() => setOpener(buttonRef.current)}>
+            <Button ref={buttonRef} type="button" variant="ghost" size="sm" disabled={readOnly || isCoreSlotKey(field.key)} onClick={() => setOpener(buttonRef.current)}>
               Rename…
             </Button>
           </div>
         )}
       </Setting>
+      {isCoreSlotKey(field.key) && <SettingNote>Every statblock keeps its {field.key === 'name' ? 'name' : 'token art'} under this name.</SettingNote>}
       {field.formerKeys && field.formerKeys.length > 0 && (
         <SettingNote>Also reads {field.formerKeys.map((key) => `“${key}”`).join(', ')} from statblocks not yet moved over.</SettingNote>
       )}

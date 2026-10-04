@@ -31,6 +31,8 @@ export interface SelectionToolbarProps {
   revision: unknown;
   /** Whether any of the block's further settings is in use: a dot on Settings. */
   settingsInUse: boolean;
+  /** Set for the Name or the token picture, which every statblock keeps: what the chip calls it. It neither turns into another block nor goes. */
+  coreLabel: string | null;
   onTurnInto: (chip: HTMLElement) => void;
   onSettings?: (() => void) | undefined;
   onAddBelow: () => void;
@@ -89,9 +91,11 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
     '--atlas-te-toolbar-x': `${placement.left}px`,
     '--atlas-te-toolbar-y': `${placement.top}px`,
   };
-  const type = blockSpec(block.type).label;
+  const core = props.coreLabel !== null;
+  const type = props.coreLabel ?? blockSpec(block.type).label;
   const Glyph = blockGlyph(block.type);
   const chipLabel = props.count > 1 ? `${props.count} blocks` : type;
+  const turnable = editable && props.count === 1 && !core;
 
   return createPortal(
     <div
@@ -110,13 +114,13 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
         props.onMenuBelow({ x: event.clientX, y: event.clientY });
       }}
     >
-      <LabelTooltip label={props.count > 1 ? chipLabel : `${type} · Turn into…`}>
+      <LabelTooltip label={turnable ? `${type} · Turn into…` : chipLabel}>
         <Button
           variant="ghost"
           size="sm"
           className="atlas-te-toolbar__type"
-          aria-disabled={!editable || props.count > 1 || undefined}
-          onClick={(event) => { if (editable && props.count === 1) props.onTurnInto(event.currentTarget); }}
+          aria-disabled={!turnable || undefined}
+          onClick={(event) => { if (turnable) props.onTurnInto(event.currentTarget); }}
         >
           <Glyph aria-hidden="true" />
           <span className="atlas-te-toolbar__type-name">{chipLabel}</span>
@@ -128,7 +132,9 @@ export function SelectionToolbar(props: SelectionToolbarProps): React.JSX.Elemen
         </span>
       )}
       <ToolButton icon={Plus} label="Add below" shortcut="/" isActive={false} disabled={!editable} onClick={props.onAddBelow} />
-      <ToolButton icon={Trash2} label="Delete" shortcut="Del" isActive={false} disabled={!editable} onClick={props.onDelete} />
+      {core
+        ? <ToolButton icon={Trash2} label="Every statblock keeps this" isActive={false} disabled onClick={props.onDelete} />
+        : <ToolButton icon={Trash2} label="Delete" shortcut="Del" isActive={false} disabled={!editable} onClick={props.onDelete} />}
       <span ref={more} className="atlas-te-toolbar__more">
         <ToolButton icon={Ellipsis} label="More" shortcut={shortcutText(['Shift'], 'F10')} isActive={false} onClick={() => { if (more.current) props.onMore(more.current); }} />
       </span>

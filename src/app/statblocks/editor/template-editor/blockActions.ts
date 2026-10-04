@@ -8,7 +8,8 @@ import { createBlock, type AuthorableBlockType } from '../../model/blockCatalogu
 import { addField } from '../../model/fieldOps';
 import { fieldKeysOf, labelToKey } from '../../model/fieldKeys';
 import { blockIdSource, type BlockIdSource } from '../../model/templateIds';
-import { duplicateBlock, insertBlock, removeBlock } from '../../model/treeOps';
+import { coreSlotBlocks, deleteBlock } from '../../model/coreSlots';
+import { duplicateBlock, insertBlock } from '../../model/treeOps';
 import { putSideBySide, unwrap, wrapInSection } from '../../model/treeGrouping';
 import { childrenOf, type TreeRefusal, type TreeTarget } from '../../model/treeEdit';
 import { collectBlockIds, findBlock } from '../../model/treeQueries';
@@ -112,17 +113,20 @@ export function duplicateSelection(session: EditorSession, selection: BlockSelec
   return outcomeOf(edit, snapshot, () => ({ select: [...copies], announce: copies.length > 1 ? `Duplicated ${copies.length} blocks.` : 'Duplicated.' }));
 }
 
-/** Delete: the selection goes, focus moves to the next sibling, else the parent. */
+/** Delete: the selection goes but its Name and token art, focus moves to the next sibling, else the parent. */
 export function deleteSelection(session: EditorSession, selection: BlockSelection): EditOutcome {
   const before = session.getSnapshot().template;
-  const names = inSiblingOrder(before.layout, selection)
+  const cores = coreSlotBlocks(before.layout);
+  const doomed = selection.filter((id) => !cores.has(id));
+  if (doomed.length === 0) return { announce: refusalMessage('core-slot') ?? undefined };
+  const names = inSiblingOrder(before.layout, doomed)
     .map((id) => findBlock(before.layout.blocks, id)?.block)
     .filter((block): block is TemplateBlock => block !== undefined)
     .map((block) => blockName(block, before.fields));
   const after: { focus: string | null } = { focus: null };
   const edit = applyTree(session, (layout) => {
-    after.focus = focusAfterDelete(layout, selection);
-    return chainTree(layout, selection.map((id) => (current: TemplateLayout) => removeBlock(current, id)));
+    after.focus = focusAfterDelete(layout, doomed);
+    return chainTree(layout, doomed.map((id) => (current: TemplateLayout) => deleteBlock(current, id)));
   });
   return outcomeOf(edit, session.getSnapshot(), () => {
     const what = names.length === 1 ? names[0] ?? 'the block' : `${names.length} blocks`;

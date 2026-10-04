@@ -11,6 +11,7 @@ import { templateFingerprint } from '../../services/collectionBundle/fingerprint
 import type { InstalledTemplate } from '../../services/collectionBundle/installRecord';
 import { isRecord, parseJsonText } from '../format/jsonValues';
 import { migrateTemplate } from '../format/migrateTemplate';
+import { withCoreSlots } from '../model/coreSlots';
 import { parseTemplate } from '../format/parseTemplate';
 import { flushTemplateSessions } from '../library/sessionRegistry';
 import { TEMPLATE_EXTENSION, indexTemplateFiles, readTemplateFile, templateName } from '../library/templateFiles';
@@ -67,7 +68,7 @@ export async function cleanTemplate(path: string, text: string): Promise<PackedT
     text: hasCode ? `${JSON.stringify(json, null, 2)}\n` : text,
     json,
     fingerprint: await templateFingerprint(json),
-    entry: { template: migrateTemplate(result.template), name, status: result.status, builtIn: false, path },
+    entry: { template: withCoreSlots(migrateTemplate(result.template)), name, status: result.status, builtIn: false, path },
   };
 }
 

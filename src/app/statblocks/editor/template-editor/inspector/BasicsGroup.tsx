@@ -1,5 +1,6 @@
 import React from 'react';
 import { blockSpec } from '../../../model/blockCatalogue';
+import { coreSlotOf, type CoreSlotId } from '../../../model/coreSlots';
 import { boundField } from '../../../model/treeQueries';
 import { useTemplateEditor } from '../editorContext';
 import { MEANING_LABELS } from '../editorGlyphs';
@@ -32,12 +33,20 @@ function LabelSetting({ block, template, session, readOnly }: GroupProps): React
   );
 }
 
+/** What the Name and the token picture say in place of "Shows": they always show their own property. */
+const CORE_SLOT_NOTES: Readonly<Record<CoreSlotId, string>> = {
+  name: 'Shows the statblock\'s name. Every statblock has one.',
+  token: 'Shows the token art. Every statblock has a place for it.',
+};
+
 /** "Shows": the property the block shows, for the blocks that show one. */
 function Shows(props: GroupProps): React.JSX.Element | null {
-  const { block, session, readOnly } = props;
+  const { block, template, session, readOnly } = props;
   const binds = blockSpec(block.type).binds;
   const [first] = binds;
   if (!first || block.type === 'line' || block.type === 'text') return null;
+  const core = coreSlotOf(template.layout, block.id);
+  if (core) return <SettingNote>{CORE_SLOT_NOTES[core]}</SettingNote>;
   return (
     <FieldSetting
       label="Shows"

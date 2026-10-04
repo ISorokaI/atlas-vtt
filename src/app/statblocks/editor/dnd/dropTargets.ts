@@ -147,7 +147,38 @@ function candidatesIn(scene: DropScene, subject: DragSubject, block: TemplateBlo
   const firstHalf = flow === 'row' ? point.x < (box.left + box.right) / 2 : point.y < (box.top + box.bottom) / 2;
   const between = gapTarget(scene, found.parentId, drawn, firstHalf ? at : at + 1, point);
   const side = flow === 'stack' ? besideSide(box, point) : null;
-  return [...(side ? [besideTarget(block, box, side)] : []), ...(between ? [between] : [])];
+  const beside = side ? besideCandidate(scene, block.id, box, side, point) : null;
+  return [...(beside ? [beside] : []), ...(between ? [between] : [])];
+}
+
+/** How far a block's edge may stand from its Section's and still count as the same edge. */
+const SAME_EDGE = 4;
+
+/**
+ * What a drop over a block's edge band goes beside: the block, or the
+ * Section without a heading it stands in with that edge (a group the eye does
+ * not see, like a name with the line under it), and so on outwards. Where that
+ * stands in a Row already, the drop takes the Row's gap on that side.
+ */
+function besideCandidate(scene: DropScene, id: string, box: Box, side: 'start' | 'end', point: Point): DropTarget | null {
+  let anchor = { id, box };
+  for (let depth = 0; depth < 64; depth++) {
+    const found = findBlock(scene.layout.blocks, anchor.id);
+    const parent = found?.parentId ? findBlock(scene.layout.blocks, found.parentId) : null;
+    const parentBox = parent ? scene.boxes.get(parent.block.id) : undefined;
+    if (!parent || !parentBox || parent.block.type !== 'section' || parent.block.heading?.trim() || parent.block.headingField) break;
+    const edge = side === 'start' ? Math.abs(parentBox.left - anchor.box.left) : Math.abs(parentBox.right - anchor.box.right);
+    if (edge > SAME_EDGE) break;
+    anchor = { id: parent.block.id, box: parentBox };
+  }
+  const found = findBlock(scene.layout.blocks, anchor.id);
+  if (!found) return null;
+  if (parentTypeOf(scene.layout, found.parentId) === 'row') {
+    const drawn = drawnOf(scene, childrenOf(scene.layout, found.parentId) ?? []);
+    const at = drawn.findIndex((entry) => entry.block.id === anchor.id);
+    return at === -1 ? null : gapTarget(scene, found.parentId, drawn, side === 'start' ? at : at + 1, point);
+  }
+  return besideTarget(found.block, anchor.box, side);
 }
 
 /** Whether every block the drag brings may stand in the list `parentId`, and the moved block does not go into itself. */

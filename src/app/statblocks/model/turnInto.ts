@@ -1,6 +1,7 @@
 import {
   bindsFieldType, blockSpec, canContain, createBlock, isAuthorableBlockType, PRIMITIVE_IDS, PRIMITIVES, type AuthorableBlockType, type PrimitiveId,
 } from './blockCatalogue';
+import { coreSlotOf } from './coreSlots';
 import { fieldByKey } from './fieldKeys';
 import { done, parentTypeOf, refuse, spliced, withChildren, type TreeEdit } from './treeEdit';
 import { boundField, findBlock } from './treeQueries';
@@ -113,6 +114,7 @@ export function turnInto(
   if (!found) return refuse(layout, 'block-not-found');
   const { block } = found;
   if (block.type === type) return done(layout, id);
+  if (coreSlotOf(layout, id)) return refuse(layout, 'core-slot');
   if (!isAuthorableBlockType(type) || isContainerBlock(block) !== isContainerType(type)) return refuse(layout, 'cannot-turn-into');
   const parentType = parentTypeOf(layout, found.parentId);
   if (parentType === null || !canContain(parentType, type)) return refuse(layout, 'not-allowed-here');

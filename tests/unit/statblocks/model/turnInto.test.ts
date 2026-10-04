@@ -64,8 +64,8 @@ describe('turnInto', () => {
     expect(turned(turnInto(typed, 'h', 'title', fields).layout, 'h')).toStrictEqual({ id: 'h', type: 'title', field: 'speed', level: 3 });
     const unnamed = layoutOf({ id: 'h', type: 'heading', text: 'Lair', level: 'section' });
     expect(turned(turnInto(unnamed, 'h', 'title', fields).layout, 'h')).toStrictEqual({ id: 'h', type: 'title', field: '', level: 2 });
-    const bound = layoutOf({ id: 't', type: 'title', field: 'name', level: 1 });
-    expect(turned(turnInto(bound, 't', 'heading', fields).layout, 't')).toStrictEqual({ id: 't', type: 'heading', text: 'Name', level: 'section' });
+    const bound = layoutOf({ id: 't', type: 'title', field: 'speed', level: 1 });
+    expect(turned(turnInto(bound, 't', 'heading', fields).layout, 't')).toStrictEqual({ id: 't', type: 'heading', text: 'Speed', level: 'section' });
   });
 
   it('changes what a List\'s items are, keeping the words over them and leaving a property the new kind cannot show', () => {
