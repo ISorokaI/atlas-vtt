@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo, forwardRef } from "react"
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
 import { useStore } from "zustand"
@@ -23,6 +23,7 @@ import { ToolbarEditContext } from "./toolbar/editor/toolbarEditContext"
 import { ToolbarEditor } from "./toolbar/editor/ToolbarEditor"
 import { ToolbarLiveRegion } from "./toolbar/editor/ToolbarLiveRegion"
 import { createToolbarEditStore, ToolbarEditStoreContext } from "./toolbar/editor/toolbarEditStore"
+import { useToolbarRowBridge } from "./toolbar/editor/toolbarRowBridge"
 import { useToolbarEditor } from "./toolbar/editor/useToolbarEditor"
 import type { Tool } from "./toolbar/toolFaces"
 import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
@@ -45,7 +46,10 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   }
   const liveLayout = useToolbarLayout()
   // During a drag the bar keeps the layout it began with; changes made elsewhere wait for the drop.
-  const [editStore] = useState(createToolbarEditStore)
+  // The bottom row shares the drag state with the undo/redo bar, which the editor arranges too.
+  const rowBridge = useToolbarRowBridge()
+  const [ownEditStore] = useState(createToolbarEditStore)
+  const editStore = rowBridge?.editStore ?? ownEditStore
   const frozenLayout = useStore(editStore.state, s => s.frozenLayout)
   const layoutAccess = frozenLayout ? { ...liveLayout, layout: frozenLayout } : liveLayout
   const { layout } = layoutAccess
@@ -157,10 +161,17 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
   const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })
   const hiddenIds: ReadonlySet<string> = layout.hidden
+  const publishedEdit = editing ? editor.api : null
+
+  // The undo/redo bar beside the bar works through the same editor.
+  useLayoutEffect(() => {
+    rowBridge?.edit.setState({ api: publishedEdit })
+  })
+  useEffect(() => () => rowBridge?.edit.setState({ api: null }), [rowBridge])
 
   return (
     <TooltipProvider delayDuration={300}>
-      <ToolbarEditContext.Provider value={editing ? editor.api : null}>
+      <ToolbarEditContext.Provider value={publishedEdit}>
         <ToolbarEditStoreContext.Provider value={editStore}>
           <MotionConfig reducedMotion="user">
             <ResponsiveToolbar

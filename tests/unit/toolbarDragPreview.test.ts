@@ -30,6 +30,13 @@ describe('the bar during a drag', () => {
     expect(barDragPreview(BAR, drag({ after: null })).fitIds).toEqual([WELL, 'move', 'draw', 'text', 'palette']);
   });
 
+  it('leaves the bar alone while the undo/redo bar is dragged, which never lands in it', () => {
+    for (const from of ['bar', 'tray'] as const) for (const zone of ['bar', 'tray', null] as const) {
+      expect(barDragPreview(BAR, drag({ id: 'undo', from, zone, after: null, originAfter: null })).fitIds).toEqual(BAR);
+      expect(barDragPreview(BAR, drag({ id: 'undo', from, zone, after: null, originAfter: null })).wellAfter).toBeUndefined();
+    }
+  });
+
   it('has no well while the tool is over the tray', () => {
     expect(barDragPreview(BAR, drag({ zone: 'tray' }))).toEqual({
       fitIds: ['move', 'draw', 'text', 'palette'], wellAfter: undefined, originHolds: false,

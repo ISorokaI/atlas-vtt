@@ -115,8 +115,11 @@ export function expectSameBox(actual: Rect, expected: Rect): void {
   }
 }
 
-export const handle = (id: string, where: 'bar' | 'tray'): HTMLElement =>
-  query(`${where === 'bar' ? '.atlas-main-toolbar' : '.atlas-toolbar-tray'} .atlas-toolbar-handle[data-control="${id}"]`);
+/** A control's handle on the bar (the undo/redo bar's own for it), or in the tray. */
+export const handle = (id: string, where: 'bar' | 'tray'): HTMLElement => {
+  const scope = where === 'tray' ? '.atlas-toolbar-tray' : id === 'undo' ? '.atlas-undo-bar' : '.atlas-main-toolbar';
+  return query(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
+};
 
 /** The stylesheet the tests render with; returns its removal. */
 export function installToolbarStyles(): () => void {
