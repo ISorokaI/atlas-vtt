@@ -10,6 +10,7 @@
 
 ## Fixed
 
+- The asset manager opens and scrolls faster with many tokens: every token card used to make the browser read the token ring image anew, which on slower computers froze the Characters tab with a few dozen tokens. Contributed by ISorokaI
 - Zooming a map whose grid is switched off no longer folds the map into a grey wedge pointing at one of its pins
 - Rolls show as result cards when the graphics card cannot draw 3D dice, for example after Obsidian lost or blocked WebGL, instead of an empty white panel. Contributed by ISorokaI
 - Corrected the swapped export and import icons in the asset manager's collection header. Contributed by anacletoTM
