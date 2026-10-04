@@ -140,7 +140,8 @@ export interface ScoresBlock extends BlockBase {
   display?: 'plain' | 'signed';
   columns?: ScoreColumn[];
 }
-export interface TagsBlock extends BlockBase { type: 'tags'; field: FieldKey; label?: string; look: 'chips' | 'comma' }
+/** A list of words: run in after its label with commas, as chips, or one per line with bullets or numbers. */
+export interface TagsBlock extends BlockBase { type: 'tags'; field: FieldKey; label?: string; look: 'comma' | 'chips' | 'bullets' | 'numbered' }
 export interface TextBlock extends BlockBase { type: 'text'; field?: FieldKey; text?: string; heading?: string }
 export interface EntriesBlock extends BlockBase { type: 'entries'; field: FieldKey; heading?: string; introField?: FieldKey; nameStyle?: 'run-in' | 'heading'; addLabel?: string }
 export interface PairsBlock extends BlockBase { type: 'pairs'; field: FieldKey; label?: string; display?: 'plain' | 'signed' }
@@ -163,6 +164,11 @@ export type ContainerBlock = SectionBlock | RowBlock;
 
 export function isContainerBlock(block: TemplateBlock): block is ContainerBlock {
   return block.type === 'section' || block.type === 'row';
+}
+
+/** A list of words whose items stand on their own (chips, bullets, numbers): it shows a label only where the template gives one. */
+export function wordsStandAlone(block: TemplateBlock): boolean {
+  return block.type === 'tags' && block.look !== 'comma';
 }
 
 export type TemplateLicence =

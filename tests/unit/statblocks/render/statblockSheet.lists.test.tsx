@@ -50,6 +50,19 @@ describe('StatblockSheet: lists and rows', () => {
     expect(tags.querySelector('.atlas-sb-label')).toBeNull();
   });
 
+  it('writes words one per line, bulleted or numbered, labelled only where the template names a label', () => {
+    for (const look of ['bullets', 'numbered'] as const) {
+      const blocks: TemplateBlock[] = [{ id: 'traits00', type: 'tags', field: 'traits', look }];
+      const { container, unmount } = renderSheet(templateOf(FIELDS, blocks), { traits: ['Undead', 'Swarm'] });
+      const tags = blockEl(container, 'traits00')!;
+      const list = tags.querySelector(look === 'bullets' ? 'ul.atlas-sb-word-list--bullets' : 'ol.atlas-sb-word-list--numbered');
+      expect([...(list?.querySelectorAll('li') ?? [])].map((item) => item.textContent)).toEqual(['Undead', 'Swarm']);
+      expect(tags.querySelector('.atlas-sb-label')).toBeNull();
+      expect(tags.dataset.look).toBe(look);
+      unmount();
+    }
+  });
+
   it('reads spells written as a record of levels', () => {
     const { container } = renderSheet(TEMPLATE, { name: 'Hag', spells: { 'At will': 'mage hand', '1/day': 'curse' } });
     const items = [...blockEl(container, 'spells00')!.querySelectorAll('li')].map((item) => item.textContent);

@@ -93,6 +93,18 @@ describe('known blocks', () => {
   });
 });
 
+describe('word list looks', () => {
+  it('reads bullets and numbered beside comma and chips, and an unknown look as comma, kept for writing back', () => {
+    const looks = ['comma', 'chips', 'bullets', 'numbered'];
+    const { template, problems } = read(looks.map((look, index) => ({ id: `ttttttt${index}`, type: 'tags', field: 'keywords', look })));
+    expect(problems).toEqual([]);
+    expect(template.layout.blocks.map((block) => block.type === 'tags' && block.look)).toEqual(looks);
+    const unknown = read([{ id: 'tttttttx', type: 'tags', field: 'keywords', look: 'cloud' }]);
+    expect(unknown.template.layout.blocks[0]).toMatchObject({ look: 'comma' });
+    expect(writtenBlocks(unknown.template)).toEqual([{ id: 'tttttttx', type: 'tags', field: 'keywords', look: 'cloud' }]);
+  });
+});
+
 describe('blocks the editor makes', () => {
   it('reads every new block as createBlock makes it, unbound fields included', () => {
     const blocks = AUTHORABLE_BLOCK_TYPES.map((type, index) => createBlock(type, () => `new${String(index).padStart(5, '0')}`));

@@ -11,7 +11,7 @@ import { fieldByKey, fieldKeysOf, labelToKey } from '../../model/fieldKeys';
 import { spliced, withChildren } from '../../model/treeEdit';
 import { updateBlock } from '../../model/treeOps';
 import { findBlock } from '../../model/treeQueries';
-import type { FieldKey, FieldType, StatblockTemplate, TemplateBlock } from '../../model/templateTypes';
+import { wordsStandAlone, type FieldKey, type FieldType, type StatblockTemplate, type TemplateBlock } from '../../model/templateTypes';
 import { labelTargetOf } from './labelTargets';
 
 /** The type a new field gets from the block that names it; the inspector changes it. */
@@ -70,11 +70,11 @@ function bindNewField(template: StatblockTemplate, block: TemplateBlock, label: 
   return { template: next, bound: { key, created: true, fromCollection: used !== null } };
 }
 
-/** A bound block's label: its own where it keeps one (chips show only their own), else its field's. */
+/** A bound block's label: its own where it keeps one (words standing on their own show only their own), else its field's. */
 function relabel(template: StatblockTemplate, block: TemplateBlock, label: string): StatblockTemplate {
   if (block.type !== 'stat' && block.type !== 'tags' && block.type !== 'pairs' && block.type !== 'track') return template;
   const field = fieldByKey(template.fields, block.field);
-  const ownLabel = block.label !== undefined || (block.type === 'tags' && block.look === 'chips');
+  const ownLabel = block.label !== undefined || wordsStandAlone(block);
   if (field && !ownLabel) return updateField(template, field.key, { label });
   return block.label === label ? template : replaceBlock(template, block.id, { ...block, label });
 }
