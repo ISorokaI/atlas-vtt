@@ -14,13 +14,21 @@ export interface ScoreSlot {
   columns: ShownText[];
 }
 
+function isTextScore(score: FieldValue | undefined): boolean {
+  return score !== undefined && !isEmptyValue(score) && numericValue(score) === null;
+}
+
 function shownNumber(value: FieldValue | undefined, signed: boolean): ShownText {
   if (value === undefined || isEmptyValue(value)) return NO_TEXT;
   const number = signed ? numericValue(value) : null;
   return { text: number === null ? valueText(value) : formatSigned(number), problems: [] };
 }
 
-/** A column's value in one slot: the slot's entry in the column's pairs field, else its formula over the score. */
+/**
+ * A column's value in one slot: the slot's entry in the column's pairs field,
+ * else its formula over the score. A score written as text ("—", "d8") is
+ * shown as it is, and no formula is worked out over it.
+ */
 function columnValue(
   column: ScoreColumn,
   field: TemplateField,
@@ -34,7 +42,7 @@ function columnValue(
     const pair = pairValue(sheet.reader(column.field), slotKeyOf(field, index), label);
     if (pair !== undefined && !isEmptyValue(pair)) return shownNumber(pair, signed);
   }
-  if (!column.formula?.trim()) return NO_TEXT;
+  if (!column.formula?.trim() || isTextScore(score)) return NO_TEXT;
   return shownPattern(`{=${column.formula}${signed ? '|signed' : ''}}`, sheet, undefined, { value: score, slotLabel: label });
 }
 

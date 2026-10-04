@@ -35,7 +35,7 @@ describe('valueMisfit: a value after its field\'s type changed', () => {
     expect(label('list', ENTRIES)).toBe('Not a list');
     expect(label('scores', [10, 12])).toBeNull();
     expect(label('scores', { str: 10 })).toBeNull();
-    expect(valueMisfit(field('scores'), '10 12 14')).toEqual({ label: 'Not scores', problem: '“10 12 14” isn\'t a list of numbers.' });
+    expect(valueMisfit(field('scores'), '10 12 14')).toEqual({ label: 'Not table values', problem: '“10 12 14” isn\'t a list of table values.' });
     expect(label('entries', ENTRIES)).toBeNull();
     expect(label('entries', 'It waits.')).toBeNull();
     expect(label('entries', 12)).toBe('Not entries');

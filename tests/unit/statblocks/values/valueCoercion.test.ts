@@ -65,7 +65,9 @@ describe('coerce by declared type', () => {
 
   it('reads scores, pairs and spell lines', () => {
     expect(coerce('scores', '18, 8 15\n6')).toEqual({ ok: true, value: [18, 8, 15, 6] });
-    expect(coerce('scores', '18, —')).toMatchObject({ ok: false, raw: '18, —' });
+    // A table's slot may hold text: it is kept as typed, and commas part values that hold spaces.
+    expect(coerce('scores', '18, —')).toEqual({ ok: true, value: [18, '—'] });
+    expect(coerce('scores', '7 14, 1 per day; d8')).toEqual({ ok: true, value: [7, 14, '1 per day', 'd8'] });
     expect(coerce('pairs', 'Dex +5, Con: 3')).toEqual({ ok: true, value: [{ Dex: 5 }, { Con: 3 }] });
     expect(coerce('pairs', 'Dex +5, Darkvision')).toEqual({
       ok: false, raw: 'Dex +5, Darkvision', problem: '“Darkvision” isn\'t a name and a number, like Dex +5.',

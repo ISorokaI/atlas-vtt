@@ -20,7 +20,7 @@ export function valueForText(field: TemplateField, text: string): FieldValue | u
 }
 
 /** Why typed text does not fit its field's type ("“1/4” isn't a number."); null where it fits. */
-/** What an empty value's input asks for: the field's prompt, else for scores their slots in order (typed as numbers with spaces), else its label. */
+/** What an empty value's input asks for: the field's prompt, else for scores their slots in order (numbers with spaces between, text with commas), else its label. */
 export function valuePlaceholder(field: TemplateField): string {
   const prompt = field.prompt?.trim();
   if (prompt) return prompt;

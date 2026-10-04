@@ -58,11 +58,19 @@ function coerceChoice(text: string, input: string, constraints: CoercionConstrai
   return refused(input, `${quoted(text)} isn't one of ${options.join(', ')}.`);
 }
 
-function coerceScores(text: string, input: string): CoercionResult {
-  const parts = text.split(/[\s,;]+/).filter((part) => part !== '');
-  const values = parts.map(parseNumberText);
-  if (values.some((value) => value === null)) return refused(input, `${quoted(text)} isn't a list of numbers.`);
-  return kept(values.filter((value): value is number => value !== null));
+/**
+ * A table's values in slot order: numbers where they read as numbers, text as
+ * typed. Values are parted at commas, semicolons and line breaks, and numbers
+ * also at spaces ("14 12 13"), so a text value may hold spaces ("1 per day, d8").
+ */
+function coerceScores(text: string): CoercionResult {
+  const values = text.split(/[,;\n]/).flatMap((part): FieldValue[] => {
+    const words = part.trim().split(/\s+/).filter((word) => word !== '');
+    const numbers = words.map(parseNumberText);
+    if (numbers.every((value) => value !== null)) return numbers.filter((value): value is number => value !== null);
+    return [part.trim()];
+  });
+  return kept(values);
 }
 
 function coercePairs(text: string, input: string): CoercionResult {

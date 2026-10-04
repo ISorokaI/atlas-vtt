@@ -24,3 +24,13 @@ describe('an empty score table', () => {
     expect(blockEl(container, 'scores01')).toBeNull();
   });
 });
+
+describe('a table slot holding text', () => {
+  it('shows the text as written and works out no column over it', () => {
+    const { container } = renderSheet(TEMPLATE, { stats: [14, 'd8', '1 per day'] });
+    const block = blockEl(container, 'scores01')!;
+    expect([...block.querySelectorAll('.atlas-sb-score')].map((cell) => cell.textContent)).toEqual(['14', 'd8', '1 per day']);
+    expect([...block.querySelectorAll('.atlas-sb-score-column')].map((cell) => cell.textContent)).toEqual(['2', '', '']);
+    expect(block.querySelector('.atlas-sb-problem')).toBeNull();
+  });
+});

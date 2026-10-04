@@ -36,7 +36,7 @@ describe('StatblockSheet: a value that does not fit its field\'s type', () => {
     expect(chips(container, 'hp000000')).toEqual(['Not a number']);
     expect(why(chipsOf(container, 'hp000000')[0])).toBe('“fast” isn\'t a number.');
     expect(valueOf(container, 'stats000')).toBe('10 12');
-    expect(chips(container, 'stats000')).toEqual(['Not scores']);
+    expect(chips(container, 'stats000')).toEqual(['Not table values']);
     expect(valueOf(container, 'stress00')).toBe('tired');
     expect(chips(container, 'stress00')).toEqual(['Not a number']);
     expect(chips(container, 'speed000')).toEqual([]);

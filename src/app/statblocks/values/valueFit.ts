@@ -29,7 +29,7 @@ const TYPE_NOUNS: Readonly<Record<FieldType, { noun: string; label: string }>> =
   dice: { noun: 'dice', label: 'Not dice' },
   choice: { noun: 'one of the options', label: 'Not an option' },
   list: { noun: 'a list', label: 'Not a list' },
-  scores: { noun: 'a list of numbers', label: 'Not scores' },
+  scores: { noun: 'a list of table values', label: 'Not table values' },
   entries: { noun: 'a list of entries', label: 'Not entries' },
   pairs: { noun: 'names with numbers', label: 'Not pairs' },
   image: { noun: 'an image path', label: 'Not an image' },
