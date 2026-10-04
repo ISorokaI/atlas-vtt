@@ -21,8 +21,9 @@ interface SceneLightingSectionProps {
 }
 
 /**
- * Scene-wide lighting in the lighting tool's menu: a section with the switch and how dark the
- * scene is, and one with its actions. The players' view of it is session view, not shown here.
+ * Scene-wide lighting in the lighting tool's menu: a section with how dark the scene is, one
+ * with its actions, and the switch last, at the menu's foot. The players' view of it is session
+ * view, not shown here.
  * While lighting is off everything but the switch is shown disabled, so the menu keeps its
  * shape and the switch its place.
  */
@@ -32,7 +33,6 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
   return (
     <>
       <div className="atlas-dropdown-section atlas-scene-lighting">
-        <DropdownToggleRow label="Dynamic lighting" value={lighting.enabled} onChange={() => onChange({ enabled: !lighting.enabled })} />
         <SegmentedControl<TimeOfDay | 'custom'>
           value={time}
           options={TIMES_OF_DAY}
@@ -68,6 +68,9 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
         {onRevealExplored && <DropdownMenuItem icon={Eye} label="Mark all areas explored" disabled={disabled} onClick={onRevealExplored} />}
         <DropdownMenuItem icon={RotateCcw} label="Forget explored areas" disabled={disabled} onClick={onResetExplored} />
         <DropdownMenuItem icon={SlidersHorizontal} label="Lighting settings…" disabled={disabled} onClick={onOpenSettings} />
+      </div>
+      <div className="atlas-dropdown-section">
+        <DropdownToggleRow label="Dynamic lighting" value={lighting.enabled} onChange={() => onChange({ enabled: !lighting.enabled })} />
       </div>
     </>
   )
