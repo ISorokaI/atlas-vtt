@@ -120,7 +120,7 @@ export class FogOfWarRenderer {
     this.container.addChild(this.rectPreviewGraphics);
 
     // ── Cursor preview ──────────────────────────────────────────────
-    this.cursorPreview = new FogCursorPreview();
+    this.cursorPreview = new FogCursorPreview(this.viewport);
     const cursorObj = this.cursorPreview.getDisplayObject();
     cursorObj.zIndex = 1002;
     this.container.addChild(cursorObj);

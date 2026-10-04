@@ -16,6 +16,8 @@ vi.mock('../../src/app/services/statblockDiceLinks', () => ({
   splitDiceSegments: (text: string) => [{ text, dice: false }],
 }));
 vi.mock('../../src/app/statblocks/render/shared/useStatblockDiceRolling', () => ({ useStatblockDiceRolling: () => undefined }));
+// The token socket and the pane's dice display reach the token link service the same way.
+vi.mock('../../src/app/services/TokenStatblockLinkService', () => ({ TokenStatblockLinkService: { getInstance: () => ({}) } }));
 vi.mock('../../src/app/statblocks/editor/template-editor/templateEditorActions', () => ({
   duplicateTemplate: async () => null,
   newStatblockFromTemplate: async () => undefined,

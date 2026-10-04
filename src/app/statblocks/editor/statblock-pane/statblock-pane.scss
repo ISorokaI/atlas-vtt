@@ -2,8 +2,8 @@
 // The statblock pane (§7.2, §7.10)
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported by StatblockPane.tsx, so not inside the `.atlas-vtt-plugin` scope of
-// styles/main.scss: the rules take that scope themselves. The pane's view
-// element carries `.atlas-vtt-plugin` and `.atlas-statblock-pane-view`.
+// styles/main.scss: the rules take that scope themselves. The panel beside the
+// note (`.atlas-sb-note-panel`, note-panel/) carries `.atlas-vtt-plugin` and scrolls.
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
@@ -14,13 +14,6 @@
 
 // The header's end controls are capsules: the bar is shorter than 48 px.
 $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));
-
-.atlas-vtt-plugin.atlas-statblock-pane-view {
-  padding: 0;
-  overflow-y: auto;
-  background: var(--background-primary);
-  @include atlas-scrollbar;
-}
 
 .atlas-vtt-plugin {
   // Padding equals the gap between the header, the hint, the card and the tray.
@@ -168,5 +161,26 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
 
   .atlas-sb-pane-live {
     @include atlas-visually-hidden;
+  }
+
+  // ── Rolls no map on screen shows (PaneDiceRolls) ────────────────────────
+  // The dice display's column hangs from the top of the panel beside the note
+  // (its positioned ancestor, outside the scroller), so it stays in view while
+  // the card scrolls, and lies over the card as rolls lie over a map.
+  .atlas-sb-pane-rolls {
+    position: absolute;
+    top: $spacing-s;
+    inset-inline-end: $spacing-s;
+    z-index: $z-atlas-dice-rolls;
+    width: min(21rem, calc(100% - 2 * #{$spacing-s}));
+    pointer-events: none;
+
+    > .atlas-vtt-plugin.atlas-dice-rolls {
+      position: relative;
+      top: auto;
+      right: auto;
+      width: 100%;
+      max-width: none;
+    }
   }
 }

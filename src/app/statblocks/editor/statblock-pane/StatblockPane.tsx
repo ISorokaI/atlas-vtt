@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
-import { useBestiaryRevision } from '../../../react/hooks/useBestiaryRevision';
 import { SettingsService } from '../../../services/SettingsService';
 import { StatblockSkeleton } from '../../../react/components/statblock/StatblockSkeleton';
-import { isFantasyStatblocksAvailable } from '../../../services/FantasyStatblocksService';
 import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import type { TemplateId } from '../../model/templateTypes';
-import { frontmatterSource } from '../../notes/statblockSource';
-import { saveStatblockAsTemplate } from '../gallery/galleryActions';
+import { flattenReadingOrder } from '../../model/treeQueries';
 import { setStatblockPaneSettings, statblockPaneSettings } from '../paneSettings';
 import { templateKeyPatch } from './addFieldFlow';
 import { AddFieldRow } from './AddFieldRow';
@@ -15,13 +12,10 @@ import { ChangeTemplateDialog } from './ChangeTemplateDialog';
 import { noteKeyChoice } from './fieldChoices';
 import { MorePropertiesTray } from './MorePropertiesTray';
 import { PaneCanvas } from './PaneCanvas';
+import { PaneDiceRolls } from './PaneDiceRolls';
 import { PaneHeader } from './PaneHeader';
 import { headerTemplate } from './paneHeaderTemplate';
-import { FsStatblockBar } from './FsStatblockBar';
-import {
-  EditorOffBar, FantasyState, NewerTemplateBar, NoStatblockState, NoteDeletedBar, PartnerClosedBar, TemplateMissingBar, UnreadableState,
-  WriteProblemBar,
-} from './PaneStates';
+import { NewerTemplateBar, NoteDeletedBar, NotNativeState, TemplateMissingBar, UnreadableState, WriteProblemBar } from './PaneStates';
 import type { StatblockPaneProps } from './paneTypes';
 import { usePaneCollection } from './usePaneCollection';
 import { usePaneNote } from './usePaneNote';
@@ -30,21 +24,18 @@ import { useAddField } from './useAddField';
 import './statblock-pane.scss';
 
 /**
- * The statblock pane (§7.2): a header, then the note's statblock as the
- * runtime card with its values editable in place, the first-visit hint and
- * the tray of the note's other properties; or, for every other kind of note,
- * the state the plan's edge-state table names. While the statblock editor is
- * switched off it only shows the note: nothing edits, creates or adopts.
+ * The statblock pane (§7.2), drawn beside its note in the same view: a
+ * header, then the note's statblock as the runtime card with its values
+ * editable in place, the first-visit hint and the tray of the note's other
+ * properties; or the state the plan's edge-state table names.
  */
 export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
-  const { app, services, notePath, paired, editorOn, actions } = props;
+  const { app, services, notePath, actions } = props;
   const note = usePaneNote(app, services, notePath);
   const collection = usePaneCollection(app, notePath, props.collectionId, actions.changeCollection);
   const paneTemplate = usePaneTemplate(app, note.templateId, note.record);
   const library = useTemplateLibrary(app);
   const settings = useAtlasSettings(SettingsService.forApp(app));
-  // Draws again once Fantasy Statblocks loads, which decides how its statblocks are edited here.
-  useBestiaryRevision(app);
   const [choosing, setChoosing] = useState(false);
   const [writeProblem, setWriteProblem] = useState<string | null>(null);
   // The view's announcements (undo, redo) and the pane's own (a deleted entry), the latest one said.
@@ -55,9 +46,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
   const trayRef = useRef<HTMLButtonElement>(null);
   const handledFocusRequest = useRef(0);
   const collectionId = collection.context?.collectionId ?? props.collectionId;
-  const canEdit = paired && editorOn;
 
-  useEffect(() => actions.reportKind(note.kind), [actions, note.kind]);
   useEffect(() => setWriteProblem(null), [notePath]);
 
   const applyTemplate = useCallback((templateId: TemplateId): void => {
@@ -74,45 +63,43 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     if (settings && !statblockPaneSettings(settings).hintDismissed) setStatblockPaneSettings(settings, { hintDismissed: true });
   }, [settings]);
 
-  // A Fantasy Statblocks statblock: a frontmatter one is edited right here while the plugin is missing (§6.4).
-  const fsKind = note.kind === 'fantasy' ? frontmatterSource(note.record)?.kind ?? 'fs-fence' : null;
-  const editsDirectly = canEdit && fsKind === 'fs-frontmatter' && !isFantasyStatblocksAvailable();
-  const writable = canEdit && (note.kind === 'atlas' || editsDirectly) && paneTemplate.status !== 'loading';
+  const writable = note.kind === 'atlas' && paneTemplate.status !== 'loading';
   const adder = useAddField({
     app, notePath, record: note.record, collectionId, writer: services.writer, announce: setSaid, openTemplate: actions.openTemplateAt,
     entry: writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null,
   });
-  // Without Fantasy Statblocks its statblocks show with the auto template, which can become a template of their own (§6.4).
-  const savable = editsDirectly;
-  const fsBar = fsKind !== null && editorOn && (paired ? (
-    <FsStatblockBar
-      app={app} notePath={notePath} record={note.record} fence={fsKind === 'fs-fence'} collectionId={collectionId}
-      writer={services.writer} onWriteProblem={setWriteProblem}
-    />
-  ) : <PartnerClosedBar onOpenNote={actions.openNote} />);
+  const hasSocket = writable && paneTemplate.status === 'ok'
+    && flattenReadingOrder(paneTemplate.template.layout.blocks).some((block) => block.type === 'image');
+  // "Link to a token…" opens the card's token socket; a template without one keeps the token picker.
+  const linkToToken = (): void => {
+    const socket = rootRef.current?.querySelector<HTMLButtonElement>('.atlas-sb-token-socket');
+    if (socket) {
+      // After the menu has closed and handed focus back to its trigger.
+      socket.win.requestAnimationFrame(() => {
+        socket.scrollIntoView({ block: 'nearest' });
+        socket.click();
+      });
+    } else if (actions.linkToToken && collectionId) {
+      actions.linkToToken(notePath, collectionId);
+    }
+  };
   const header = headerTemplate({
     note, paneTemplate, roles: collection.roles, collectionId, actions, app,
-    choose: canEdit ? () => setChoosing(true) : undefined,
+    choose: () => setChoosing(true),
   });
 
   const body = ((): React.ReactNode => {
     switch (note.kind) {
       case 'loading': return <StatblockSkeleton className="atlas-sb-pane-card" />;
-      case 'unreadable': return <UnreadableState line={note.snapshot.problem?.line ?? null} onOpenNote={actions.openNote} />;
-      case 'fantasy': if (!editsDirectly) return <FantasyState app={app} notePath={notePath} bar={fsBar} />; break;
-      case 'none': {
-        const create = actions.createStatblock;
-        return <NoStatblockState roles={collection.roles} onCreate={create && collectionId && editorOn ? (roleId) => create(notePath, roleId, collectionId) : undefined} />;
-      }
+      case 'unreadable': return <UnreadableState line={note.snapshot.problem?.line ?? null} />;
+      case 'fantasy': case 'none': return <NotNativeState />;
       case 'atlas': case 'deleted': break;
     }
     if (paneTemplate.status === 'loading') return <StatblockSkeleton className="atlas-sb-pane-card" />;
     const bars = (
       <>
         {note.kind === 'deleted' && <NoteDeletedBar />}
-        {editsDirectly && fsBar}
-        {note.kind === 'atlas' && editorOn && !paired && <PartnerClosedBar onOpenNote={actions.openNote} />}
-        {paneTemplate.status === 'missing' && note.templateId && <TemplateMissingBar templateId={note.templateId} onChoose={canEdit ? () => setChoosing(true) : undefined} />}
+        {paneTemplate.status === 'missing' && note.templateId && <TemplateMissingBar templateId={note.templateId} onChoose={() => setChoosing(true)} />}
         {paneTemplate.status === 'newer' && <NewerTemplateBar />}
         {writeProblem && <WriteProblemBar problem={writeProblem} />}
       </>
@@ -127,6 +114,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           app={app}
           services={services}
           notePath={notePath}
+          collectionId={collectionId}
           template={paneTemplate.template}
           templateName={paneTemplate.name}
           record={note.record}
@@ -165,22 +153,22 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
 
   return (
     <div ref={rootRef} className="atlas-sb-pane">
-      <PaneHeader
-        ref={templateRef}
-        collection={collection.context}
-        onCollectionChange={actions.changeCollection}
-        template={header}
-        showProperties={canEdit && note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
-        openInNewWindow={actions.openInNewWindow}
-        linkToToken={editorOn && actions.linkToToken && collectionId ? () => actions.linkToToken?.(notePath, collectionId) : undefined}
-        saveAsTemplate={savable ? () => { void saveStatblockAsTemplate(app, notePath, note.record, collectionId); } : undefined}
-      />
-      <div className="atlas-sb-pane-body">
-        {!editorOn && <EditorOffBar />}
-        {body}
-      </div>
-      <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
-      {choosing && canEdit && rootRef.current && library && (
+      <PaneDiceRolls app={app} collectionId={collectionId}>
+        <PaneHeader
+          ref={templateRef}
+          collection={collection.context}
+          onCollectionChange={actions.changeCollection}
+          template={header}
+          showProperties={note.kind === 'atlas' && !props.propertiesShown ? actions.showProperties : undefined}
+          linkToToken={note.kind === 'atlas' && (hasSocket || (actions.linkToToken && collectionId)) ? linkToToken : undefined}
+          hide={actions.hide}
+        />
+        <div className="atlas-sb-pane-body">
+          {body}
+        </div>
+        <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
+      </PaneDiceRolls>
+      {choosing && note.kind === 'atlas' && rootRef.current && library && (
         <ChangeTemplateDialog
           app={app}
           anchor={rootRef.current}

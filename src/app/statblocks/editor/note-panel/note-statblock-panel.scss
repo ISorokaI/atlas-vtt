@@ -1,0 +1,133 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The statblock beside its note (§7.2, D7, D14)
+// ═══════════════════════════════════════════════════════════════════════════
+// `NoteStatblockPanel` appends one element, `.atlas-sb-note-panel`, to a
+// Markdown view's content and marks the view's container with `.atlas-sb-note`.
+// The rules on the view are not scoped under `.atlas-vtt-plugin`: the view is
+// Obsidian's. They only make its content a row and size its two editors as
+// flex items; nothing else of Obsidian's editor or reader is restyled.
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// panelPrefs.ts holds the same numbers for the drag handle's clamp. The
+// panel's width comes from `--atlas-sb-panel-width`, which NoteStatblockPanel
+// works out for each view (`defaultPanelWidth`); half the view stands in until then.
+$panel-min-width: 360px;
+$panel-default-width: 50%;
+$note-min-width: 360px;
+$handle-width: 6px;
+
+.workspace-leaf-content.atlas-sb-note {
+  > .view-content {
+    display: flex;
+    flex-direction: row;
+
+    > .markdown-source-view,
+    > .markdown-reading-view {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+
+  // Too narrow for two columns: the statblock stands above the note, at most half the height.
+  &.atlas-sb-note--stacked > .view-content {
+    flex-direction: column;
+
+    > .markdown-source-view,
+    > .markdown-reading-view {
+      min-height: 0;
+    }
+  }
+
+  // The note's own `atlas-statblock` fence would draw the card a second time:
+  // it shrinks to one line. A fence of an embedded note shows its own note, so it stays.
+  .atlas-statblock-fence:not(.markdown-embed *) {
+    > * {
+      display: none;
+    }
+
+    &::before {
+      content: 'Shown beside';
+      display: block;
+      color: var(--text-faint);
+      font-size: $font-ui-smaller;
+    }
+  }
+}
+
+// While the panel's edge is dragged, the pointer crosses the note: it keeps
+// the resize cursor and selects no text.
+body.atlas-sb-panel-resizing,
+body.atlas-sb-panel-resizing * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+// Properties hide through Obsidian's own variables while the panel's tray edits
+// them: its rules out-rank a plain `display: none`, and keep showing the
+// "invalid properties" message of a note whose YAML is broken. If Obsidian
+// renames the variables, Properties simply show again.
+.workspace-leaf-content.atlas-sb-note--hide-properties {
+  --metadata-display-editing: none;
+  --metadata-display-reading: none;
+}
+
+.atlas-vtt-plugin.atlas-sb-note-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: clamp(#{$panel-min-width}, var(--atlas-sb-panel-width, #{$panel-default-width}), calc(100% - #{$note-min-width}));
+  min-height: 0;
+  border-inline-start: $border-width-s solid var(--divider-color);
+  background: var(--background-primary);
+}
+
+.atlas-sb-note--stacked .atlas-vtt-plugin.atlas-sb-note-panel {
+  order: -1;
+  flex: 0 1 auto;
+  width: auto;
+  max-height: 50%;
+  border-inline-start: 0;
+  border-block-end: $border-width-s solid var(--divider-color);
+}
+
+.atlas-vtt-plugin {
+  .atlas-sb-note-panel__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    @include atlas-scrollbar;
+  }
+
+  // The panel's left edge: a hit area inside the panel, so the editor's own
+  // scrollbar beside it keeps its clicks. The line shows on hover, drag and focus.
+  .atlas-sb-note-panel__handle {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 1;
+    width: $handle-width;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: -$border-width-s;
+      width: 2px;
+      background: transparent;
+      transition: background-color $transition-fast $transition-ease;
+    }
+
+    &:hover::after,
+    &:active::after,
+    &:focus-visible::after {
+      background: var(--interactive-accent);
+    }
+  }
+}

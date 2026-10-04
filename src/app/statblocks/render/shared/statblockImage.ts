@@ -1,4 +1,5 @@
-import type { App } from 'obsidian';
+import type { App, TFile } from 'obsidian';
+import { AssetService, type TokenAsset } from '../../../services/AssetService';
 
 const WIKI_BRACKETS = /(^\[\[|\]\]$)/g;
 const WEB_ADDRESS = /^https?:/;
@@ -20,8 +21,26 @@ function decoded(raw: string): string {
  */
 export function statblockImageSrc(app: App | undefined, raw: string, sourcePath: string | undefined): string {
   if (!raw) return '';
-  const src = decoded(raw).replace(WIKI_BRACKETS, '').split('|')[0] ?? '';
+  const src = linkTarget(raw);
   if (WEB_ADDRESS.test(src) || !app) return src;
-  const file = app.metadataCache.getFirstLinkpathDest(src, sourcePath ?? '');
+  const file = statblockImageFile(app, raw, sourcePath);
   return file ? app.vault.getResourcePath(file) : '';
+}
+
+/** What a value names: a path or a wiki link's target, without its alias. */
+function linkTarget(raw: string): string {
+  return decoded(raw).replace(WIKI_BRACKETS, '').split('|')[0] ?? '';
+}
+
+/** The vault file a statblock's image value names; null for none, a missing file or a web address. */
+export function statblockImageFile(app: App, raw: string, sourcePath: string | undefined): TFile | null {
+  const src = raw ? linkTarget(raw) : '';
+  if (!src || WEB_ADDRESS.test(src)) return null;
+  return app.metadataCache.getFirstLinkpathDest(src, sourcePath ?? '');
+}
+
+/** The token asset whose art the statblock's image is: its ring is the one the statblock shows. */
+export function statblockImageToken(app: App, raw: string, sourcePath: string | undefined): TokenAsset | null {
+  const file = statblockImageFile(app, raw, sourcePath);
+  return file ? AssetService.getInstance(app).findTokenAssetByImagePath(file.path) : null;
 }

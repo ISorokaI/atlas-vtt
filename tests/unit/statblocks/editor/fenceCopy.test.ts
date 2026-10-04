@@ -47,7 +47,7 @@ describe('Copy into a new statblock (§6.4)', () => {
     expect(text).toMatch(/^---\nstatblock: true\natlas-template: builtin:generic-creature\nname: Fen hag\nhp: 9\nspeed: 30 ft\.\nactions:\n/);
     expect(text).toContain('[[Bleeding]] on a hit.');
     expect(text).not.toContain('layout:');
-    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: path, collectionId: 'marsh', from: 'note' });
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: path, collectionId: 'marsh', from: 'note', focusFirstEmpty: true });
   });
 
   it('makes nothing while the switch is off', async () => {

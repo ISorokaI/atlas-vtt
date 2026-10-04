@@ -24,10 +24,12 @@ export class App {
     pushScope(scope: Scope): void { this.scopes.push(scope); },
     popScope(scope: Scope): void { this.scopes = this.scopes.filter((candidate) => candidate !== scope); },
   };
-  /** The vault's local storage, as `loadLocalStorage` and `saveLocalStorage` reach it. */
+  /** Obsidian's device-local storage of the vault, kept in memory. */
   localStorage = new Map<string, unknown>();
   constructor() {}
-  loadLocalStorage(key: string): unknown { return this.localStorage.get(key) ?? null; }
+  loadLocalStorage(key: string): unknown {
+    return this.localStorage.get(key) ?? null;
+  }
   saveLocalStorage(key: string, data: unknown): void {
     if (data === null) this.localStorage.delete(key);
     else this.localStorage.set(key, data);
@@ -69,10 +71,19 @@ export class View {
 
 export class ItemView extends View {
   contentEl: HTMLElement;
+  /** The header's action buttons, as `addAction` makes them. */
+  actionsEl: HTMLElement;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
+    this.actionsEl = this.containerEl.createDiv({ cls: 'view-actions' });
     this.contentEl = document.createElement('div');
+  }
+
+  addAction(icon: string, title: string, callback: (evt: MouseEvent) => unknown): HTMLElement {
+    const el = this.actionsEl.createEl('button', { cls: 'clickable-icon view-action', attr: { 'aria-label': title, 'data-icon': icon } });
+    el.addEventListener('click', (event) => callback(event));
+    return el;
   }
 }
 
@@ -301,6 +312,22 @@ export class Modal {
   onClose(): void {}
 }
 
+/** Obsidian's prompt of suggestions: a modal with a search field; the tests choose items directly. */
+export class SuggestModal<T> extends Modal {
+  emptyStateText = '';
+  inputEl: HTMLInputElement = document.createElement('input');
+  /** Never read: present so a subclass's item type is used. */
+  protected readonly item?: T;
+  setPlaceholder(placeholder: string): void { this.inputEl.placeholder = placeholder; }
+}
+
+export interface FuzzyMatch<T> {
+  item: T;
+  match: { score: number; matches: Array<[number, number]> };
+}
+
+export class FuzzySuggestModal<T> extends SuggestModal<FuzzyMatch<T>> {}
+
 export const Platform = {
   isMacOS: false,
   isWin: false,
@@ -441,4 +468,36 @@ export function prepareFuzzySearch(query: string): (text: string) => { score: nu
     }
     return { score: -matches.length - (matches[0]?.[0] ?? 0) / 100, matches };
   };
+}
+
+/** Obsidian's menu: the items it was given, and where it was shown; the last one shown is `Menu.shown`. */
+export class MenuItem {
+  title = '';
+  icon: string | null = null;
+  handler: ((event: MouseEvent | KeyboardEvent) => unknown) | null = null;
+  setTitle(title: string): this { this.title = title; return this; }
+  setIcon(icon: string | null): this { this.icon = icon; return this; }
+  setSection(_section: string): this { return this; }
+  onClick(handler: (event: MouseEvent | KeyboardEvent) => unknown): this { this.handler = handler; return this; }
+}
+
+export class Menu {
+  static shown: Menu | null = null;
+  items: MenuItem[] = [];
+  position: { x: number; y: number } | null = null;
+  addItem(build: (item: MenuItem) => unknown): this {
+    const item = new MenuItem();
+    build(item);
+    this.items.push(item);
+    return this;
+  }
+  addSeparator(): this { return this; }
+  showAtPosition(position: { x: number; y: number }): this {
+    this.position = position;
+    Menu.shown = this;
+    return this;
+  }
+  showAtMouseEvent(event: MouseEvent): this {
+    return this.showAtPosition({ x: event.clientX, y: event.clientY });
+  }
 }

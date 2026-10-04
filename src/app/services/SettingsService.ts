@@ -6,6 +6,7 @@ import { resolveLaserPointerSettings, type LaserPointerSettings } from '../tools
 import { isDiceDisplay, type DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../dice3d/diceLook';
+import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_SETTINGS,
   defaultInputMode,
@@ -234,6 +235,19 @@ export class SettingsService {
   setExperimental(id: ExperimentalFeatureId, on: boolean): void {
     if (this.isExperimentalOn(id) === on) return;
     this.settings.experimental = { ...this.settings.experimental, [id]: on };
+    this.commit();
+  }
+
+  /** The stored toolbar layout; resolve it with `resolveToolbarLayout`. */
+  getToolbarLayout(): StoredToolbarLayout {
+    return this.settings.toolbar;
+  }
+
+  /** Stores a layout already in stored form (see `storedToolbarLayout`); an unchanged layout writes nothing. */
+  setToolbarLayout(next: StoredToolbarLayout): void {
+    const read = readToolbarLayout(next);
+    if (JSON.stringify(read) === JSON.stringify(this.settings.toolbar)) return;
+    this.settings.toolbar = read;
     this.commit();
   }
 

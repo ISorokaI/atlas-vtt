@@ -61,7 +61,7 @@ export async function fenceValues(app: App, path: string): Promise<FenceValues |
 
 /**
  * Creates a native statblock of the role from the fence of the note at
- * `path`, and opens it with its pane. Returns the new note's path, or null
+ * `path`, and opens it. Returns the new note's path, or null
  * when nothing was made (no fence, or the note could not be written).
  */
 export async function copyFenceIntoStatblock(app: App, path: string, collectionId: string | null, roleId: string): Promise<string | null> {

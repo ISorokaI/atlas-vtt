@@ -38,6 +38,7 @@ import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
 import { EASE_OUT_CONTROL_POINTS as EASE_OUT } from '../../utils/motion';
 import { Button } from '../../packages/components/primitives/button';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
+import { OverlayScroll } from '../../packages/components/primitives/OverlayScroll';
 import { CommandItem } from './command-palette/CommandItem';
 import { SettingsPanelHeader } from './command-palette/SettingsPanelHeader';
 import { GridSettingsPanel } from './command-palette/GridSettingsPanel';
@@ -48,12 +49,15 @@ import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
+import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   toolbarRef?: React.RefObject<HTMLDivElement | null>;
+  /** Starts the toolbar editor; given only where the GM may customize the toolbar. Told whether the keyboard chose it. */
+  onCustomizeToolbar?: (byKeyboard: boolean) => void;
 }
 
 const DEFAULT_PALETTE_WIDTH = 600;
@@ -82,7 +86,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
 };
 
-export function CommandPalette({ isOpen, onClose, toolbarRef }: CommandPaletteProps): React.ReactElement | null {
+export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
   const hotkeyLabel = useHotkeyLabels();
   const store = useViewStoreHook();
   const setActiveTool = useAtlasStore(state => state.setActiveTool);
@@ -113,6 +117,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef }: CommandPalettePr
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const optionsContainerRef = useRef<HTMLDivElement>(null);
+  // Set while Enter runs the focused option, so an action knows the keyboard chose it.
+  const choosingByKeyboard = useRef(false);
 
   // Grid settings local state
   const gridState = view?.atlasStore?.getState()?.grid;
@@ -408,6 +414,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef }: CommandPalettePr
         },
       ],
     },
+    ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
   ];
 
   // Derive rows from current state so open-menu toggles stay in sync.
@@ -636,7 +643,12 @@ export function CommandPalette({ isOpen, onClose, toolbarRef }: CommandPalettePr
             if (option.hasSubmenu) {
               enterSubmenu(option);
             } else if (option.action) {
-              option.action();
+              choosingByKeyboard.current = true;
+              try {
+                option.action();
+              } finally {
+                choosingByKeyboard.current = false;
+              }
             }
           }
           break;
@@ -923,8 +935,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef }: CommandPalettePr
                     </>
                   )}
 
-                  <div
+                  <OverlayScroll
                     ref={optionsContainerRef}
+                    frameClassName="atlas-command-palette-options-frame"
                     className="atlas-command-palette-options"
                     onMouseMove={handleMouseMove}
                   >
@@ -949,7 +962,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef }: CommandPalettePr
                         )}
                       </div>
                     )}
-                  </div>
+                  </OverlayScroll>
 
                   {!activePanel && (
                     <div className="atlas-command-palette-footer">

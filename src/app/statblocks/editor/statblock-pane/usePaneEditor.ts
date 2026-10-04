@@ -18,6 +18,7 @@ export interface PaneEditorOptions {
   app: App;
   services: PaneServices;
   notePath: string;
+  collectionId: string | null;
   template: StatblockTemplate;
   record: FieldRecord;
   writable: boolean;
@@ -48,7 +49,7 @@ const VALUE_EDITING: ValueEditing = { slot: renderPaneSlot };
  * whose base is the value the edit started from.
  */
 export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
-  const { app, services, notePath, template, record, writable, pendingCommit, cardRef } = options;
+  const { app, services, notePath, collectionId, template, record, writable, pendingCommit, cardRef } = options;
   const [editing, setEditing] = useState<EditTarget | null>(null);
   const [conflicts, setConflicts] = useState<ReadonlyMap<FieldKey, FieldConflict>>(new Map());
   const sheet = useMemo(() => sheetState({ template, record, mode: 'editing' }), [template, record]);
@@ -64,7 +65,7 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
     cardRef.current?.querySelector<HTMLElement>(`[data-block-id="${blockId}"]`)?.focus();
   });
 
-  // A pane that can no longer write (the pair ended, the statblock editor was switched off) leaves no input open.
+  // A pane that can no longer write (its template is still loading, the note went) leaves no input open.
   useEffect(() => {
     if (!writable) setEditing(null);
   }, [writable]);
@@ -105,6 +106,7 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
   const controller = useMemo((): PaneEditController => ({
     app,
     notePath,
+    collectionId,
     spots,
     sheet,
     editing,
@@ -137,7 +139,7 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
       if (pendingCommit.current === commit) pendingCommit.current = null;
     },
     announce: (text) => latest.current.options.announce(text),
-  }), [app, notePath, spots, sheet, editing, writable, record, conflicts, read, stop, write, setConflict, pendingCommit]);
+  }), [app, notePath, collectionId, spots, sheet, editing, writable, record, conflicts, read, stop, write, setConflict, pendingCommit]);
 
   const chrome = useMemo(() => paneChrome(spots, editing, writable, controller.start), [spots, editing, writable, controller.start]);
   return { controller, chrome, valueEditing: VALUE_EDITING };

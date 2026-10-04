@@ -275,11 +275,13 @@ export class TokenStatblockLinkService extends EventEmitter {
    * it, this imports a statblock that already carries an image.
    *
    * Returns the created token's image path, or null when there is nothing to
-   * import or a token is already linked.
+   * import or a token is already linked. The token goes into `collectionId`,
+   * else the default collection.
    */
-  async createTokenFromStatblockImage(statblockPath: string): Promise<string | null> {
+  async createTokenFromStatblockImage(statblockPath: string, collectionId?: string): Promise<string | null> {
     try {
-      const result = await new StatblockTokenImportService(this.app, this.assetService).import([statblockPath], this.assetService.getDefaultCollectionId());
+      const collection = collectionId ?? this.assetService.getDefaultCollectionId();
+      const result = await new StatblockTokenImportService(this.app, this.assetService).import([statblockPath], collection);
       const item = result.items[0];
       if (item?.asset) {
         this.emit('link-changed', { type: 'linked', tokenImagePath: item.asset.imagePath, statblockPath });

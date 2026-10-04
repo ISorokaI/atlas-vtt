@@ -9,9 +9,10 @@ const spotsOf = (record: Record<string, unknown>, template = creature): ReturnTy
   editableSpots(template, sheetState({ template, record, mode: 'editing' }));
 
 describe('editableSpots', () => {
-  it('walks every field in the template\'s field order, empty ones included', () => {
-    const { order } = spotsOf({ name: 'Marsh Warden' });
-    expect(order.map((spot) => spot.field.key)).toEqual(creature.fields.map((field) => field.key));
+  it('walks every field in the template\'s field order, empty ones included; the art is the token socket\'s', () => {
+    const { order, byBlock } = spotsOf({ name: 'Marsh Warden' });
+    expect(order.map((spot) => spot.field.key)).toEqual(creature.fields.map((field) => field.key).filter((key) => key !== 'image'));
+    expect([...byBlock.values()].flat().some((field) => field.key === 'image')).toBe(false);
   });
 
   it('edits each field in the block that shows it, a line\'s fields together', () => {
@@ -38,8 +39,8 @@ describe('editableSpots', () => {
 
   it('steps forwards and back, and nowhere past either end', () => {
     const { order } = spotsOf({});
-    expect(neighbourSpot(order, 'name', 1)?.field.key).toBe('image');
-    expect(neighbourSpot(order, 'image', -1)?.field.key).toBe('name');
+    expect(neighbourSpot(order, 'name', 1)?.field.key).toBe('size');
+    expect(neighbourSpot(order, 'size', -1)?.field.key).toBe('name');
     expect(neighbourSpot(order, 'name', -1)).toBeNull();
     expect(neighbourSpot(order, 'actions', 1)).toBeNull();
   });

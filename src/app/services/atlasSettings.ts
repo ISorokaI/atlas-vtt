@@ -4,6 +4,7 @@ import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../to
 import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
+import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 
 /**
  * How wheel events drive the map viewport.
@@ -39,10 +40,10 @@ export interface AtlasSettings {
   diceFont: DiceFont;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
-  /** New statblock notes get an `atlas-statblock` fence that shows the statblock in the note (D14). */
-  showStatblocksInNotes: boolean;
-  /** The statblock pane: opening pairs from the map in a popout, and whether its first-visit hint was dismissed. */
-  statblockPane: { openFromMapInNewWindow: boolean; hintDismissed: boolean };
+  /** The statblock beside its note: whether its first-visit hint was dismissed. */
+  statblockPane: { hintDismissed: boolean };
+  /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
+  toolbar: StoredToolbarLayout;
   localPlayerView: {
     // UI element visibility toggles
     showToolbar: boolean;
@@ -72,8 +73,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
   experimental: {},
-  showStatblocksInNotes: true,
-  statblockPane: { openFromMapInNewWindow: false, hintDismissed: false },
+  statblockPane: { hintDismissed: false },
+  toolbar: {},
   localPlayerView: {
     // UI element visibility defaults
     showToolbar: false, // Hide toolbar by default in player view
@@ -129,6 +130,7 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       hotkeys,
       navigation: { inputMode },
       experimental: isRecord(record.experimental) ? merged.experimental : {},
+      toolbar: readToolbarLayout(record.toolbar),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),

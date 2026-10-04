@@ -35,13 +35,13 @@ describe('NoteFieldWriter backends, chosen per note when the write runs', () => 
     expect(harness.app.vault.process).not.toHaveBeenCalled();
   });
 
-  it('prefers the editor of the paired leaf when the note is open twice', async () => {
+  it('prefers the editor of the view that shows the statblock when the note is open twice', async () => {
     const plain = harness.open(NOTE);
-    const paired = harness.open(NOTE, 'source', true);
+    const beside = harness.open(NOTE, 'source', true);
 
     await writer.write(NOTE, [hp(14, 15)]);
 
-    expect(paired.editor.transactions).toHaveLength(1);
+    expect(beside.editor.transactions).toHaveLength(1);
     expect(plain.editor.transactions).toHaveLength(0);
   });
 

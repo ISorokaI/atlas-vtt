@@ -8,11 +8,9 @@ interface ViewState {
   state?: Record<string, unknown>;
 }
 
-/** A workspace leaf with the public calls the pair uses: view state, files, groups, events. */
+/** A workspace leaf with the public calls opening a note uses: view state and files. */
 export class FakeLeaf {
-  group: string | null = null;
   eState: unknown = undefined;
-  detached = false;
   readonly containerEl = document.createElement('div');
   readonly openFile = vi.fn(async (file: TFile) => {
     this.viewState = { type: 'markdown', state: { file: file.path } };
@@ -22,32 +20,11 @@ export class FakeLeaf {
     this.eState = eState;
   });
   readonly loadIfDeferred = vi.fn(async () => undefined);
-  private readonly listeners = new Map<string, Set<Listener>>();
 
   constructor(public viewState: ViewState = { type: 'empty' }, public app: App | null = null) {}
 
   getViewState(): ViewState {
     return this.viewState;
-  }
-
-  setGroup(group: string): void {
-    this.group = group;
-    for (const listener of this.listeners.get('group-change') ?? []) listener(group);
-  }
-
-  detach(): void {
-    this.detached = true;
-  }
-
-  on(name: string, listener: Listener): { name: string; listener: Listener } {
-    const set = this.listeners.get(name) ?? new Set();
-    set.add(listener);
-    this.listeners.set(name, set);
-    return { name, listener };
-  }
-
-  offref(ref: { name: string; listener: Listener }): void {
-    this.listeners.get(ref.name)?.delete(ref.listener);
   }
 }
 
@@ -62,7 +39,7 @@ export interface FakeWorkspace {
   trigger: (name: string, ...args: unknown[]) => void;
 }
 
-/** A workspace over `leaves`: splits add a leaf, groups are read from the leaves, events can be fired. */
+/** A workspace over `leaves`: splits and new tabs add a leaf, events can be fired. */
 export function fakeWorkspace(leaves: FakeLeaf[], current: FakeLeaf | null): FakeWorkspace {
   const listeners = new Map<string, Set<Listener>>();
   const fake: FakeWorkspace = {
@@ -85,9 +62,6 @@ export function fakeWorkspace(leaves: FakeLeaf[], current: FakeLeaf | null): Fak
     getMostRecentLeaf: () => fake.current,
     createLeafBySplit: vi.fn(() => created()),
     getLeaf: vi.fn(() => created()),
-    openPopoutLeaf: vi.fn(() => created()),
-    moveLeafToPopout: vi.fn(),
-    getGroupLeaves: (group: string) => fake.leaves.filter((leaf) => !leaf.detached && leaf.group === group),
     setActiveLeaf: vi.fn(),
     requestSaveLayout: vi.fn(),
     on: (name: string, listener: Listener) => {

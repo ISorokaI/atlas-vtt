@@ -1,5 +1,6 @@
 import { FileView, WorkspaceLeaf, TFile, normalizePath, ViewStateResult, Notice } from "obsidian";
 import { ServiceManager } from './services/ServiceManager';
+import { SceneOpenHistory } from './services/sceneOpenHistory';
 import { createViewAtlasStore, ViewAtlasStore } from './storeFactory';
 import { getHistoryStore, runUntracked, type HistoryState } from './stores/history';
 import { withoutExploredEdits } from './stores/exploredEditHistory';
@@ -8,8 +9,11 @@ import type { SceneTab } from './types/sceneTabTypes';
 import type AtlasVTTPlugin from '../../main';
 import { claimWorkspaceLeafFocus } from './utils/activeLeafGuard';
 import { isScenePath } from './utils/sceneFiles';
+import { runInBackground } from './utils/backgroundTask';
 
-export const ATLAS_VIEW_TYPE = "atlas-vtt";
+import { ATLAS_VIEW_TYPE } from './atlasViewType';
+
+export { ATLAS_VIEW_TYPE };
 
 interface TabViewportState {
   centerX: number;
@@ -383,6 +387,7 @@ export class AtlasView extends FileView {
     if (loaded) {
       this.restoreTemporalState(tabId);
       this.restoreViewportState(tabId);
+      this.rememberOpened(abstractFile);
     } else if (request === this.sceneRequests) {
       this.showLoadedTab();
     }
@@ -604,7 +609,10 @@ export class AtlasView extends FileView {
       // File is already a tab
       if (tabState.activeTabId === existingTab.id) {
         this.sceneRequests++;
-        if (await this.performSceneLoad(file)) this.tabMetaStore.getState().markTabLoaded(existingTab.id);
+        if (await this.performSceneLoad(file)) {
+          this.tabMetaStore.getState().markTabLoaded(existingTab.id);
+          this.rememberOpened(file);
+        }
       } else {
         await this.switchToTab(existingTab.id);
       }
@@ -622,8 +630,10 @@ export class AtlasView extends FileView {
       this.file = file;
 
       // Perform the scene load (single store — loadMap handles clear + rehydrate)
-      if (await this.performSceneLoad(file)) this.tabMetaStore.getState().markTabLoaded(tabId);
-      else if (request === this.sceneRequests) this.showLoadedTab();
+      if (await this.performSceneLoad(file)) {
+        this.tabMetaStore.getState().markTabLoaded(tabId);
+        this.rememberOpened(file);
+      } else if (request === this.sceneRequests) this.showLoadedTab();
     }
 
     // Tell Obsidian the view state changed so workspace.json is updated
@@ -650,6 +660,12 @@ export class AtlasView extends FileView {
 
     const mapService = this._serviceManager.getMapService();
     return (await mapService.loadMapFromFile(rendererService, file)) !== null;
+  }
+
+  /** Remembers the scene the GM opened, for the dashboard's "Continue your adventure". Never fails the load. */
+  private rememberOpened(file: TFile): void {
+    const remember = async (): Promise<void> => SceneOpenHistory.forApp(this.app).recordOpened(file.path);
+    runInBackground(remember(), 'Remembering the opened scene');
   }
 
   // --- Persistence Helpers ---
