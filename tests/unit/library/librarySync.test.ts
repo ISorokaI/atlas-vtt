@@ -73,6 +73,20 @@ describe('the first start of this version', () => {
     expect(JSON.parse(a.files.get('atlas-vtt/library.json')!)).toMatchObject({ defaultCollectionId: 'Fen', vaultId: 'vault-a' });
     expect(a.app.loadLocalStorage('atlas-vtt:library-files')).toBe(true);
   });
+
+  it('keeps the payload the index held over the older file, since older versions updated it in the index alone', async () => {
+    const files = olderVault();
+    const index = JSON.parse(files[CACHE]!);
+    const moved = `${FEN}/tokens/hag-moved.webp`;
+    index.assets['encounter-1'].tokens = [{ id: 'token-1', name: 'Bog hag', imagePath: moved }];
+    index.assets['encounter-1'].data = { description: 'At the ford', tokens: [{ id: 'token-1', name: 'Bog hag', imagePath: moved }] };
+    files[CACHE] = JSON.stringify(index);
+
+    const a = await device(files);
+
+    expect(await a.assets.getAssetById('encounter-1')).toMatchObject({ tokens: [{ imagePath: moved }], data: { tokens: [{ imagePath: moved }] } });
+    expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [{ imagePath: moved }], [RECORD_KEY]: { id: 'encounter-1' } });
+  });
 });
 
 describe('a second device', () => {

@@ -141,7 +141,11 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
       })),
       rename: vi.fn(async (from: string, to: string) => move(from, to)),
       copy: vi.fn(async (from: string, to: string) => writeFile(to, files.get(from) ?? '')),
-      rmdir: vi.fn(async (path: string) => { folders.delete(path); }),
+      // As Obsidian's desktop adapter: `fs.rm`, which refuses any folder unless recursive.
+      rmdir: vi.fn(async (path: string, recursive: boolean) => {
+        if (!recursive) throw new Error(`EISDIR: rm refuses a folder without recursive: ${path}`);
+        removeWithin(path);
+      }),
       trashSystem: vi.fn(async (path: string) => { removeWithin(path); return true; }),
       trashLocal: vi.fn(async (path: string) => removeWithin(path)),
       getResourcePath: vi.fn((path: string) => `app://local/${path}`),

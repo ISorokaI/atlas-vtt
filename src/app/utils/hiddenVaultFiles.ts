@@ -30,7 +30,8 @@ export async function removeEmptyHiddenFolders(app: App, path: string, stopAt: s
     if (!(await adapter.exists(folder))) continue;
     const { files, folders } = await adapter.list(folder);
     if (files.length > 0 || folders.length > 0) return;
-    await adapter.rmdir(folder, false);
+    // Obsidian's desktop adapter removes a folder only recursively: without it, `fs.rm` refuses even an empty one.
+    await adapter.rmdir(folder, true);
   }
 }
 

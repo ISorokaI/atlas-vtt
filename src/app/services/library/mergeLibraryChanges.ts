@@ -1,6 +1,7 @@
 import type { Asset, AssetMetadata } from '../AssetService';
 import type { LibraryChanges, PayloadReading, RecordReading } from './libraryReader';
 import { recordFilePath } from './libraryPaths';
+import { isPayloadUnread } from './recordFile';
 import { assetKey, copyKey, duplicateKey, idOfKey, type FileStamp, type LibraryState } from './libraryState';
 import { copyId, placedRecord, resolveHolders } from './recordHolders';
 import { mergeCollectionFiles, mergeLibraryFacts } from './mergeCollections';
@@ -94,10 +95,16 @@ function upsert(context: MergeContext, record: Asset, upserted: Set<string>): vo
   context.result.changed = true;
 }
 
-/** Payloads older versions wrote into the JSON of records the index knows: the file's payload wins, as records do. */
+/**
+ * Payloads older versions wrote into the JSON of records the index knows. Until
+ * this device has written its library files, its index is what older versions
+ * kept current (they rewrote token refs of encounters and parties in the index
+ * alone), so a payload the index holds stays and is written over the file; one
+ * it lacks comes from the file. Once migrated, the file's payload wins, as records do.
+ */
 function mergePayloads(context: MergeContext, readings: readonly PayloadReading[]): void {
   if (readings.length === 0) return;
-  const { metadata, state, result } = context;
+  const { metadata, state, migrated, result } = context;
   const byPath = new Map<string, Asset>();
   for (const asset of Object.values(metadata.assets)) {
     if (PAYLOAD_TYPES.has(asset.type)) byPath.set(recordFilePath(asset), asset);
@@ -106,6 +113,7 @@ function mergePayloads(context: MergeContext, readings: readonly PayloadReading[
     const asset = byPath.get(reading.path);
     if (!asset) continue;
     stamp(state, reading, assetKey(asset.id));
+    if (!migrated && !isPayloadUnread(asset)) continue;
     if (sameJson('data' in asset ? asset.data : undefined, reading.payload)) continue;
     const updated: Record<string, unknown> = { ...asset, data: reading.payload };
     for (const key of MIRRORED_FIELDS[asset.type] ?? []) {
