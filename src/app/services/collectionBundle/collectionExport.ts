@@ -81,7 +81,7 @@ export interface ExportedBundle {
 }
 
 async function publisherOf(app: App, assets: AssetService, collection: CollectionMetadata): Promise<ExportPreview['publisher']> {
-  if (collection.publisherId !== undefined) return collection.publisherId === await assets.getVaultId() ? 'self' : 'other';
+  if (collection.publisherId !== undefined) return collection.publisherId === await assets.knownVaultId() ? 'self' : 'other';
   return (await readInstallRecord(app, collection)) === null ? 'unknown' : 'other';
 }
 

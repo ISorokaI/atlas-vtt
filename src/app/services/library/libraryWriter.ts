@@ -44,10 +44,14 @@ export class LibraryWriter {
       if (desiredPaths.has(path) || stamp.readOnly) continue;
       const removable = idOfKey(stamp.key, 'asset') !== null || idOfKey(stamp.key, 'collection') !== null;
       if (!removable) continue;
-      // A record that now lives elsewhere leaves its old file only when that file is still the copy Atlas wrote.
-      if (desiredKeys.has(stamp.key) && !(await this.isUnchanged(path, stamp))) {
-        delete this.state.files[path];
-        continue;
+      if (desiredKeys.has(stamp.key)) {
+        // A record that now lives elsewhere leaves its old file once it was written there, and only while that file is still the copy Atlas wrote.
+        const writtenElsewhere = Object.entries(this.state.files).some(([other, entry]) => other !== path && entry.key === stamp.key);
+        if (!writtenElsewhere) continue;
+        if (!(await this.isUnchanged(path, stamp))) {
+          delete this.state.files[path];
+          continue;
+        }
       }
       if (!(await this.remove(path))) failures.push(path);
     }

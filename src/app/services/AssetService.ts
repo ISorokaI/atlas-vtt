@@ -1182,7 +1182,13 @@ export class AssetService {
     await this.saveMetadata();
   }
 
-  /** This vault's identity as a publisher of collections. */
+  /** This vault's identity as a publisher, when it has one; comparing with it never makes one. */
+  async knownVaultId(): Promise<string | null> {
+    await this.ensureLoaded();
+    return this.metadata!.vaultId ?? null;
+  }
+
+  /** This vault's identity as a publisher of collections, made and saved when it publishes for the first time. */
   async getVaultId(): Promise<string> {
     await this.ensureLoaded();
     if (this.metadata!.vaultId) return this.metadata!.vaultId;

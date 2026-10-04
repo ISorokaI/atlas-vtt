@@ -18,6 +18,8 @@ export interface FileReading {
 
 export interface RecordReading extends FileReading {
   record: Asset;
+  /** The collection the record was written for; see `ParsedRecordFile.writtenFor`. */
+  writtenFor: string | null;
 }
 
 /** A record file without a record: the payload an older Atlas wrote for an asset the index knows by this file. */
@@ -99,7 +101,7 @@ async function readOtherHolders(app: App, state: LibraryState, changes: LibraryC
     if (!file) continue;
     const text = await app.vault.read(file);
     const parsed = parseRecordFile(text, path);
-    if (parsed?.record) changes.records.push({ ...readingOf(file, hashText(text), (parsed.format ?? 0) > recordFormat), record: parsed.record });
+    if (parsed?.record) changes.records.push({ ...readingOf(file, hashText(text), (parsed.format ?? 0) > recordFormat), record: parsed.record, writtenFor: parsed.writtenFor });
   }
 }
 
@@ -121,6 +123,6 @@ function classify(changes: LibraryChanges, file: TFile, text: string, hash: stri
   if (!isRecordFileCandidate(file.path)) return;
   const parsed = parseRecordFile(text, file.path);
   if (!parsed) return;
-  if (parsed.record) changes.records.push({ ...readingOf(file, hash, (parsed.format ?? 0) > recordFormat), record: parsed.record });
+  if (parsed.record) changes.records.push({ ...readingOf(file, hash, (parsed.format ?? 0) > recordFormat), record: parsed.record, writtenFor: parsed.writtenFor });
   else if (parsed.format === null) changes.payloads.push({ ...readingOf(file, hash, false), payload: parsed.payload });
 }

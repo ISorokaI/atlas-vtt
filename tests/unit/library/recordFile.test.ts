@@ -38,13 +38,14 @@ describe('record files', () => {
     expect(roundTrip(encounter)).toEqual(encounter);
   });
 
-  it('take the collection and place from where the file lies, so moving it needs no rewrite', () => {
+  it('take the collection and place from where the file lies, and tell which collection they were written for', () => {
     const file = JSON.parse(serializeRecord(encounter));
-    expect(file[RECORD_KEY]).not.toHaveProperty('collection');
+    expect(file[RECORD_KEY]).toMatchObject({ collection: 'Fen' });
     expect(file[RECORD_KEY]).not.toHaveProperty('filePath');
 
-    const moved = parseRecordFile(serializeRecord(encounter), 'atlas-vtt/collections/Hills/encounters/sub/encounter-1.json')?.record;
-    expect(moved).toMatchObject({ collection: 'Hills', filePath: 'atlas-vtt/collections/Hills/encounters/sub/encounter-1.json' });
+    const moved = parseRecordFile(serializeRecord(encounter), 'atlas-vtt/collections/Hills/encounters/sub/encounter-1.json');
+    expect(moved?.record).toMatchObject({ collection: 'Hills', filePath: 'atlas-vtt/collections/Hills/encounters/sub/encounter-1.json' });
+    expect(moved?.writtenFor).toBe('Fen');
   });
 
   it('keep an opaque payload as it is, also where its keys look like the record\'s', () => {
@@ -74,7 +75,7 @@ describe('record files', () => {
   });
 
   it('read a file without a record as a payload, and refuse a record that names no file', () => {
-    expect(parseRecordFile('{"tokens":[]}', `${DIR}/encounters/e.json`)).toEqual({ format: null, record: null, payload: { tokens: [] } });
+    expect(parseRecordFile('{"tokens":[]}', `${DIR}/encounters/e.json`)).toEqual({ format: null, record: null, writtenFor: null, payload: { tokens: [] } });
     expect(parseRecordFile(JSON.stringify({ [RECORD_KEY]: { ...token, imagePath: undefined } }), recordFilePath(token))?.record).toBeNull();
     expect(parseRecordFile('not json', recordFilePath(token))).toBeNull();
   });

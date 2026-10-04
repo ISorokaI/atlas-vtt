@@ -73,10 +73,20 @@ class Trial {
       const collection = this.pick(others);
       const name = this.pick(NEW_COLLECTIONS.map((candidate) => `${candidate} ${device.name}${++this.serial}`));
       if (collection && name) await assets.renameCollection(collection.id, name);
-    } else {
+    } else if (roll < 0.85) {
       const target = this.pick(others);
       const token = this.pick(await assets.getAssets(COLLECTION, 'token'));
       if (target && token) await transferAssets(vault.app, assets, { assetIds: [token.id], targetCollectionId: target.id, mode: 'move' });
+    } else {
+      // The file manager copies a collection's folder: Atlas sees only the new files.
+      const source = this.pick(others);
+      if (!source) return;
+      const from = `atlas-vtt/collections/${source.id}/`;
+      const to = `atlas-vtt/collections/${source.id} copy ${device.name}${++this.serial}/`;
+      for (const [path, content] of [...vault.files]) {
+        if (path.startsWith(from)) await vault.app.vault.adapter.write(to + path.slice(from.length), content);
+      }
+      await assets.reconcileWithVault();
     }
   }
 
@@ -161,11 +171,6 @@ async function runTrial(seed: number): Promise<void> {
   await settle(sync, [a, b]);
 
   const onA = await library(a.assets);
-  if (process.env.DUMP_SEED === String(seed)) {
-    process.stdout.write(`\n>> FILES ${JSON.stringify(Object.keys(synced(a.vault)).filter((p) => p.includes('tokens') || p.includes('collection.json')).sort(), null, 1)}`);
-    process.stdout.write(`\n>> A ${JSON.stringify(await a.assets.getAssets(undefined, 'token'), null, 1)}`);
-    process.stdout.write(`\n>> B ${JSON.stringify(await b.assets.getAssets(undefined, 'token'), null, 1)}`);
-  }
   expect(await library(b.assets), `seed ${seed}: both devices hold one library`).toEqual(onA);
   const fresh = await startDevice('c', synced(a.vault), syncedFolders(a.vault));
   expect(await library(fresh.assets), `seed ${seed}: the index is what the files say`).toEqual(onA);

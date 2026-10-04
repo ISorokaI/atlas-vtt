@@ -84,7 +84,7 @@ export async function openCollectionImport(
 
   return {
     review: {
-      ...buildReview(manifest, await assets.getVaultId(), existing, record, plan, restorePlan, unitAssets, suggestedName, targets.skipped),
+      ...buildReview(manifest, await assets.knownVaultId(), existing, record, plan, restorePlan, unitAssets, suggestedName, targets.skipped),
       cover: await bundleCover(bundle),
       templates: templateReview(targets.templates, reusedNotes),
     },

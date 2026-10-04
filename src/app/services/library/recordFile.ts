@@ -19,8 +19,12 @@ const MIRRORED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   player: ['tokens', 'level', 'class'],
 };
 
-/** Fields the file's place decides, so moving a record never changes its content. */
-const PLACE_FIELDS = ['collection', 'filePath'] as const;
+/**
+ * Fields the file's place decides. The collection a record was written for is
+ * kept (it tells a copied collection folder's files from the original's); the
+ * collection a record belongs to is always its file's folder.
+ */
+const PLACE_FIELDS = ['filePath'] as const;
 
 /** What older versions read from a map's JSON; kept at the top level beside the record. */
 function legacyMapFields(asset: MapAsset): Record<string, unknown> {
@@ -78,6 +82,8 @@ export interface ParsedRecordFile {
   /** The record's format, or null for a file without a record (written by an older version). */
   format: number | null;
   record: Asset | null;
+  /** The collection the record was written for, which differs from its folder's when the file was copied or moved there. */
+  writtenFor: string | null;
   payload: Record<string, unknown>;
 }
 
@@ -141,7 +147,8 @@ export function parseRecordFile(text: string, path: string): ParsedRecordFile | 
   }
   if (!isRecord(parsed)) return null;
   const { [RECORD_KEY]: envelope, ...payload } = parsed;
-  if (!isRecord(envelope)) return { format: null, record: null, payload };
+  if (!isRecord(envelope)) return { format: null, record: null, writtenFor: null, payload };
   const format = numberOr(envelope.format, RECORD_FORMAT);
-  return { format, record: assetFromEnvelope(envelope, payload, path), payload };
+  const writtenFor = typeof envelope.collection === 'string' && envelope.collection ? envelope.collection : null;
+  return { format, record: assetFromEnvelope(envelope, payload, path), writtenFor, payload };
 }

@@ -85,7 +85,7 @@ function relationOf(version: number, installedVersion: number | undefined): Impo
  * when a release names a different publisher. Without signatures this guards
  * against mix-ups, not against deliberate forgery.
  */
-function publisherWarning(manifest: CollectionBundleManifest, existing: CollectionMetadata | null, vaultId: string): ImportReview['publisherWarning'] {
+function publisherWarning(manifest: CollectionBundleManifest, existing: CollectionMetadata | null, vaultId: string | null): ImportReview['publisherWarning'] {
   if (!existing?.publisherId) return undefined;
   if (existing.publisherId === vaultId) return manifest.collection.version > existing.version ? 'own-collection' : undefined;
   const claimed = manifest.collection.publisherId;
@@ -94,7 +94,8 @@ function publisherWarning(manifest: CollectionBundleManifest, existing: Collecti
 
 export function buildReview(
   manifest: CollectionBundleManifest,
-  vaultId: string,
+  /** Null while this vault has published nothing. */
+  vaultId: string | null,
   existing: CollectionMetadata | null,
   record: InstallRecord | null,
   plan: ImportPlan,

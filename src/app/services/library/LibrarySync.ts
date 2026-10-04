@@ -75,9 +75,11 @@ export class LibrarySync {
   markDerived(metadata: AssetMetadata, before: ReadonlySet<string>): void {
     const migrated = this.migrated;
     const present = new Set<string>();
+    // A record taken in from a file is never one Atlas worked out by itself, wherever that file lies.
+    const fromFiles = new Set(Object.values(this.state.files).map((stamp) => stamp.key));
     for (const file of desiredLibraryFiles(metadata)) {
       present.add(file.identity);
-      const hasFile = this.app.vault.getFileByPath(file.path) !== null;
+      const hasFile = fromFiles.has(file.key) || this.app.vault.getFileByPath(file.path) !== null;
       const assetId = idOfKey(file.key, 'asset');
       const createdNow = !before.has(file.identity) && !before.has(file.key) && !hasFile;
       const recoveredBeforeMigration = !migrated && assetId !== null && isRecoveredId(assetId) && !hasFile;

@@ -2,7 +2,7 @@ import type { Asset, AssetMetadata } from '../AssetService';
 import type { FileReading, LibraryChanges, RecordReading } from './libraryReader';
 import { recordFilePath } from './libraryPaths';
 import { assetKey, collectionIdentity, collectionKey, duplicateKey, hashText, idOfKey, LIBRARY_KEY, type FileStamp, type LibraryState } from './libraryState';
-import { baseName } from '../../utils/pathUtils';
+import { copyId, placedRecord, resolveHolders } from './recordHolders';
 import { collectionFolderPath } from '../assetPaths';
 import { moveCollectionRecord } from '../collectionRecords';
 import type { PathMove } from '../renamedPaths';
@@ -32,21 +32,6 @@ function stamp(state: LibraryState, reading: FileReading, key: string): void {
   const entry: FileStamp = { key, hash: reading.hash, mtime: reading.mtime, size: reading.size };
   if (reading.newer) entry.readOnly = true;
   state.files[reading.path] = entry;
-}
-
-/** Whether the file is named as Atlas names a record's file, which copies a sync tool makes on a conflict never are. */
-const hasRecordName = (reading: RecordReading): boolean => baseName(reading.path) === `${reading.record.id}.json`;
-
-/**
- * The file a record lives in when several hold it, chosen from their content
- * alone so every device chooses the same: a file named for the record before a
- * conflict copy, then the newest edit, then the first path.
- */
-function pickWinner(readings: readonly RecordReading[]): RecordReading {
-  return [...readings].sort((a, b) =>
-    Number(hasRecordName(b)) - Number(hasRecordName(a))
-    || b.record.modifiedAt - a.record.modifiedAt
-    || a.path.localeCompare(b.path))[0]!;
 }
 
 /**
@@ -80,21 +65,23 @@ export function mergeLibraryChanges(
     else readingsById.set(reading.record.id, [reading]);
   }
   const upserted = new Set<string>();
+  const takeIn = (record: Asset, reading: RecordReading): void => {
+    const key = assetKey(record.id);
+    stamp(state, reading, key);
+    delete state.derived[key];
+    upserted.add(record.id);
+    if (sameJson(metadata.assets[record.id], record)) return;
+    metadata.assets[record.id] = record;
+    changed = true;
+  };
   for (const [id, readings] of readingsById) {
-    const key = assetKey(id);
-    const winner = pickWinner(readings);
-    for (const reading of readings) {
-      if (reading === winner) continue;
+    const { winner, duplicates: conflictCopies, copies } = resolveHolders(readings);
+    for (const reading of conflictCopies) {
       duplicates.push(reading.path);
       stamp(state, reading, duplicateKey(id));
     }
-    stamp(state, winner, key);
-    delete state.derived[key];
-    upserted.add(id);
-    if (!sameJson(metadata.assets[id], winner.record)) {
-      metadata.assets[id] = winner.record;
-      changed = true;
-    }
+    takeIn(placedRecord(winner), winner);
+    for (const reading of copies) takeIn({ ...placedRecord(reading), id: copyId(id, reading.path) }, reading);
   }
 
   changed = mergePayloads(metadata, state, changes) || changed;

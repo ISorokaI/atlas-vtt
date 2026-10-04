@@ -62,7 +62,7 @@ export function createCollectionRecord(id: string, now = Date.now()): Collection
  * changes it.
  */
 export function derivedCollectionRecord(id: string): CollectionMetadata {
-  return { ...createCollectionRecord(id, 0), uid: `collection-${hashText(id)}` };
+  return { ...createCollectionRecord(id, 0), uid: `collection-${hashText(String(id))}` };
 }
 
 /**
