@@ -32,15 +32,22 @@ export function isValidConeAngle(angle: unknown): angle is number {
 }
 
 /** Collection grid defaults win; a map without a collection falls back to its grid state. */
+/** The distance a scene's cells span by its own choice (`GridState.unitDistanceOverride`); a value that is no positive number is none. */
+export function sceneUnitDistance(grid: Pick<GridState, 'unitDistanceOverride'> | null | undefined): number | undefined {
+  const distance = grid?.unitDistanceOverride;
+  return typeof distance === 'number' && Number.isFinite(distance) && distance > 0 ? distance : undefined;
+}
+
 export function resolveMeasurementSettings(
   collection: CollectionGridDefaults | undefined,
   grid: GridState | null | undefined,
 ): MeasurementSettings {
+  const override = sceneUnitDistance(grid);
   if (collection) {
     return {
       mode: collection.measurementMode,
       unitType: collection.unitType,
-      unitDistance: collection.unitDistance,
+      unitDistance: override ?? collection.unitDistance,
       diagonalRule: collection.diagonalRule ?? 'equidistant',
       rangeBands: collection.abstractRangeBands ?? [],
       coneAngle: collection.coneAngle ?? DEFAULT_CONE_ANGLE,
@@ -50,7 +57,7 @@ export function resolveMeasurementSettings(
     // Older maps may store 'daggerheart' or nothing; both measure in range bands.
     mode: grid?.measurementType === 'units' ? 'metric' : 'abstract',
     unitType: grid?.unitType ?? 'feet',
-    unitDistance: grid?.unitDistance ?? 5,
+    unitDistance: override ?? grid?.unitDistance ?? 5,
     diagonalRule: 'equidistant',
     rangeBands: [],
     coneAngle: DEFAULT_CONE_ANGLE,

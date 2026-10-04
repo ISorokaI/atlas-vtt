@@ -86,6 +86,21 @@ describe('resolveMeasurementSettings', () => {
     expect(resolveMeasurementSettings(undefined, grid).mode).toBe('abstract');
     expect(resolveMeasurementSettings(undefined, null)).toMatchObject({ unitType: 'feet', unitDistance: 5 });
   });
+
+  // #84: a map drawn at another scale than the rest of its collection.
+  it("takes a scene's own distance per cell over the collection's, in the collection's unit", () => {
+    const collection = { unitType: 'feet', unitDistance: 5, measurementMode: 'metric' } as const;
+    expect(resolveMeasurementSettings(collection, { ...grid, unitDistanceOverride: 10 })).toMatchObject({ unitType: 'feet', unitDistance: 10 });
+    expect(resolveMeasurementSettings(undefined, { ...grid, unitDistance: 5, unitDistanceOverride: 2.5 }).unitDistance).toBe(2.5);
+  });
+
+  it("ignores the copy of the collection's distance a new scene is written with, and overrides that are no positive number", () => {
+    const collection = { unitType: 'meters', unitDistance: 1.5, measurementMode: 'metric' } as const;
+    expect(resolveMeasurementSettings(collection, { ...grid, unitDistance: 5 }).unitDistance).toBe(1.5);
+    for (const unitDistanceOverride of [0, -5, Number.NaN, '10' as unknown as number]) {
+      expect(resolveMeasurementSettings(collection, { ...grid, unitDistanceOverride }).unitDistance).toBe(1.5);
+    }
+  });
 });
 
 describe('range band validation', () => {

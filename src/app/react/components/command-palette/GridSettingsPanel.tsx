@@ -4,6 +4,7 @@ import { cn } from '../../../../utils/cn';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
+import { SceneUnitDistanceRow } from './SceneUnitDistanceRow';
 import type { AtlasView } from '../../../atlas-view';
 import type { GridType } from '../../../grid/GridSystem';
 import { DEFAULT_CELL_NUMBER_OPACITY, isCellNumberFormat, type CellNumberFormat } from '../../../grid/cellNumbering';
@@ -135,6 +136,8 @@ export function GridSettingsPanel({
           }}
         />
       </SettingRow>
+
+      <SceneUnitDistanceRow view={view} />
 
       <SettingRow label="Cell numbers">
         <ObsidianMenuDropdown

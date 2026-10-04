@@ -1,19 +1,21 @@
 import React from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { create } from 'zustand';
 import { GridSettingsPanel } from '../../src/app/react/components/command-palette/GridSettingsPanel';
 import type { GridState } from '../../src/app/services/MapPersistence';
 import type { AtlasView } from '../../src/app/atlas-view';
+import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 afterEach(() => cleanup());
 
 function fakeView(grid: GridState | null): AtlasView {
-  const store = create<{ grid: GridState | null; setGrid: (grid: GridState) => void }>((set) => ({
+  const store = create<{ grid: GridState | null; mapPath: string | null; setGrid: (grid: GridState) => void }>((set) => ({
     grid,
+    mapPath: null,
     setGrid: (next) => set({ grid: next }),
   }));
-  return { atlasStore: store } as unknown as AtlasView;
+  return { atlasStore: store, app: createInMemoryApp().app } as unknown as AtlasView;
 }
 
 const baseGrid: GridState = { enabled: true, size: 70, offsetX: 0, offsetY: 0, opacity: 0.7 };
@@ -50,5 +52,39 @@ describe('GridSettingsPanel cell numbers', () => {
   it('shows the number-opacity row once a format is chosen', () => {
     renderPanel(fakeView({ ...baseGrid, type: 'square', cellNumbers: 'column-row' }));
     expect(screen.getByText('Number opacity')).toBeTruthy();
+  });
+});
+
+// #84: a map outside every collection measures as its grid says; measured in units here.
+describe('GridSettingsPanel distance per cell', () => {
+  const metricGrid: GridState = { ...baseGrid, measurementType: 'units', unitType: 'feet', unitDistance: 5 };
+  const field = (): HTMLInputElement => screen.getByRole('textbox', { name: 'Distance per cell in ft' });
+
+  it('overrides the distance on leaving the field and follows the default again when emptied', () => {
+    const view = fakeView(metricGrid);
+    renderPanel(view);
+    expect(field().placeholder).toBe('5');
+
+    fireEvent.change(field(), { target: { value: '7,5' } });
+    fireEvent.blur(field());
+    expect(view.atlasStore.getState().grid?.unitDistanceOverride).toBe(7.5);
+
+    fireEvent.change(field(), { target: { value: '' } });
+    fireEvent.blur(field());
+    expect(view.atlasStore.getState().grid).not.toHaveProperty('unitDistanceOverride');
+  });
+
+  it('keeps no override that is no positive number', () => {
+    const view = fakeView(metricGrid);
+    renderPanel(view);
+    fireEvent.change(field(), { target: { value: '-3' } });
+    fireEvent.blur(field());
+    expect(view.atlasStore.getState().grid).not.toHaveProperty('unitDistanceOverride');
+    expect(field().value).toBe('');
+  });
+
+  it('is not offered where distances are range bands', () => {
+    renderPanel(fakeView(baseGrid));
+    expect(screen.queryByRole('textbox', { name: /Distance per cell/ })).toBeNull();
   });
 });
