@@ -1,0 +1,229 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The template editor's shell: the note view's row (§2.1–2.4)
+// ═══════════════════════════════════════════════════════════════════════════
+// The note on the left, rendered as Reading view renders it, and the panel
+// beside it (panel-frame/), the capsule, the state lines and the footer line.
+// Imported by TemplateNoteRow.tsx, so the rules take the scope themselves.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use '../../panel-frame/panel-row' as *;
+
+// The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
+$row-height: 28px;
+$menu-inset: $spacing-xs;
+$menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
+
+.atlas-vtt-plugin {
+  // ── The row: as a note view's content with its statblock ───────────────
+  .atlas-te-row {
+    @include atlas-sb-note-row('.atlas-te-note');
+    flex: 1;
+    min-height: 0;
+
+    &.atlas-sb-note--stacked {
+      @include atlas-sb-note-row-stacked('.atlas-te-note');
+    }
+  }
+
+  // ── The note column ─────────────────────────────────────────────────────
+  .atlas-te-note {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  // Obsidian's reader takes the column's height and scrolls itself.
+  .atlas-te-note__reader {
+    flex: 1;
+    min-height: 0;
+
+    > .markdown-preview-view {
+      height: 100%;
+      overflow-y: auto;
+    }
+  }
+
+  // What the note view draws in place of the note's own statblock fence.
+  .atlas-te-fence-stub {
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+
+  // "Read-only preview of Aboleth · Open note": at the column's top, on hover or for a moment after a click.
+  .atlas-te-note-chip {
+    @include atlas-elevated-surface;
+    @include atlas-flex-row($spacing-s);
+    position: absolute;
+    top: $spacing-s;
+    left: 50%;
+    z-index: 2;
+    padding: $spacing-xs;
+    border-radius: $radius-full;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-4px);
+    transition: opacity $transition-fast $transition-ease-out, transform $transition-fast $transition-ease-out;
+
+    // The text stands off the capsule's round end as far as the button's label does.
+    > span {
+      padding-inline: $spacing-s;
+    }
+
+    .btn {
+      border-radius: $radius-full;
+    }
+  }
+
+  .atlas-te-note:hover .atlas-te-note-chip,
+  .atlas-te-note-chip[data-shown] {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%);
+  }
+
+  // ── The capsule (the note view's `.atlas-sb-pane-header`) ───────────────
+  .atlas-te-capsule {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .atlas-te-capsule__part {
+    display: flex;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .atlas-te-capsule__name {
+    @include atlas-flex-row($spacing-xs);
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+
+    svg {
+      flex-shrink: 0;
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  .atlas-te-capsule__count:not(.btn) {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    white-space: nowrap;
+  }
+
+  .atlas-te-capsule__count.btn {
+    color: var(--text-muted);
+  }
+
+  // The name reads as the capsule's title; a click opens it in place.
+  .atlas-te-name {
+    @include atlas-truncate;
+    @include atlas-corner-shape;
+    min-width: 0;
+    height: var(--input-height);
+    padding: 0 $spacing-s;
+    border-radius: $radius-l;
+    color: var(--text-normal);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    line-height: var(--input-height);
+  }
+
+  button.atlas-te-name {
+    max-width: 100%;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: text;
+
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
+  }
+
+  .atlas-te-name-edit {
+    @include atlas-flex-row($spacing-s);
+    min-width: 0;
+  }
+
+  .atlas-te-name-input {
+    @include atlas-corner-shape;
+    width: 16em;
+    max-width: 100%;
+    height: var(--input-height);
+    font-size: $font-ui-medium;
+    font-weight: $font-weight-semibold;
+    border-radius: $radius-l;
+  }
+
+  .atlas-te-name-problem {
+    @include atlas-truncate;
+    color: var(--text-error);
+    font-size: $font-ui-smaller;
+  }
+
+  // ── Show with ───────────────────────────────────────────────────────────
+  .atlas-te-show-with-root {
+    position: relative;
+    display: flex;
+  }
+
+  .atlas-te-show-with--icon.btn {
+    width: var(--input-height);
+    padding: 0;
+    justify-content: center;
+  }
+
+  .atlas-te-show-with__popover {
+    @include atlas-elevated-surface;
+    @include atlas-panel-radius($menu-radius);
+    @include atlas-flex-col($menu-inset);
+    @include atlas-keep-in-view;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 4;
+    align-items: stretch;
+    width: 260px;
+    margin-top: $spacing-xs;
+    padding: $menu-inset;
+    box-shadow: $shadow-md;
+
+    [data-divided] {
+      margin-top: $menu-inset;
+    }
+  }
+
+  .atlas-te-show-with__none {
+    @include atlas-flex-col($spacing-xs);
+    align-items: flex-start;
+    padding: $spacing-s;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+  }
+
+  // ── Lines above and under the card ──────────────────────────────────────
+  .atlas-te-saving {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+
+  .atlas-te-footer-line {
+    @include atlas-flex-row($spacing-s);
+    justify-content: center;
+    flex-wrap: wrap;
+    min-height: var(--input-height);
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    text-align: center;
+  }
+}

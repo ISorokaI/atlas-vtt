@@ -5,13 +5,19 @@ import type { NotePatch } from '../../notes/patchTypes';
 import type { SheetState } from '../../render/sheetState';
 import type { FieldRead, FieldRecord } from '../../values/fieldValues';
 import type { EditableSpots } from './editableSpots';
+import type { PanelHistory } from './panelHistory';
 
 /** The value being edited: a field in one block, and for entries the entry clicked. */
 export interface EditTarget {
   blockId: string;
   field: FieldKey;
   entry?: number | undefined;
+  /** Entries: a new entry starts right after `entry` ("Add action below"). */
+  add?: boolean | undefined;
 }
+
+/** Moves an entry of a list from one stored place to another; the list editor's takes the text being typed along. */
+export type ListMover = (from: number, to: number) => void;
 
 /** A commit the note refused because the value changed there since the edit began (§8.6). */
 export interface FieldConflict {
@@ -60,6 +66,12 @@ export interface PaneEditController {
   releasePending: (commit: () => Promise<void>) => void;
   /** Says something to assistive technology in the pane's live region ("Deleted Bite. Press Ctrl+Z to undo."). */
   announce: (text: string) => void;
+  /** Moves an entry of `field` (a drag's drop): through the list editor while it is open, else as one move patch. */
+  moveEntry: (field: TemplateField, from: number, to: number) => void;
+  /** The open list editor of `key` takes the moves of its list; returns the function that lets go. */
+  registerMover: (key: FieldKey, mover: ListMover) => () => void;
+  /** Which history took each of the panel's actions: the note's or a template's (§8.5). */
+  history: PanelHistory;
 }
 
 export const PaneEditContext = createContext<PaneEditController | null>(null);

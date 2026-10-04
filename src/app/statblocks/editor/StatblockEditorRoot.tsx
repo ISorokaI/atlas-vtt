@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { SurfaceMenuProvider } from './interaction/SurfaceMenuProvider';
 import { StatblockPane } from './statblock-pane/StatblockPane';
 import type { StatblockPaneProps } from './statblock-pane/paneTypes';
 import { TemplateEditorSurface, type TemplateEditorSurfaceProps } from './template-editor/TemplateEditorSurface';
@@ -22,11 +23,15 @@ function surfaceContent(surface: StatblockEditorSurface): React.JSX.Element {
  * with its surface; tooltips share one provider.
  */
 export function StatblockEditorRoot({ surface }: { surface: StatblockEditorSurface }): React.JSX.Element {
+  // Each surface's menus open in its own document and are marked as its own (§5.1).
+  const ownerId = useId();
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="atlas-statblock-editor" data-surface={surface.kind}>
-        {surfaceContent(surface)}
-      </div>
+      <SurfaceMenuProvider ownerId={ownerId}>
+        <div className="atlas-statblock-editor" data-surface={surface.kind} data-atlas-surface={ownerId}>
+          {surfaceContent(surface)}
+        </div>
+      </SurfaceMenuProvider>
     </TooltipProvider>
   );
 }

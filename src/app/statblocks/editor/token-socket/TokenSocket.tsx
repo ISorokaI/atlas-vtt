@@ -1,17 +1,16 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Link2, Plus } from 'lucide-react';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { useAnchoredPopoverVariants } from '../../../packages/components/primitives/dialogMotion';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
-import { cn } from '../../../../utils/cn';
 import type { ImageBlock } from '../../model/templateTypes';
 import { valueText } from '../../values/valueText';
 import { usePaneEdit } from '../statblock-pane/paneEditContext';
 import { TokenLinkPanel } from './TokenLinkPanel';
+import { TokenSocketFace } from './TokenSocketFace';
 import { artSrc, artToken } from './tokenSocketActions';
 import { useSocketPlacement } from './useSocketPlacement';
 import './token-socket.scss';
@@ -96,26 +95,15 @@ export function TokenSocket({ block, art }: TokenSocketProps): React.JSX.Element
   return (
     <>
       <LabelTooltip label="Link token art">
-        <button
+        <TokenSocketFace
           ref={setSocket}
-          type="button"
-          className={cn('atlas-sb-token-socket', !src && 'atlas-sb-token-socket--empty')}
-          data-shape={block.shape}
+          shape={block.shape}
+          art={src ? shown : null}
+          prompt={named ? 'Art not found' : 'Add token art'}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => setOpen((was) => !was)}
-        >
-          {/* The art, or an empty dashed ring with a plus; hover and press light the frame. */}
-          <span className="atlas-sb-token-socket__frame">
-            {src ? shown : <Plus className="atlas-sb-token-socket__plus" aria-hidden="true" />}
-            {src && (
-              <span className="atlas-sb-token-socket__badge" aria-hidden="true">
-                <Link2 />
-              </span>
-            )}
-          </span>
-          {!src && <span className="atlas-sb-token-socket__prompt">{named ? 'Art not found' : 'Add token art'}</span>}
-        </button>
+        />
       </LabelTooltip>
       {socket && createPortal(
         <AnimatePresence>

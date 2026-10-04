@@ -1,7 +1,7 @@
 import React from 'react';
+import { PanelHostContent } from '../panel-frame/PanelHost';
 import { StatblockEditorRoot } from '../StatblockEditorRoot';
 import type { StatblockPaneProps } from '../statblock-pane/paneTypes';
-import { PanelResizeHandle } from './PanelResizeHandle';
 import './note-statblock-panel.scss';
 
 export interface NotePanelRootProps {
@@ -16,21 +16,10 @@ export interface NotePanelRootProps {
 }
 
 /** What the panel beside a note draws: the line that resizes it and, scrolling on its own, the statblock pane. */
-export function NotePanelRoot({ pane, width, stacked, availableWidth, onResize, onCancelResize, onResetWidth }: NotePanelRootProps): React.JSX.Element {
+export function NotePanelRoot({ pane, ...host }: NotePanelRootProps): React.JSX.Element {
   return (
-    <>
-      {!stacked && (
-        <PanelResizeHandle
-          width={width}
-          availableWidth={availableWidth}
-          onResize={onResize}
-          onCancel={onCancelResize}
-          onReset={onResetWidth}
-        />
-      )}
-      <div className="atlas-sb-note-panel__scroll">
-        <StatblockEditorRoot surface={{ kind: 'statblock-pane', props: pane }} />
-      </div>
-    </>
+    <PanelHostContent {...host}>
+      <StatblockEditorRoot surface={{ kind: 'statblock-pane', props: pane }} />
+    </PanelHostContent>
   );
 }

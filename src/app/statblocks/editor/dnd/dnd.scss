@@ -46,13 +46,15 @@ $empty-height: 28px;
   }
 
   .atlas-te[data-dragging] {
+    // The pressed handle stays in the document until the drop (§3.4), unseen.
     .atlas-te-toolbar,
+    .atlas-sb-handle,
     .atlas-te-chrome {
       opacity: 0;
       pointer-events: none;
     }
 
-    .atlas-te-stage .atlas-sb-item[data-te-hover] {
+    .atlas-te-stage .atlas-sb-item[data-sb-hover] {
       outline-color: transparent;
     }
   }
@@ -108,17 +110,6 @@ $empty-height: 28px;
       &::before { top: -$dot-size * 0.5; }
       &::after { bottom: -$dot-size * 0.5; }
     }
-  }
-
-  // The half of a block a drop beside it takes.
-  .atlas-te-drop-tint {
-    position: absolute;
-    left: var(--atlas-te-x);
-    top: var(--atlas-te-y);
-    width: var(--atlas-te-w);
-    height: var(--atlas-te-h);
-    border-radius: $radius-l;
-    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
   }
 
   // An empty Section or Row: dashed accent outline, 6 % wash, "Drop blocks here"

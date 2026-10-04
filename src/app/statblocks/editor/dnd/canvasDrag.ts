@@ -8,9 +8,11 @@
 
 import { observeResize } from '../../../utils/observeResize';
 import type { StatblockTemplate } from '../../model/templateTypes';
+import { PANEL_SCROLL_SELECTOR } from '../panel-frame/panelSelectors';
 import { blockFrame } from '../template-editor/editorChrome';
+import { revealInScroller, scrollNearEdge } from './autoScroll';
 import { measureScene, SHIFT_ATTRIBUTE, toClient, toStage } from './collision';
-import { lineBox, type Point } from './dropGeometry';
+import { contains, lineBox, type Box, type Point } from './dropGeometry';
 import { dropTargetAt, keyboardTargets, sameTarget, type DragSubject, type DropScene, type DropTarget } from './dropTargets';
 import { dropView, shiftPlanFor, type DropView } from './dropView';
 import type { KeyboardStepper } from './keyboardSensor';
@@ -29,9 +31,12 @@ export const DRAGGING_ATTRIBUTE = 'data-te-dragging';
 /** How far a slid frame moves; its stylesheet turns them into its transform. */
 const SHIFT_X = '--atlas-te-shift-x';
 const SHIFT_Y = '--atlas-te-shift-y';
-/** How close to the canvas's top or bottom edge the pointer scrolls it, and how fast at most per frame. */
-const SCROLL_EDGE = 48;
-const SCROLL_SPEED = 18;
+/** The card's padding around its blocks still counts as the card: a drop there lands at the nearest place. */
+const CARD_MARGIN = 16;
+
+function grown(box: Box, by: number): Box {
+  return { left: box.left - by, top: box.top - by, right: box.right + by, bottom: box.bottom + by };
+}
 
 export class CanvasDrag implements KeyboardStepper {
   target: DropTarget | null = null;
@@ -45,7 +50,7 @@ export class CanvasDrag implements KeyboardStepper {
   private readonly scroller: HTMLElement | null;
 
   constructor(private readonly host: CanvasDragHost, private readonly subject: DragSubject, keyboard: boolean) {
-    this.scroller = host.stage.closest<HTMLElement>('.atlas-te-canvas__scroller');
+    this.scroller = host.stage.closest<HTMLElement>(PANEL_SCROLL_SELECTOR);
     this.scene = measureScene(host.stage, host.template().layout);
     if (keyboard) this.keyboard = { ...keyboardTargets(this.scene, subject), at: -1 };
   }
@@ -134,11 +139,15 @@ export class CanvasDrag implements KeyboardStepper {
     this.show(this.targetAt(this.pointer), force);
   }
 
+  /** The target under the pointer; none outside the visible card, where letting go cancels (§7.3). */
   private targetAt(client: Point): DropTarget | null {
     const view = (this.scroller ?? this.host.stage).getBoundingClientRect();
     if (client.x < view.left || client.x > view.right || client.y < view.top || client.y > view.bottom) return null;
+    const point = toStage(this.host.stage, client);
+    const { card } = this.scene;
+    if (card && !contains(grown(card, CARD_MARGIN), point)) return null;
     if (this.host.readOnly) return { kind: 'refused' };
-    return dropTargetAt(this.scene, this.subject, toStage(this.host.stage, client));
+    return dropTargetAt(this.scene, this.subject, point);
   }
 
   private show(target: DropTarget | null, force = false): void {
@@ -181,23 +190,11 @@ export class CanvasDrag implements KeyboardStepper {
 
   /** Scrolls the canvas so a box shows, with some room around it. */
   private reveal(box: { top: number; bottom: number }): void {
-    const scroller = this.scroller;
-    if (!scroller) return;
-    const view = scroller.getBoundingClientRect();
-    if (box.top < view.top + SCROLL_EDGE) scroller.scrollTop -= view.top + SCROLL_EDGE - box.top;
-    else if (box.bottom > view.bottom - SCROLL_EDGE) scroller.scrollTop += box.bottom - view.bottom + SCROLL_EDGE;
+    if (this.scroller) revealInScroller(this.scroller, box);
   }
 
   /** Scrolls while the pointer rests near the canvas's top or bottom edge. */
   private scroll(client: Point): void {
-    const scroller = this.scroller;
-    if (!scroller) return;
-    const view = scroller.getBoundingClientRect();
-    if (client.x < view.left || client.x > view.right) return;
-    const near = client.y < view.top + SCROLL_EDGE ? -(view.top + SCROLL_EDGE - client.y) : client.y > view.bottom - SCROLL_EDGE ? client.y - view.bottom + SCROLL_EDGE : 0;
-    if (near === 0) return;
-    const before = scroller.scrollTop;
-    scroller.scrollTop += Math.max(-SCROLL_SPEED, Math.min(SCROLL_SPEED, near / 2));
-    if (scroller.scrollTop !== before) this.schedule();
+    if (this.scroller && scrollNearEdge(this.scroller, client)) this.schedule();
   }
 }

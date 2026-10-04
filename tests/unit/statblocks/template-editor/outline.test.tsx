@@ -3,7 +3,7 @@ import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { containersAround, outlineRows, outlineStep } from '../../../../src/app/statblocks/editor/template-editor/outlineRows';
 import { FakeSession, sampleTemplate, shape } from './editorKit';
-import { key, mountEditor } from './sidePanesKit';
+import { key, mountEditor, openDock } from './sidePanesKit';
 
 beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
@@ -50,7 +50,7 @@ describe('the outline\'s rows', () => {
 });
 
 function openOutline(): HTMLElement {
-  fireEvent.click(screen.getByRole('radio', { name: 'Outline' }));
+  openDock('Structure');
   return screen.getByRole('tree', { name: 'Blocks' });
 }
 
@@ -125,7 +125,7 @@ describe('the Outline tab', () => {
 
   it('says so while there is no block', () => {
     mountEditor(new FakeSession({ ...sampleTemplate(), layout: { maxColumns: 1, blocks: [] } }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Outline' }));
+    openDock('Structure');
     expect(screen.getByText('Blocks appear here as you add them.')).toBeTruthy();
   });
 });

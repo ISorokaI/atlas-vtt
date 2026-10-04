@@ -42,6 +42,19 @@ export async function pickUpAndMove(win: Window, from: Point, to: Point, steps =
   await frames(2, win);
 }
 
+/**
+ * Points at a block, as the pointer coming over it does, and returns its
+ * gutter handle: the only place a pointer drag of a block starts (spec §7.1).
+ */
+export async function gripOf(frame: Element): Promise<HTMLElement> {
+  const win = frame.ownerDocument.defaultView ?? window;
+  pointer(win, 'pointermove', pointIn(frame));
+  await frames(2, win);
+  const grip = frame.ownerDocument.querySelector<HTMLElement>('.atlas-sb-handle[data-glyph="grip"]');
+  if (!grip) throw new Error('The block shows no handle.');
+  return grip;
+}
+
 /** Lets go where the pointer is. */
 export async function drop(win: Window, at: Point): Promise<void> {
   pointer(win, 'pointerup', at);
@@ -84,6 +97,11 @@ export function openPopout(): { win: PopoutWindow; container: HTMLElement; close
       return this instanceof (type as unknown as typeof Element) || (typeof own === 'function' && this instanceof (own as typeof Element));
     },
   });
+  // Obsidian gives every window's elements its DOM helpers (`createDiv`, …): the main window's, as the setup installed them.
+  for (const name of ['createDiv', 'createEl', 'createSpan']) {
+    const helper = (HTMLElement.prototype as unknown as Record<string, unknown>)[name];
+    if (typeof helper === 'function') Object.defineProperty(win.HTMLElement.prototype, name, { configurable: true, value: helper });
+  }
   win.document.body.style.margin = '0';
   const container = win.document.createElement('div');
   win.document.body.append(container);

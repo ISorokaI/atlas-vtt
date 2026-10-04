@@ -4,6 +4,7 @@ import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '../../../../src/app/packages/components/primitives/tooltip';
 import { TemplateEditor, type TemplateEditorHost } from '../../../../src/app/statblocks/editor/template-editor/TemplateEditor';
+import { GESTURE_HINT } from '../../../../src/app/statblocks/editor/template-editor/shell/TemplateFooterLine';
 import { findBlock } from '../../../../src/app/statblocks/model/treeQueries';
 import { FakeSession, sampleTemplate, shape, template } from './editorKit';
 
@@ -21,7 +22,7 @@ const host: TemplateEditorHost = { openTemplate: vi.fn(), openNote: vi.fn(), clo
 function setup(session = new FakeSession(sampleTemplate())): { session: FakeSession; frame: (id: string) => HTMLElement } {
   render(
     <TooltipProvider>
-      <TemplateEditor session={session} host={host} previewPath={null} onPreviewPathChange={vi.fn()} collectionId={null} onCollectionChange={vi.fn()} />
+      <TemplateEditor session={session} host={host} previewPath={null} onShowWithChange={vi.fn()} collectionId={null} onCollectionChange={vi.fn()} />
     </TooltipProvider>,
   );
   const frame = (id: string): HTMLElement => {
@@ -118,7 +119,7 @@ describe('TemplateEditor', () => {
     expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Label' }).value).toBe('Hit points');
   });
 
-  it('opens the insert menu with /, inserts on Enter and opens the new block\'s label', async () => {
+  it('opens the insert menu with /, inserts on Enter, selects the new block, and names it with Enter', async () => {
     const { session, frame } = setup();
     fireEvent.click(frame('divider1'));
     act(() => frame('divider1').focus());
@@ -132,6 +133,10 @@ describe('TemplateEditor', () => {
     const added = session.template.layout.blocks.at(-1);
     expect(added?.type).toBe('stat');
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Add a block' })).toBeNull());
+    // Inserting never opens the label (spec §6.1): the block is selected, Enter names it.
+    expect(screen.queryByRole('textbox', { name: 'Label' })).toBeNull();
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-block-id')).toBe(added?.id));
+    key(frame(added!.id), 'Enter');
     const label = screen.getByRole<HTMLInputElement>('textbox', { name: 'Label' });
     expect(label.value).toBe('Stat');
     fireEvent.change(label, { target: { value: 'Initiative' } });
@@ -140,6 +145,22 @@ describe('TemplateEditor', () => {
     expect(session.template.fields.at(-1)).toEqual({ key: 'initiative', label: 'Initiative', type: 'text' });
     expect(session.steps).toBe(2);
     expect(document.querySelector('.atlas-te-live')?.textContent).toBe('New field initiative.');
+  });
+
+  it('deletes a block just inserted with Delete, since no label is open', async () => {
+    const { session, frame } = setup();
+    fireEvent.click(frame('divider1'));
+    act(() => frame('divider1').focus());
+    key(frame('divider1'), '/');
+    const search = screen.getByRole('combobox', { name: 'Find a block' });
+    fireEvent.change(search, { target: { value: 'spells' } });
+    key(search, 'Enter');
+    const added = session.template.layout.blocks.at(-1);
+    expect(added?.type).toBe('spells');
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-block-id')).toBe(added?.id));
+    key(frame(added!.id), 'Delete');
+    expect(session.template.layout.blocks.some((block) => block.id === added?.id)).toBe(false);
+    expect(session.steps).toBe(2);
   });
 
   it('closes the insert menu with Escape, inserting nothing', async () => {
@@ -153,21 +174,22 @@ describe('TemplateEditor', () => {
     expect(session.steps).toBe(0);
   });
 
-  it('acts from the block toolbar', () => {
+  it('acts from the block toolbar: five controls, Delete and Add below among them', () => {
     const { session, frame } = setup();
     fireEvent.click(frame('stat-ac1'));
-    const toolbar = screen.getByRole('toolbar', { name: 'Block' });
-    fireEvent.click(within(toolbar).getByText('Move down').closest('button')!);
-    expect(shape(session.template.layout.blocks)).toContain('section1(stat-hp1 stat-ac1)');
+    const toolbar = screen.getByRole('toolbar', { name: 'Stat toolbar' });
+    expect(within(toolbar).getAllByRole('button')).toHaveLength(5);
+    fireEvent.click(within(toolbar).getByText('Delete').closest('button')!);
+    expect(shape(session.template.layout.blocks)).toContain('section1(stat-hp1)');
+    expect(session.steps).toBe(1);
   });
 
-  it('shows the hint until the first insert, and a blank template\'s ghost rows', () => {
+  it('says under the card how to work it, and fills a blank template from its ghost rows', () => {
     const session = new FakeSession(template([]));
     setup(session);
-    expect(screen.getByText('Press / to add a block.')).toBeTruthy();
+    expect(screen.getByText(GESTURE_HINT)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Stats' }));
     expect(session.template.layout.blocks[0]?.type).toBe('row');
-    expect(screen.queryByText('Press / to add a block.')).toBeNull();
   });
 
   it('shows a built-in read-only, with Make a copy, and takes no edit', () => {
@@ -181,10 +203,11 @@ describe('TemplateEditor', () => {
     expect(document.querySelector('.atlas-te-live')?.textContent).toBe('Built-in template. Make a copy to change it.');
   });
 
-  it('says how saving goes, with Retry after a failure', () => {
+  it('saves quietly, and offers Retry after a failure', () => {
     const session = new FakeSession(sampleTemplate());
     setup(session);
-    expect(screen.getByText('Saved')).toBeTruthy();
+    expect(screen.queryByText('Saved')).toBeNull();
+    expect(screen.queryByText('Saving…')).toBeNull();
     act(() => session.patch({ saveState: 'error', saveProblem: "Couldn't save: disk full. Retrying" }));
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(session.flushes).toBe(1);

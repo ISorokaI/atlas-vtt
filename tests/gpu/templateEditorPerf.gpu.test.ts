@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cdp } from 'vitest/browser';
 import type { TemplateBlock, TemplateField } from '../../src/app/statblocks/model/templateTypes';
 import { FakeSession, template } from '../unit/statblocks/template-editor/editorKit';
-import { pointer, pointIn, type Point } from './dragHarness';
+import { gripOf, pointer, pointIn, type Point } from './dragHarness';
 import { frame, frames, mount, useEditorStyles, wait } from './sidePanesHarness';
 
 // Dice links and the header's file actions reach the map view and the token link service, whose
@@ -70,9 +70,10 @@ describe('dragging on a large template', () => {
     expect(document.querySelectorAll('.atlas-te-stage [data-block-id]')).toHaveLength(SECTIONS * (STATS + 1));
     await cdp().send('Performance.enable');
 
-    const from = pointIn(frame('stat0_2'));
+    // A block drags by its gutter handle only (§7.1).
+    const from = pointIn(await gripOf(frame('stat0_2')));
     const stage = document.querySelector('.atlas-te-stage')!.getBoundingClientRect();
-    const scroller = document.querySelector('.atlas-te-canvas__scroller')!.getBoundingClientRect();
+    const scroller = document.querySelector('.atlas-sb-note-panel__scroll')!.getBoundingClientRect();
     pointer(window, 'pointerdown', from);
     pointer(window, 'pointermove', { x: from.x + 6, y: from.y + 6 });
     await frames(2);

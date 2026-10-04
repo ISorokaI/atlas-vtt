@@ -114,6 +114,12 @@ export interface CollectionSettings {
    * one leaves the roles inherited. Unset: Obsidian's location for new notes. Read with `roleFolder`.
    */
   statblockRoleFolders?: StatblockRoleFolders | undefined;
+  /**
+   * The collection's own copy of each built-in statblock template it changed (built-in id →
+   * copy id): changes made from a note on a built-in go there, so a collection holds at most
+   * one copy per built-in. Read with `ownCopyOf`; bookkeeping, not an edit of the GM's.
+   */
+  templateCopies?: Partial<Record<string, string>> | undefined;
   /** Vault paths of the `.base` files whose views the loot roller rolls on. */
   lootBases?: string[];
   /** Named after plain-number item prices, e.g. "gold" or "thorns". */

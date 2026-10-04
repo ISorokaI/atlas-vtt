@@ -1,12 +1,12 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CopySwitchBar } from '../../../../src/app/statblocks/editor/template-editor/BuiltInBar';
+import { CopySwitchBar } from '../../../../src/app/statblocks/editor/template-editor/shell/CopySwitchBar';
 import { copySwitchQuestion, type CopySwitch } from '../../../../src/app/statblocks/editor/template-editor/copySwitch';
 import { bestMatch, findItems, groupItems, insertItems, previewTemplate } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
 import { InsertMenu } from '../../../../src/app/statblocks/editor/template-editor/InsertMenu';
 import { handleTemplateKey, type KeyboardTarget } from '../../../../src/app/statblocks/editor/template-editor/useTemplateKeyboard';
-import { turnIntoTypes } from '../../../../src/app/statblocks/editor/template-editor/toolbarMenu';
+import { turnIntoTypes } from '../../../../src/app/statblocks/editor/template-editor/menus/blockMenu';
 import { FakeSession, sampleTemplate } from './editorKit';
 
 afterEach(cleanup);

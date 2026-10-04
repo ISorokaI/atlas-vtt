@@ -14,14 +14,15 @@ import { collectionFolderPath } from '../assetPaths';
  * (`storeLegacyResources`), which is no edit of the GM's. Nor is what players see. Roles equal
  * to those the settings read from their preset (`presets`, the generic pair without one) are
  * left out too: a bundle writes out a user preset's roles (`withPresetRoles`), which the
- * collection it was made from reads unset.
+ * collection it was made from reads unset. The record of the collection's copies of built-in
+ * templates is bookkeeping, never an edit, and left out as well.
  */
 export function comparableSettings(
   settings: CollectionSettings | undefined,
   presets: readonly SystemPreset[] = BUILT_IN_SYSTEM_PRESETS,
 ): Partial<CollectionSettings> | undefined {
   if (!settings) return settings;
-  const { resources, statblockRoles, ...rest } = settings;
+  const { resources, statblockRoles, templateCopies: _copies, ...rest } = settings;
   const ownResources = resources !== undefined
     && !sameResourceDefinitions(resources, legacyCollectionResources(rest, BUILT_IN_SYSTEM_PRESETS));
   // An empty list is none: the collection reads its preset's

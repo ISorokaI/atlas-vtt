@@ -31,8 +31,10 @@ function shownNote(view: MarkdownView): HTMLElement | null {
 
 /** What the note's text takes with readable line width on: the line and a margin on either side; null while off. */
 export function readableLineOf(note: HTMLElement | null): number | null {
-  if (!note?.hasClass(READABLE_CLASS)) return null;
-  const style = note.win.getComputedStyle(note);
+  // Plain DOM: the element may live in a window without Obsidian's helpers (a popout under test).
+  const win = note?.ownerDocument.defaultView;
+  if (!note || !win || !note.classList.contains(READABLE_CLASS)) return null;
+  const style = win.getComputedStyle(note);
   const line = pixels(style.getPropertyValue('--file-line-width'), FALLBACK_LINE_WIDTH);
   const margin = pixels(style.getPropertyValue('--file-margins'), FALLBACK_MARGIN);
   return Math.round(line + 2 * margin);

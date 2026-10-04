@@ -2,11 +2,13 @@
  * Adding a field to a note's template from the pane (D15, §4.7): through the
  * template's session, so an open template editor shows it at once and it is
  * saved like any template edit. A template other statblocks share changes
- * only when the user says so; otherwise, and always for a built-in, the
- * field goes into a copy that becomes this note's template.
+ * only when the user says so, else the field goes into a copy for this note.
+ * A built-in is never changed: the field goes into the collection's own copy
+ * of it (spec §9.1), made once, which becomes this note's template.
  */
 
 import type { App } from 'obsidian';
+import { ensureOwnCopy } from '../../library/ownCopy';
 import { copyTemplate } from '../../library/templateActions';
 import { TemplateSession } from '../../library/TemplateSession';
 import { templateNotes } from '../../library/templateUsage';
@@ -71,9 +73,12 @@ export function addFieldToTemplate(app: App, entry: LibraryTemplate, choice: Fie
   return added && { ...added, path: entry.path, copied: false };
 }
 
-/** Adds the field to a new copy of the template, for this note alone. */
-export async function addFieldToCopy(app: App, entry: LibraryTemplate, choice: FieldChoice): Promise<AddedField | null> {
-  const copy = await copyTemplate(app, entry.template.id);
+/**
+ * Adds the field to a copy of the template: a built-in's the collection's own
+ * copy (found, or made once), a vault template's a new copy for this note alone.
+ */
+export async function addFieldToCopy(app: App, entry: LibraryTemplate, choice: FieldChoice, collectionId: string | null): Promise<AddedField | null> {
+  const copy = entry.builtIn && collectionId ? await ensureOwnCopy(app, collectionId, entry.template.id) : await copyTemplate(app, entry.template.id);
   const added = addThroughSession(app, copy.id, choice);
   return added && { ...added, path: copy.path, copied: true };
 }

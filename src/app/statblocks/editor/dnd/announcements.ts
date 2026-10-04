@@ -7,7 +7,7 @@
 import { childrenOf } from '../../model/treeEdit';
 import { findBlock } from '../../model/treeQueries';
 import type { TemplateField, TemplateLayout } from '../../model/templateTypes';
-import { blockName, placeName } from '../template-editor/blockNames';
+import { placeName } from '../template-editor/blockNames';
 import type { DropTarget } from './dropTargets';
 
 /** dnd-kit's hidden instructions, read with a block that can be picked up. */
@@ -23,15 +23,11 @@ export function pickedUpText(name: string, keyboard: boolean): string {
 }
 
 /**
- * Where the drop would land: "Section Defenses, position 2 of 3.", "Beside
- * Speed, side by side.", "Into section Defenses.", "Can't go here."
+ * Where the drop would land: "Section Defenses, position 2 of 3.", "Into
+ * section Defenses.", "Can't go here."
  */
 export function targetText(layout: TemplateLayout, fields: readonly TemplateField[], target: DropTarget, movingId: string | null): string {
   if (target.kind === 'refused') return "Can't go here.";
-  if (target.kind === 'beside') {
-    const neighbour = findBlock(layout.blocks, target.blockId)?.block;
-    return `${target.side === 'before' ? 'Before' : 'After'} ${neighbour ? blockName(neighbour, fields) : 'the block'}, side by side.`;
-  }
   const parent = target.parentId === null ? null : findBlock(layout.blocks, target.parentId)?.block ?? null;
   if (target.kind === 'into') return target.parentId === null ? 'Into the empty template.' : `Into ${placeName(parent, fields)}.`;
   const moving = movingId === null ? null : findBlock(layout.blocks, movingId);

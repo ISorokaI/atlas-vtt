@@ -6,7 +6,7 @@ import {
 } from '../../../../src/app/statblocks/editor/template-editor/sampleText';
 import type { TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { FakeSession, sampleTemplate, template } from './editorKit';
-import { key, mountEditor, typeAndLeave } from './sidePanesKit';
+import { key, mountEditor, openDock, typeAndLeave } from './sidePanesKit';
 
 beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
@@ -57,7 +57,7 @@ describe('sample values as text', () => {
 });
 
 function openFields(): HTMLElement {
-  fireEvent.click(screen.getByRole('radio', { name: 'Fields' }));
+  openDock('Properties');
   return document.querySelector<HTMLElement>('.atlas-te-fields')!;
 }
 

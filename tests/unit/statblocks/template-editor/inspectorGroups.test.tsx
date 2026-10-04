@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { findBlock } from '../../../../src/app/statblocks/model/treeQueries';
 import type { TemplateBlock } from '../../../../src/app/statblocks/model/templateTypes';
 import { FakeSession, sampleTemplate, template } from './editorKit';
-import { key, mountEditor, typeAndLeave } from './sidePanesKit';
+import { key, mountEditor, settingsPanel, typeAndLeave } from './sidePanesKit';
 
 beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 /** The inspector's content for the selection now; the one it shows before fades out beside it. */
-const inspector = (): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-te-inspector .atlas-te-insp__fade')].at(-1)!;
+const inspector = (): HTMLElement => settingsPanel();
 const group = (title: string): HTMLElement => {
   const found = [...inspector().querySelectorAll<HTMLElement>('.atlas-te-group')].find((element) => element.querySelector('.atlas-te-group__header')?.textContent === title);
   if (!found) throw new Error(`no group ${title}`);

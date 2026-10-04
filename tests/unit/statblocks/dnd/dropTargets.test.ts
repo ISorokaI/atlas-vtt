@@ -63,13 +63,10 @@ describe('dropTargetAt', () => {
     expect(target).toMatchObject({ kind: 'between', parentId: 'S', index: 1, line: { orientation: 'horizontal', y: 88 } });
   });
 
-  it('makes a row with a block of a stack from its left or right fifth', () => {
-    const left = dropTargetAt(scene(), moving('D', 'divider'), { x: 20, y: 100 });
-    expect(left).toEqual({
-      kind: 'beside', blockId: 'hp', side: 'before', tint: box(0, 92, 150, 112), line: { orientation: 'vertical', x: 0, y: 92, length: 20 },
-    });
-    const right = dropTargetAt(scene(), moving('D', 'divider'), { x: 290, y: 100 });
-    expect(right).toMatchObject({ kind: 'beside', blockId: 'hp', side: 'after', tint: box(150, 92, 300, 112) });
+  it('never makes a row: the edges of a block of a stack are its gaps, as its middle is (no edge zones, spec §7.3)', () => {
+    for (const x of [2, 20, 150, 290, 298]) {
+      expect(dropTargetAt(scene(), moving('D', 'divider'), { x, y: 98 })).toMatchObject({ kind: 'between', parentId: 'S' });
+    }
   });
 
   it('draws a vertical line of the row\'s height between the blocks of a row', () => {

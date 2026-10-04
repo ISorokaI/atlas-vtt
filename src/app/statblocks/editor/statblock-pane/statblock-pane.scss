@@ -101,12 +101,12 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
     text-align: center;
   }
 
-  // A line about the statblock above its blocks: one step down the radius scale.
+  // A line about the statblock above its card, in the body's gap: one step down the radius scale.
   .atlas-sb-pane-bar {
     @include atlas-flex-row($spacing-s);
     flex-wrap: wrap;
     justify-content: space-between;
-    margin: 0 0 $spacing-l;
+    margin: 0;
     padding: $spacing-s;
     border-radius: $radius-l;
     background: var(--background-secondary);
@@ -126,37 +126,6 @@ $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--in
   // ── States ──────────────────────────────────────────────────────────────
   .atlas-sb-pane-state {
     @include atlas-flex-col($spacing-l);
-  }
-
-  // The card a note without a statblock would have: dashed, with blanks.
-  .atlas-sb-pane-ghost {
-    @include atlas-flex-col($spacing-m);
-    align-items: center;
-    padding: $spacing-l;
-    border: $border-width-s dashed var(--background-modifier-border);
-    border-radius: $radius-xl;
-  }
-
-  .atlas-sb-pane-ghost__line {
-    align-self: stretch;
-    height: $spacing-s;
-    border-radius: $radius-full;
-    background: var(--background-modifier-hover);
-
-    &--title {
-      height: $spacing-m;
-      width: 60%;
-    }
-
-    &--short {
-      width: 40%;
-    }
-  }
-
-  .atlas-sb-pane-ghost__text {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: $font-ui-small;
   }
 
   .atlas-sb-pane-live {

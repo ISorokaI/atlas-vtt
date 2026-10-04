@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { Scope, setIcon, type App, type MarkdownView } from 'obsidian';
+import { setIcon, type App, type MarkdownView } from 'obsidian';
 import { noteName } from '../../../utils/pathUtils';
 import { STATBLOCK_NOTE_CLASS } from '../../notes/openEditors';
 import { observeResize } from '../../../utils/observeResize';
@@ -9,6 +9,7 @@ import type { PendingCommit, StatblockPaneActions } from '../statblock-pane/pane
 import { NotePanelRoot } from './NotePanelRoot';
 import { measureNoteRoom, watchNoteRoom } from './noteRoom';
 import { STACK_BELOW, panelWidth, type PanelPrefs } from './panelPrefs';
+import { PanelScope } from './panelScope';
 
 /** On the view's container while its statblock shows: the content becomes a row, the note's fence shrinks. */
 export const NOTE_PANEL_CLASS = STATBLOCK_NOTE_CLASS;
@@ -58,16 +59,22 @@ export class NoteStatblockPanel {
   private focusRequest = 0;
   private readonly pendingCommit: PendingCommit = { current: null };
   private readonly teardown: Array<() => void> = [];
-  private readonly scope: Scope;
-  private scopePushed = false;
+  private readonly keys: PanelScope;
   private readonly paneActions: StatblockPaneActions;
 
   constructor(readonly view: MarkdownView, private path: string, private readonly context: PanelContext) {
-    this.scope = new Scope(context.app.scope);
-    this.scope.register(['Mod'], 'z', () => this.historyKey('undo'));
-    this.scope.register(['Mod', 'Shift'], 'z', () => this.historyKey('redo'));
+    this.keys = new PanelScope(context.app, {
+      host: () => this.host,
+      noteHistory: (kind) => this.context.services.writer[kind](this.path),
+      noteName: () => noteName(this.path),
+      say: (text) => {
+        this.announcement = text;
+        this.render();
+      },
+    });
     this.paneActions = {
       ...context.actions,
+      registerHistory: (router) => this.keys.setRouter(router),
       showProperties: () => {
         this.propertiesShown = true;
         this.update();
@@ -143,12 +150,7 @@ export class NoteStatblockPanel {
     const host = contentEl.createDiv({ cls: ['atlas-vtt-plugin', 'atlas-sb-note-panel'] });
     this.host = host;
     this.root = createRoot(host);
-    const onFocusIn = (): void => this.pushScope();
-    const onFocusOut = (event: FocusEvent): void => {
-      if (!host.contains(event.relatedTarget as Node | null)) this.popScope();
-    };
-    host.addEventListener('focusin', onFocusIn);
-    host.addEventListener('focusout', onFocusOut);
+    const stopKeys = this.keys.watch(host);
     // Quitting closes no view, so the writer's last flush commits the text being typed (§8.5).
     const releasePending = this.context.services.writer.registerPending(() => this.pendingCommit.current?.() ?? Promise.resolve());
     const measure = (): void => {
@@ -163,8 +165,7 @@ export class NoteStatblockPanel {
     });
     const stopWatching = watchNoteRoom(this.view, () => this.resizeWithView());
     this.teardown.push(() => {
-      host.removeEventListener('focusin', onFocusIn);
-      host.removeEventListener('focusout', onFocusOut);
+      stopKeys();
       releasePending();
       stopObserving();
       stopWatching();
@@ -196,7 +197,7 @@ export class NoteStatblockPanel {
     const { host, root } = this;
     if (!host) return;
     this.commitPending();
-    this.popScope();
+    this.keys.pop();
     for (const stop of this.teardown.splice(0)) stop();
     this.host = null;
     this.root = null;
@@ -220,33 +221,6 @@ export class NoteStatblockPanel {
         console.error(`[Atlas] Saving the statblock of ${path} failed:`, error);
       }
     })();
-  }
-
-  /** The panel's keys apply only while focus is inside it. */
-  private pushScope(): void {
-    if (this.scopePushed) return;
-    this.scopePushed = true;
-    this.context.app.keymap.pushScope(this.scope);
-  }
-
-  private popScope(): void {
-    if (!this.scopePushed) return;
-    this.scopePushed = false;
-    this.context.app.keymap.popScope(this.scope);
-  }
-
-  /** Mod+Z and Mod+Shift+Z: the note's own history; a text field of the panel keeps its own undo. */
-  private historyKey(kind: 'undo' | 'redo'): boolean {
-    const active = this.host?.doc.activeElement;
-    if (active && this.host?.contains(active)
-      && (active.instanceOf(HTMLInputElement) || active.instanceOf(HTMLTextAreaElement))) return true;
-    const done = this.context.services.writer[kind](this.path);
-    const name = noteName(this.path);
-    this.announcement = done
-      ? `${kind === 'undo' ? 'Undid' : 'Redid'} in ${name}.`
-      : `Switch ${name} to editing view to ${kind}.`;
-    this.render();
-    return false;
   }
 
   private render(): void {

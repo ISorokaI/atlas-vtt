@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// The template editor (§7.4, §7.10)
+// The template editor (§2)
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported by TemplateEditor.tsx, so not inside the `.atlas-vtt-plugin` scope of
 // styles/main.scss: the rules take that scope themselves. The view's element
@@ -9,14 +9,7 @@
 @use '../../../../../styles/mixins' as *;
 @use 'te-canvas';
 @use 'te-floating';
-@use 'te-header';
-@use 'te-widths';
 @use 'te-dialogs';
-
-$left-width: 260px;
-$inspector-width: 280px;
-$rail-width: 40px;
-$canvas-min-width: 320px;
 
 .atlas-vtt-plugin.atlas-template-editor-view {
   padding: 0;
@@ -29,24 +22,18 @@ $canvas-min-width: 320px;
     height: 100%;
   }
 
+  // The note view's row fills the editor; the dock and the panels float over it.
   .atlas-te {
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    overflow: hidden;
   }
 
-  // Padding equals the gap between the header and the bars under it.
-  .atlas-te-top {
-    @include atlas-flex-col($spacing-s);
-    align-items: stretch;
-    padding: $spacing-s;
-    border-bottom: $border-width-s solid var(--divider-color);
-  }
-
-  // ── Bars about the template ─────────────────────────────────────────────
-  // One step down the radius scale inside the top area; padding equals the gap.
+  // ── Lines about the template above the card ─────────────────────────────
+  // In the panel's state-bar slot, one step down the radius scale; padding equals the gap.
   .atlas-te-bar {
     @include atlas-flex-col($spacing-s);
     padding: $spacing-s;
@@ -88,72 +75,6 @@ $canvas-min-width: 320px;
     padding-inline-start: $spacing-l;
     overflow-y: auto;
     @include atlas-scrollbar;
-  }
-
-  // ── Body: left pane, canvas, inspector ──────────────────────────────────
-  .atlas-te-body {
-    display: grid;
-    grid-template-columns: minmax($canvas-min-width, 1fr);
-    flex: 1;
-    min-height: 0;
-  }
-
-  .atlas-te[data-has-left] .atlas-te-body {
-    grid-template-columns: $left-width minmax($canvas-min-width, 1fr);
-  }
-
-  .atlas-te[data-has-inspector] .atlas-te-body {
-    grid-template-columns: minmax($canvas-min-width, 1fr) $inspector-width;
-  }
-
-  .atlas-te[data-has-left][data-has-inspector] .atlas-te-body {
-    grid-template-columns: $left-width minmax($canvas-min-width, 1fr) $inspector-width;
-  }
-
-  // Narrow (§7.4): the left pane folds into a rail whose tabs open floating
-  // panels, and the inspector becomes a popover beside the block. Its slot then
-  // takes no room; what it shows positions itself.
-  .atlas-te[data-layout='narrow'][data-has-left] .atlas-te-body {
-    grid-template-columns: $rail-width minmax($canvas-min-width, 1fr);
-  }
-
-  .atlas-te[data-layout='narrow'] .atlas-te-inspector {
-    position: absolute;
-    width: 0;
-    height: 0;
-    overflow: visible;
-    border: none;
-  }
-
-  .atlas-te-left,
-  .atlas-te-inspector {
-    min-height: 0;
-    overflow-y: auto;
-    background: var(--background-secondary);
-    @include atlas-scrollbar;
-  }
-
-  .atlas-te-left {
-    border-inline-end: $border-width-s solid var(--divider-color);
-  }
-
-  .atlas-te-inspector {
-    border-inline-start: $border-width-s solid var(--divider-color);
-  }
-
-  .atlas-te-main {
-    display: flex;
-    flex-direction: column;
-    min-width: $canvas-min-width;
-    min-height: 0;
-  }
-
-  .atlas-te-hint {
-    margin: 0;
-    padding: $spacing-s;
-    color: var(--text-muted);
-    font-size: $font-ui-smaller;
-    text-align: center;
   }
 
   // What floats over the editor (the toolbar, the insert menu) is drawn here.

@@ -1,10 +1,8 @@
 import React, { useState, useSyncExternalStore } from 'react';
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { vi } from 'vitest';
 import { TooltipProvider } from '../../../../src/app/packages/components/primitives/tooltip';
 import { TemplateEditorContext, type TemplateEditorContextValue } from '../../../../src/app/statblocks/editor/template-editor/editorContext';
-import { LeftPanel } from '../../../../src/app/statblocks/editor/template-editor/LeftPanel';
-import { Inspector } from '../../../../src/app/statblocks/editor/template-editor/inspector/Inspector';
 import type { BlockSelection } from '../../../../src/app/statblocks/editor/template-editor/selection';
 import { TemplateEditor, type TemplateEditorHost } from '../../../../src/app/statblocks/editor/template-editor/TemplateEditor';
 import { FakeSession, sampleTemplate } from './editorKit';
@@ -17,16 +15,8 @@ export interface Mounted {
   frame: (id: string) => HTMLElement;
 }
 
-/**
- * The template editor with the real left pane and inspector. `narrow` makes
- * the editor measure 800 px, below the width where both fold.
- */
-export function mountEditor(session = new FakeSession(sampleTemplate()), options: { narrow?: boolean } = {}): Mounted {
-  if (options.narrow) {
-    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
-      return this.classList.contains('atlas-te') ? 800 : 0;
-    });
-  }
+/** The template editor with its real dock, dock panels and Settings panel; `dock` opens one of its panels. */
+export function mountEditor(session = new FakeSession(sampleTemplate()), options: { dock?: string } = {}): Mounted {
   render(
     <TooltipProvider>
       <div className="atlas-vtt-plugin">
@@ -34,15 +24,14 @@ export function mountEditor(session = new FakeSession(sampleTemplate()), options
           session={session}
           host={host}
           previewPath={null}
-          onPreviewPathChange={vi.fn()}
+          onShowWithChange={vi.fn()}
           collectionId={null}
           onCollectionChange={vi.fn()}
-          leftPanel={LeftPanel}
-          inspector={Inspector}
         />
       </div>
     </TooltipProvider>,
   );
+  if (options.dock) openDock(options.dock);
   const frame = (id: string): HTMLElement => {
     const element = document.querySelector<HTMLElement>(`.atlas-te-stage [data-block-id="${id}"]`);
     if (!element) throw new Error(`no frame ${id}`);
@@ -51,10 +40,33 @@ export function mountEditor(session = new FakeSession(sampleTemplate()), options
   return { session, frame };
 }
 
+/** Opens a dock panel by its button's name (Add, Structure, Properties, Template); returns the panel. */
+export function openDock(name: string): HTMLElement {
+  const dock = document.querySelector<HTMLElement>('.atlas-te-dock');
+  if (!dock) throw new Error('no dock');
+  const button = [...dock.querySelectorAll<HTMLButtonElement>('button')].find((element) => element.textContent === name);
+  if (!button) throw new Error(`no dock button ${name}`);
+  if (!button.classList.contains('is-active')) act(() => button.click());
+  const panel = document.querySelector<HTMLElement>('.atlas-te-dock-panel');
+  if (!panel) throw new Error(`no dock panel ${name}`);
+  return panel;
+}
+
+/** The Settings panel's content for the selection now, opened with Shift+Enter if it is closed; the one before fades out beside it. */
+export function settingsPanel(): HTMLElement {
+  if (!document.querySelector('.atlas-te-settings')) {
+    const root = document.querySelector<HTMLElement>('.atlas-te');
+    if (!root) throw new Error('no editor');
+    fireEvent.keyDown(root, { key: 'Enter', shiftKey: true });
+  }
+  const content = [...document.querySelectorAll<HTMLElement>('.atlas-te-settings .atlas-te-insp__fade')].at(-1);
+  if (!content) throw new Error('no settings');
+  return content;
+}
+
 export interface ContextOptions {
   collectionKeys?: ReadonlyMap<string, number>;
   selection?: BlockSelection;
-  layout?: 'wide' | 'narrow';
 }
 
 /** Renders a part inside an editor context of its own: a session's live snapshot and the given collection keys. */
@@ -75,7 +87,7 @@ export function renderInEditor(session: FakeSession, ui: React.ReactElement, opt
       announce: vi.fn(),
       collectionId: null,
       collectionKeys: options.collectionKeys ?? new Map(),
-      layout: options.layout ?? 'wide',
+      openSettings: vi.fn(),
     };
     return (
       <TooltipProvider>

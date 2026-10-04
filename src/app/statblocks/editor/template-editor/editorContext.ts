@@ -5,13 +5,10 @@ import type { BlockSelection } from './selection';
 import type { EditorSession, SessionSnapshot } from './sessionTypes';
 import type { CollectionFieldKeys } from './useCollectionFieldKeys';
 
-/** Below this width of the view the left pane folds into a rail and the inspector into a popover (§7.4). */
-export const NARROW_EDITOR_WIDTH = 900;
-
 /**
- * What the template editor shares with the parts that sit beside the canvas:
- * the left pane (Blocks, Outline, Fields) and the inspector, which read and
- * change the same session and the same selection.
+ * What the template editor shares with the parts that float beside the card:
+ * the dock's panels (Add, Structure, Properties, Template) and the Settings
+ * panel, which read and change the same session and the same selection.
  */
 export interface TemplateEditorContextValue {
   app: App | undefined;
@@ -29,8 +26,8 @@ export interface TemplateEditorContextValue {
   /** The collection context (§7.1): its notes' keys, its roles in questions. */
   collectionId: string | null;
   collectionKeys: CollectionFieldKeys;
-  /** `narrow` below `NARROW_EDITOR_WIDTH`. */
-  layout: 'wide' | 'narrow';
+  /** Opens the Settings panel for the selection (§2.7). */
+  openSettings: () => void;
 }
 
 export const TemplateEditorContext = createContext<TemplateEditorContextValue | null>(null);

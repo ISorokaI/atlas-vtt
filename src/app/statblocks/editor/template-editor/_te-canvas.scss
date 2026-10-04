@@ -12,40 +12,12 @@ $plus-size: 20px;
 $tag-height: 18px;
 
 .atlas-vtt-plugin {
-  .atlas-te-canvas {
-    position: relative;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-height: 0;
-    background: var(--background-primary);
-  }
-
-  // Padding equals the gap between the label and the picker.
-  .atlas-te-preview-bar {
-    @include atlas-flex-row($spacing-s);
-    padding: $spacing-s;
-  }
-
-  .atlas-te-canvas__scroller {
-    flex: 1;
-    min-height: 0;
-    padding: $spacing-l;
-    overflow: auto;
-    @include atlas-scrollbar;
-  }
-
   .atlas-te-stage {
     position: relative;
     width: 100%;
     margin-inline: auto;
     border-radius: $radius-xl;
     outline: none;
-
-    &[data-sized] {
-      width: var(--atlas-te-card-width);
-      max-width: none;
-    }
 
     &:focus-visible {
       outline: 2px solid var(--background-modifier-border-focus);
@@ -61,7 +33,7 @@ $tag-height: 18px;
     outline-offset: $chrome-offset;
     cursor: default;
 
-    &[data-te-hover] {
+    &[data-sb-hover] {
       outline: $border-width-s solid var(--background-modifier-border-hover);
     }
 

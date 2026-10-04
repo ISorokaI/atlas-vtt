@@ -3,7 +3,7 @@ import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { SRD_5_2_1_SOURCE } from '../../../../src/app/statblocks/presets/attributions';
 import { FakeSession, sampleTemplate } from './editorKit';
-import { key, mountEditor, typeAndLeave } from './sidePanesKit';
+import { key, mountEditor, settingsPanel, typeAndLeave } from './sidePanesKit';
 
 beforeAll(() => {
   MotionGlobalConfig.skipAnimations = true;
@@ -17,7 +17,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const settings = (): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-te-inspector .atlas-te-insp__fade')].at(-1)!;
+const settings = (): HTMLElement => settingsPanel();
 
 /**
  * jsdom has no PointerEvent and no pointer capture: Radix reads the pointer's

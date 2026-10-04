@@ -55,7 +55,7 @@ export function useAddField(input: AddFieldInput): AddField {
     setStep({ kind: 'adding' });
     let result: AddedField | null = null;
     try {
-      result = where === 'template' ? addFieldToTemplate(app, entry, choice) : await addFieldToCopy(app, entry, choice);
+      result = where === 'template' ? addFieldToTemplate(app, entry, choice) : await addFieldToCopy(app, entry, choice, collectionId);
       if (result?.copied) {
         const outcome = await writer.write(notePath, [templateKeyPatch(record, result.templateId)]);
         if (outcome.problem || outcome.conflicts.length) announce('The copy was made, but this statblock could not switch to it.');

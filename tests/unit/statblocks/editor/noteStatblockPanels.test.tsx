@@ -231,7 +231,15 @@ describe('the statblock beside its note', () => {
     expect(undo.func()).toBe(true);
     expect(harness.writer.undo).not.toHaveBeenCalled();
 
-    fireEvent.focusOut(panel, { relatedTarget: view.contentEl.firstElementChild });
+    // A menu the panel opened is still the panel's: its scope stays while focus is in it.
+    const surface = panel.querySelector('[data-atlas-surface]')!.getAttribute('data-atlas-surface')!;
+    const menu = document.body.appendChild(document.createElement('div'));
+    menu.setAttribute('data-atlas-owner', surface);
+    fireEvent.focusIn(menu);
+    expect(keymap.scopes).toHaveLength(1);
+    menu.remove();
+
+    fireEvent.focusIn(view.contentEl.firstElementChild!);
     expect(keymap.scopes).toHaveLength(0);
   });
 

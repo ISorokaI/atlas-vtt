@@ -18,7 +18,11 @@ export type TemplateEditorProblem =
 export interface TemplateEditorSurfaceProps extends Omit<TemplateEditorProps, 'session'> {
   session: EditorSession | null;
   problem: TemplateEditorProblem | null;
-  /** Raised for each "select this block" request: the editor starts again with that selection. */
+  /**
+   * Raised for each "select this block" request: the editor starts again with
+   * that selection. The editor is kept by the view, never by the session, so
+   * a session swapped under it (a built-in's copy) keeps what is selected.
+   */
   selectRequest?: number | undefined;
 }
 
@@ -34,7 +38,7 @@ function problemText(problem: Exclude<TemplateEditorProblem, { kind: 'loading' }
  * why the file cannot be edited.
  */
 export function TemplateEditorSurface({ session, problem, selectRequest = 0, ...props }: TemplateEditorSurfaceProps): React.JSX.Element {
-  if (session) return <TemplateEditor key={`${session.getSnapshot().id}#${selectRequest}`} session={session} {...props} />;
+  if (session) return <TemplateEditor key={selectRequest} session={session} {...props} />;
   if (!problem || problem.kind === 'loading') {
     return (
       <div className="atlas-te atlas-te--waiting">

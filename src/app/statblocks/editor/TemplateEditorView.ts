@@ -11,15 +11,10 @@ import { openTemplateEditor } from './openTemplateEditor';
 import type { TemplateEditorProblem } from './template-editor/TemplateEditorSurface';
 import type { TemplateEditorHost } from './template-editor/TemplateEditor';
 import type { KeyHandler } from './template-editor/useTemplateKeyboard';
+import { showWithState, type ShowWith, type ShowWithMode } from './template-editor/shell/showWith';
 import {
   TEMPLATE_EDITOR_VIEW_TYPE, readTemplateEditorEphemeral, readTemplateEditorState, type TemplateEditorEphemeral,
 } from './templateEditorState';
-
-/** What the plugin gives every template editor: the left pane and the inspector, built elsewhere. */
-export interface TemplateEditorViewDeps {
-  leftPanel?: React.ComponentType | undefined;
-  inspector?: React.ComponentType | undefined;
-}
 
 /**
  * Keys Obsidian or the browser would take before any listener of the editor
@@ -41,6 +36,7 @@ export class TemplateEditorView extends FileView {
   allowNoFile = true;
   private builtInId: TemplateId | null = null;
   private previewPath: string | null = null;
+  private previewMode: ShowWithMode | null = null;
   private collectionId: string | null = null;
   private ephemeral: TemplateEditorEphemeral = {};
   private selectRequests = 0;
@@ -54,7 +50,7 @@ export class TemplateEditorView extends FileView {
     this.keyHandler = handler;
   };
 
-  constructor(leaf: WorkspaceLeaf, private readonly deps: TemplateEditorViewDeps = {}) {
+  constructor(leaf: WorkspaceLeaf) {
     super(leaf);
     this.scope = new Scope(this.app.scope);
     for (const [modifiers, key] of SCOPED_KEYS) {
@@ -97,7 +93,7 @@ export class TemplateEditorView extends FileView {
   }
 
   getState(): Record<string, unknown> {
-    const own = { previewPath: this.previewPath, collectionId: this.collectionId };
+    const own = { previewPath: this.previewPath, previewMode: this.previewMode, collectionId: this.collectionId };
     return this.builtInId ? { templateId: this.builtInId, ...own } : { ...super.getState(), ...own };
   }
 
@@ -105,6 +101,7 @@ export class TemplateEditorView extends FileView {
     const next = readTemplateEditorState(state);
     this.builtInId = next.templateId;
     this.previewPath = next.previewPath;
+    this.previewMode = next.previewMode;
     this.collectionId = next.collectionId;
     await super.setState(state, result);
     this.resolve();
@@ -194,7 +191,8 @@ export class TemplateEditorView extends FileView {
           problem: this.problem,
           host: this.host,
           previewPath: this.previewPath,
-          onPreviewPathChange: (path) => this.changeState({ previewPath: path }),
+          previewMode: this.previewMode,
+          onShowWithChange: (choice: ShowWith) => this.changeState(showWithState(choice)),
           collectionId: this.collectionId,
           onCollectionChange: (collectionId) => this.changeState({ collectionId }),
           initialSelection: select ? [select] : undefined,
@@ -204,16 +202,15 @@ export class TemplateEditorView extends FileView {
             this.ephemeral = { ...this.ephemeral, copiedFrom: undefined };
             this.render();
           },
-          leftPanel: this.deps.leftPanel,
-          inspector: this.deps.inspector,
           registerKeys: this.registerKeys,
         },
       },
     }));
   }
 
-  private changeState(change: { previewPath?: string | null; collectionId?: string }): void {
+  private changeState(change: { previewPath?: string | null; previewMode?: ShowWithMode | null; collectionId?: string }): void {
     if (change.previewPath !== undefined) this.previewPath = change.previewPath;
+    if (change.previewMode !== undefined) this.previewMode = change.previewMode;
     if (change.collectionId !== undefined) this.collectionId = change.collectionId;
     this.app.workspace.requestSaveLayout();
     this.render();

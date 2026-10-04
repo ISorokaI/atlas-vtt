@@ -1,11 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import type { App } from 'obsidian';
 import type { StatblockTemplate } from '../../model/templateTypes';
-import { BlockChromeContext } from '../../render/blockChrome';
-import { StatblockSheet } from '../../render/StatblockSheet';
-import { ValueEditingContext } from '../../render/valueSlot';
 import { isEmptyValue } from '../../values/emptyValue';
 import { readField, type FieldRecord } from '../../values/fieldValues';
+import { PanelCard } from '../panel-frame/PanelFrame';
 import type { PaneServices } from '../paneServices';
 import { PaneEditContext } from './paneEditContext';
 import type { PendingCommit } from './paneTypes';
@@ -23,9 +21,7 @@ export interface PaneCanvasProps {
   record: FieldRecord;
   writable: boolean;
   pendingCommit: PendingCommit;
-  /** Shown above the blocks, inside the card. */
-  header?: React.ReactNode;
-  /** Shown under the blocks, inside the card: "Add a field…". */
+  /** Shown under the card: "Add a field…". */
   footer?: React.ReactNode;
   /** Raised to move focus to the first empty value (a statblock just created); 0 never does. */
   focusRequest: number;
@@ -49,7 +45,7 @@ export interface PaneCanvasProps {
  * seams, so the card is drawn by the same code the map and the DM screen use.
  */
 export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
-  const { app, notePath, template, templateName, record, header, footer, focusRequest, handledFocusRequest, writable } = props;
+  const { app, notePath, template, templateName, record, footer, focusRequest, handledFocusRequest, writable } = props;
   const cardRef = useRef<HTMLDivElement>(null);
   const editor = usePaneEditor({ ...props, cardRef });
   const { spots } = editor.controller;
@@ -65,23 +61,17 @@ export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
 
   return (
     <PaneEditContext.Provider value={editor.controller}>
-      <div ref={cardRef} className="atlas-sb-pane-card" data-columns={template.layout.maxColumns}>
-        <BlockChromeContext.Provider value={editor.chrome}>
-          <ValueEditingContext.Provider value={editor.valueEditing}>
-            <StatblockSheet
-              template={template}
-              name={templateName}
-              fields={record}
-              variant="full"
-              mode="editing"
-              app={app}
-              sourcePath={notePath}
-              header={header}
-              footer={footer}
-            />
-          </ValueEditingContext.Provider>
-        </BlockChromeContext.Provider>
-      </div>
+      <PanelCard
+        ref={cardRef}
+        chrome={editor.chrome}
+        valueEditing={editor.valueEditing}
+        template={template}
+        name={templateName}
+        record={record}
+        app={app}
+        sourcePath={notePath}
+      />
+      {footer}
       {props.children}
     </PaneEditContext.Provider>
   );

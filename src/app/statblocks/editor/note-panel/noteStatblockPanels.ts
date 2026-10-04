@@ -13,6 +13,7 @@ import { cachedFrontmatter, frontmatterSource } from '../../notes/statblockSourc
 import type { PaneServices } from '../paneServices';
 import { NoteStatblockPanel, type PanelContext, type PanelRequest } from './NoteStatblockPanel';
 import { loadPanelPrefs, savePanelPrefs, type PanelPrefs } from './panelPrefs';
+import { setPanelPrefsSource, type PanelPrefsSource } from './panelPrefsSource';
 
 export interface NoteStatblockPanelsDeps {
   services: (app: App) => PaneServices;
@@ -23,7 +24,7 @@ const managers = new WeakMap<App, NoteStatblockPanels>();
 /** How long a request waits for the panel of a note Obsidian has not read yet (a note just created). */
 const REQUEST_WAIT_MS = 10_000;
 
-export class NoteStatblockPanels {
+export class NoteStatblockPanels implements PanelPrefsSource {
   /** The app's manager while Atlas is loaded; null before it starts and after it is released. */
   static forApp(app: App): NoteStatblockPanels | null {
     return managers.get(app) ?? null;
@@ -37,6 +38,8 @@ export class NoteStatblockPanels {
   private prefs: PanelPrefs;
   /** The width of the edge being dragged; stored only once it is let go. */
   private dragWidth: number | null = null;
+  /** Hosts outside a note view that show the panel too (the template editor). */
+  private readonly prefsListeners = new Set<() => void>();
 
   constructor(private readonly app: App, deps: NoteStatblockPanelsDeps) {
     this.prefs = loadPanelPrefs(app);
@@ -59,6 +62,7 @@ export class NoteStatblockPanels {
    */
   start(): void {
     managers.set(this.app, this);
+    setPanelPrefsSource(this.app, this);
     const { workspace, metadataCache } = this.app;
     const refresh = (): void => this.refresh();
     const workspaceRefs: EventRef[] = [
@@ -82,7 +86,10 @@ export class NoteStatblockPanels {
     for (const panel of this.panels.values()) panel.detach();
     this.panels.clear();
     this.waiting.clear();
-    if (managers.get(this.app) === this) managers.delete(this.app);
+    if (managers.get(this.app) === this) {
+      managers.delete(this.app);
+      setPanelPrefsSource(this.app, null);
+    }
   }
 
   /** Decorates every view of a native statblock and undecorates every other one. */
@@ -128,6 +135,27 @@ export class NoteStatblockPanels {
     this.store({ ...this.prefs, hidden });
   }
 
+  panelPrefs(): PanelPrefs {
+    return this.context.prefs();
+  }
+
+  setPanelWidth(width: number, done: boolean): void {
+    this.setWidth(width, done);
+  }
+
+  cancelPanelResize(): void {
+    this.cancelResize();
+  }
+
+  resetPanelWidth(): void {
+    this.context.resetWidth();
+  }
+
+  onPrefsChange(listener: () => void): () => void {
+    this.prefsListeners.add(listener);
+    return () => { this.prefsListeners.delete(listener); };
+  }
+
   private setWidth(width: number, done: boolean): void {
     if (done) this.store({ ...this.prefs, width });
     else this.dragWidth = width;
@@ -143,6 +171,7 @@ export class NoteStatblockPanels {
     this.prefs = prefs;
     savePanelPrefs(this.app, prefs);
     for (const panel of this.panels.values()) panel.update();
+    for (const listener of this.prefsListeners) listener();
   }
 
   private evaluate(view: MarkdownView): NoteStatblockPanel | null {

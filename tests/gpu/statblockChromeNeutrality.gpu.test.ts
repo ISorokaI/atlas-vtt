@@ -6,8 +6,9 @@ import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import { allBuiltInTemplates } from '../../src/app/statblocks/library/builtInTemplates';
 import { sampleRecord } from '../../src/app/statblocks/model/sampleValues';
-import { StatblockSheet } from '../../src/app/statblocks/render/StatblockSheet';
 import { Canvas } from '../../src/app/statblocks/editor/template-editor/Canvas';
+import { EDITOR_VALUE_EDITING } from '../../src/app/statblocks/editor/template-editor/editorValueSlot';
+import { PanelCard } from '../../src/app/statblocks/editor/panel-frame/PanelFrame';
 import '../../src/app/statblocks/editor/template-editor/template-editor.scss';
 import type { BlockSelection } from '../../src/app/statblocks/editor/template-editor/selection';
 import type { BuiltInTemplate } from '../../src/app/statblocks/model/templateTypes';
@@ -23,10 +24,11 @@ vi.mock('../../src/app/services/statblockDiceLinks', () => ({
 vi.mock('../../src/app/statblocks/render/shared/useStatblockDiceRolling', () => ({ useStatblockDiceRolling: () => undefined }));
 
 /**
- * Chrome never touches layout (§7.6, spike S6): every block of every built-in
- * stands where it stands on the runtime card, at three widths, whether the
- * template editor dresses the card or not. Both draw the editing mode with
- * sample values, so the chrome is the only difference.
+ * Chrome never touches layout (§7.6, spike S6, §17 A3): every block of every
+ * built-in stands where it stands on the card as the template editor draws it
+ * undressed (the note view's card, `statblockParity` holds that), at three
+ * widths, whether the editor's chrome dresses it or not. Both draw the
+ * editing mode with sample values, so the chrome is the only difference.
  */
 const THEME = `
   body { margin: 0; font: 13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; --background-primary: #1e1e1e; --background-secondary: #262626;
@@ -58,11 +60,11 @@ function Pair({ builtIn, width, selection }: { builtIn: BuiltInTemplate; width: 
   const record = sampleRecord(builtIn.template);
   return h('div', { className: 'atlas-vtt-plugin' },
     h('div', { className: 'runtime', style: { width } },
-      h(StatblockSheet, { template: builtIn.template, name: builtIn.name, fields: record, variant: 'full', mode: 'editing' })),
+      h(PanelCard, { template: builtIn.template, name: builtIn.name, record, app: undefined, sourcePath: undefined, valueEditing: EDITOR_VALUE_EDITING, shownWidth: width })),
     h('div', { className: 'editor', style: { width: width + 200 } },
       h(Canvas, {
         stageRef, template: builtIn.template, templateName: builtIn.name, record, selection, editable: true, label: null,
-        washId: null, onWashed: noop, onSelect: noop, onEditLabel: noop, onInsertAt: noop, focusRequest: { id: null, count: 0 }, width,
+        washId: null, onWashed: noop, onSelect: noop, onEditLabel: noop, onInsertAt: noop, focusRequest: { id: null, count: 0 }, shownWidth: width,
       })));
 }
 
@@ -103,7 +105,7 @@ describe('the template editor\'s chrome', () => {
   it.each(cases)('leaves them there with a block selected and hovered too: %s at %ipx', (_id, width, builtIn) => {
     const first = builtIn.template.layout.blocks[0]?.id;
     compare(first ? [first] : [], builtIn, width);
-    for (const frame of document.querySelectorAll('.editor [data-block-id]')) frame.setAttribute('data-te-hover', '');
+    for (const frame of document.querySelectorAll('.editor [data-block-id]')) frame.setAttribute('data-sb-hover', '');
     const runtime = blockBoxes(document.querySelector('.runtime .atlas-statblock')!);
     const editor = blockBoxes(document.querySelector('.editor .atlas-statblock')!);
     for (const [id, box] of runtime) expect(Math.abs(editor.get(id)!.y - box.y)).toBeLessThanOrEqual(TOLERANCE);

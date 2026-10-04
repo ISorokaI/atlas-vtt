@@ -27,14 +27,6 @@ describe('applyDrop', () => {
     expect(treeTargetOf(sampleTemplate().layout, { kind: 'between', parentId: null, index: 3, line: LINE }, 'title001')).toEqual({ parentId: null, index: 2 });
   });
 
-  it('makes a row of a block dropped beside another, in one step', () => {
-    const session = new FakeSession(sampleTemplate());
-    applyDrop(session, { kind: 'block', id: 'divider1' }, { kind: 'beside', blockId: 'stat-hp1', side: 'before', line: LINE, tint: box(0, 1) });
-    const section = session.template.layout.blocks[1];
-    expect(section && 'blocks' in section ? shape(section.blocks) : '').toMatch(/^stat-ac1 \w+\(divider1 stat-hp1\)$/);
-    expect(session.steps).toBe(1);
-  });
-
   it('inserts a palette block where it is dropped and opens its label, as a click would', () => {
     const session = new FakeSession(sampleTemplate());
     const outcome = applyDrop(session, { kind: 'item', item: { kind: 'block', type: 'stat', label: 'Stat', group: 'basics' } }, { kind: 'into', parentId: null, outline: box(0, 1) });
@@ -95,7 +87,6 @@ describe('drag announcements', () => {
   it('says where the block would go', () => {
     expect(targetText(layout, fields, { kind: 'between', parentId: 'section1', index: 1, line: LINE }, 'divider1')).toBe('Section Defenses, position 2 of 3.');
     expect(targetText(layout, fields, { kind: 'between', parentId: null, index: 3, line: LINE }, 'title001')).toBe('The top level, position 3 of 4.');
-    expect(targetText(layout, fields, { kind: 'beside', blockId: 'stat-ac1', side: 'after', line: LINE, tint: box(0, 1) }, null)).toBe('After Armor class, side by side.');
     expect(targetText(layout, fields, { kind: 'refused' }, null)).toBe("Can't go here.");
   });
 

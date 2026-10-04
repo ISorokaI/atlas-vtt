@@ -12,8 +12,6 @@ import { TemplateLibrary } from './src/app/statblocks/library/TemplateLibrary';
 import { registerStatblockFence } from './src/app/statblocks/render/statblockFence';
 import { registerNoteStatblockPanels } from './src/app/statblocks/editor/note-panel/noteStatblockPanels';
 import { TemplateEditorView } from './src/app/statblocks/editor/TemplateEditorView';
-import { LeftPanel } from './src/app/statblocks/editor/template-editor/LeftPanel';
-import { Inspector } from './src/app/statblocks/editor/template-editor/inspector/Inspector';
 import { TEMPLATE_EDITOR_VIEW_TYPE } from './src/app/statblocks/editor/templateEditorState';
 import { openTemplateEditor } from './src/app/statblocks/editor/openTemplateEditor';
 import { TEMPLATE_EXTENSION } from './src/app/statblocks/library/templateFiles';
@@ -198,7 +196,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(PLAYER_VIEW_TYPE, (leaf) => new PlayerView(leaf, this));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     registerLootQueryView(this);
-    this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf, { leftPanel: LeftPanel, inspector: Inspector }));
+    this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));
     this.registerExtensions([TEMPLATE_EXTENSION], TEMPLATE_EDITOR_VIEW_TYPE);
   }
 }

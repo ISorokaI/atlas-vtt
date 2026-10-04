@@ -141,11 +141,24 @@ export function rewriteNoteTemplate(text: string, ids: TemplateIdMap): string {
   return `${text.slice(0, start)}${next}${text.slice(start + value[3]!.length)}`;
 }
 
-/** Settings whose roles start from the templates' ids in this vault. */
-export function withRoleTemplates<T extends { statblockRoles?: readonly StatblockRole[] | undefined }>(settings: T, ids: TemplateIdMap): T {
+interface TemplateSettings {
+  statblockRoles?: readonly StatblockRole[] | undefined;
+  templateCopies?: Partial<Record<string, string>> | undefined;
+}
+
+/** The collection's copies of built-ins, by their ids in this vault. */
+function remappedCopies(copies: TemplateSettings['templateCopies'], ids: TemplateIdMap): TemplateSettings['templateCopies'] {
+  if (!copies || !Object.values(copies).some((id) => id !== undefined && ids.has(id))) return copies;
+  return Object.fromEntries(Object.entries(copies).map(([builtIn, id]) => [builtIn, id === undefined ? id : ids.get(id) ?? id]));
+}
+
+/** Settings whose roles start from, and whose copies of built-ins are, the templates' ids in this vault. */
+export function withRoleTemplates<T extends TemplateSettings>(settings: T, ids: TemplateIdMap): T {
   const roles = settings.statblockRoles;
-  if (!roles?.some((role) => ids.has(role.templateId))) return settings;
-  return { ...settings, statblockRoles: roles.map((role) => ({ ...role, templateId: ids.get(role.templateId) ?? role.templateId })) };
+  const copies = remappedCopies(settings.templateCopies, ids);
+  const next = copies === settings.templateCopies ? settings : { ...settings, templateCopies: copies };
+  if (!roles?.some((role) => ids.has(role.templateId))) return next;
+  return { ...next, statblockRoles: roles.map((role) => ({ ...role, templateId: ids.get(role.templateId) ?? role.templateId })) };
 }
 
 /** A note the import keeps as the vault has it, which names a template whose bundle version arrives as a copy. */

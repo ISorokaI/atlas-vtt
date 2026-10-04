@@ -8,7 +8,9 @@ import type { ValueEditing } from '../../render/valueSlot';
 import { readField, type FieldRecord } from '../../values/fieldValues';
 import type { PaneServices } from '../paneServices';
 import { editableSpots, neighbourSpot } from './editableSpots';
-import type { EditTarget, FieldConflict, PaneEditController } from './paneEditContext';
+import { entryList, moveEntryToPatch } from './entryPatches';
+import type { EditTarget, FieldConflict, ListMover, PaneEditController } from './paneEditContext';
+import { PanelHistory } from './panelHistory';
 import { paneChrome } from './paneChrome';
 import { renderPaneSlot } from './PaneSlot';
 import type { PendingCommit } from './paneTypes';
@@ -57,6 +59,8 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
   const latest = useRef({ record, options, conflicts });
   latest.current = { record, options, conflicts };
   const refocus = useRef<string | null>(null);
+  const movers = useRef(new Map<FieldKey, ListMover>());
+  const [history] = useState(() => new PanelHistory());
 
   useEffect(() => {
     const blockId = refocus.current;
@@ -93,8 +97,11 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
     if (outcome.conflicts.length) setConflict(field.key, { ...edit, canKeepMine: edit !== undefined });
     else setConflict(field.key, null);
     current.onWriteProblem(outcome.problem);
-    if (outcome.applied.length) current.onCommitted();
-  }, [services, notePath, setConflict]);
+    if (outcome.applied.length) {
+      history.noteChanged();
+      current.onCommitted();
+    }
+  }, [services, notePath, setConflict, history]);
 
   const stop = useCallback((focus: boolean): void => {
     setEditing((target) => {
@@ -139,7 +146,24 @@ export function usePaneEditor(options: PaneEditorOptions): PaneEditor {
       if (pendingCommit.current === commit) pendingCommit.current = null;
     },
     announce: (text) => latest.current.options.announce(text),
-  }), [app, notePath, collectionId, spots, sheet, editing, writable, record, conflicts, read, stop, write, setConflict, pendingCommit]);
+    moveEntry: (field, from, to) => {
+      const mover = movers.current.get(field.key);
+      if (mover) {
+        mover(from, to);
+        return;
+      }
+      const now = read(field);
+      const patch = moveEntryToPatch(now.key, entryList(now.value), from, to);
+      if (patch) void write(field, [patch]);
+    },
+    registerMover: (key, mover) => {
+      movers.current.set(key, mover);
+      return () => {
+        if (movers.current.get(key) === mover) movers.current.delete(key);
+      };
+    },
+    history,
+  }), [app, notePath, collectionId, spots, sheet, editing, writable, record, conflicts, read, stop, write, setConflict, pendingCommit, history]);
 
   const chrome = useMemo(() => paneChrome(spots, editing, writable, controller.start), [spots, editing, writable, controller.start]);
   return { controller, chrome, valueEditing: VALUE_EDITING };

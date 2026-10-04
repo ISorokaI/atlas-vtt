@@ -1,5 +1,9 @@
 import type { App } from 'obsidian';
 import type { PaneServices } from '../paneServices';
+import type { HistoryResult } from './panelHistory';
+
+/** Undoes or redoes the newest of the panel's own actions, in the history that took it (§8.5). */
+export type PanelHistoryRouter = (kind: 'undo' | 'redo') => HistoryResult;
 
 /** What the pane's note is, as far as editing goes. */
 export type PaneNoteKind =
@@ -28,6 +32,8 @@ export interface StatblockPaneActions {
   linkToToken?: ((notePath: string, collectionId: string) => void) | undefined;
   /** Opens the template editor on a block just added to the template (the tray's Add to template). */
   openTemplateAt?: ((target: TemplateBlockTarget) => void) | undefined;
+  /** The panel's Mod+Z asks this first; null takes it back. Unset where the host routes no keys. */
+  registerHistory?: ((router: PanelHistoryRouter | null) => void) | undefined;
 }
 
 /** A block of a template, to open the template editor on, previewing the note it was added from. */

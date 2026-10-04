@@ -21,6 +21,9 @@ export interface EntryLineProps {
   editPaths?: { name: StatblockEditPath; text: StatblockEditPath } | undefined;
   /** Shown between the name and the text: an entry's labelled extras. */
   children?: React.ReactNode;
+  /** The entry's identity in its list (`values/entryKeys.ts`) and its place there: what an editor's handles and drags address. */
+  itemKey?: string | undefined;
+  itemIndex?: number | undefined;
 }
 
 const ENDS_IN_PUNCTUATION = /[.!?:;]$/;
@@ -44,6 +47,8 @@ export function EntryLine({
   nameStyle,
   editPaths,
   children,
+  itemKey,
+  itemIndex,
 }: EntryLineProps): React.JSX.Element | null {
   if (!name && !text) return null;
   const editable = editPaths !== undefined;
@@ -51,6 +56,8 @@ export function EntryLine({
   return (
     <div
       className={cn('atlas-sb-trait', nameStyle && `atlas-sb-trait--${nameStyle}`)}
+      data-item-key={itemKey}
+      data-item-index={itemIndex}
       {...hitPointsAttribute(namesHitPoints(name))}
     >
       {name && (

@@ -4,7 +4,6 @@ import {
   existingSelection, firstChildOf, focusAfterDelete, inSiblingOrder, parentOf, stepInReadingOrder, withSibling,
 } from '../../../../src/app/statblocks/editor/template-editor/selection';
 import { gapAt } from '../../../../src/app/statblocks/editor/template-editor/gapGeometry';
-import { placeToolbar } from '../../../../src/app/statblocks/editor/template-editor/toolbarPlacement';
 import { shortcutText } from '../../../../src/app/statblocks/editor/template-editor/shortcutText';
 import { sampleTemplate } from './editorKit';
 
@@ -132,24 +131,5 @@ describe('gapAt', () => {
   it('finds the gap between blocks of a row, and a line along it', () => {
     const row = [{ left: 0, top: 0, right: 40, bottom: 30 }, { left: 56, top: 0, right: 96, bottom: 40 }];
     expect(gapAt(row, { x: 48, y: 15 }, 'row')).toEqual({ index: 1, orientation: 'vertical', x: 48, y: 0, length: 40 });
-  });
-});
-
-describe('placeToolbar', () => {
-  const view = { left: 0, top: 100, right: 500, bottom: 600 };
-  const layer = { left: 0, top: 0, right: 600, bottom: 700 };
-  const size = { width: 180, height: 32 };
-
-  it('stands above the block, left-aligned with it', () => {
-    expect(placeToolbar({ left: 40, top: 300, right: 200, bottom: 340 }, view, layer, size)).toEqual({ left: 40, top: 260, below: false, hidden: false });
-  });
-
-  it('flips below where the view has no room above', () => {
-    expect(placeToolbar({ left: 40, top: 110, right: 200, bottom: 140 }, view, layer, size)).toMatchObject({ top: 148, below: true });
-  });
-
-  it('keeps inside the view sideways, and hides with a block scrolled away', () => {
-    expect(placeToolbar({ left: 420, top: 300, right: 480, bottom: 320 }, view, layer, size).left).toBe(320);
-    expect(placeToolbar({ left: 40, top: 700, right: 200, bottom: 740 }, view, layer, size).hidden).toBe(true);
   });
 });

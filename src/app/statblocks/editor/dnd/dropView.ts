@@ -1,8 +1,7 @@
 /**
- * What the canvas shows for a drop target (§7.6): a line between blocks (in
- * the starting list, at the place its siblings slid open), a tinted half and
- * a line beside a block, an outlined empty container, or nothing where the
- * drop is refused (the cursor says so). Pure.
+ * What the canvas shows for a drop target (§7.3): a line between blocks (in
+ * the starting list, at the place its siblings slid open), an outlined empty
+ * container, or nothing where the drop is refused (the cursor says so). Pure.
  */
 
 import { childrenOf, parentTypeOf } from '../../model/treeEdit';
@@ -13,7 +12,6 @@ import { siblingShifts, type ListEntry, type ShiftPlan } from './siblingShifts';
 
 export type DropView =
   | { kind: 'line'; line: DropLine }
-  | { kind: 'beside'; line: DropLine; tint: Box }
   | { kind: 'into'; outline: Box }
   | { kind: 'refused' };
 
@@ -40,7 +38,6 @@ export function shiftPlanFor(scene: DropScene, subject: DragSubject, target: Dro
 export function dropView(target: DropTarget, shifted: DropLine | null): DropView {
   switch (target.kind) {
     case 'between': return { kind: 'line', line: shifted ?? target.line };
-    case 'beside': return { kind: 'beside', line: target.line, tint: target.tint };
     case 'into': return { kind: 'into', outline: target.outline };
     case 'refused': return { kind: 'refused' };
   }

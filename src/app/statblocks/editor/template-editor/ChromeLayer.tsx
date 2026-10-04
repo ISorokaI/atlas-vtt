@@ -11,7 +11,7 @@ import { blockFrame } from './editorChrome';
 import type { Box } from './gapGeometry';
 import { LabelEditor, type ChromeStyle, type LabelEditorProps } from './LabelEditor';
 import { primaryOf, type BlockSelection } from './selection';
-import { useStageGap, useStageHover } from './useStagePointer';
+import { useHoveredBlock, useStageGap } from './useStagePointer';
 
 /** The card inside the stage: chrome looks up blocks only there, never in its own layer. */
 export const SHEET_SELECTOR = '.atlas-statblock';
@@ -80,7 +80,7 @@ function sameBoxes(a: ReadonlyMap<string, Box>, b: ReadonlyMap<string, Box>): bo
  */
 export function ChromeLayer(props: ChromeLayerProps): React.JSX.Element {
   const { stageRef, template, selection, editable, label, washId, onWashed, onSelect, onInsertAt } = props;
-  const hovered = useStageHover(stageRef, SHEET_SELECTOR);
+  const hovered = useHoveredBlock(stageRef);
   const gap = useStageGap(stageRef, editable && label === null);
   const reduced = useReducedMotion() === true;
   const [resized, setResized] = useState(0);

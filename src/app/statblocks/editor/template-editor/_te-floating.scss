@@ -1,85 +1,16 @@
-// What floats over the template editor (§7.6, §7.10): the block toolbar, the
-// insert menu, the preview picker, the delete dialog and the undo toast.
+// What floats over the template editor (§7.6, §7.10): the insert menu, the
+// delete dialog and the undo toast. The selected block's toolbar has its own
+// sheet (toolbar/selection-toolbar.scss).
 
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 
-// The block toolbar: a 32 px capsule of 24 px round buttons; padding equals the gap.
-$toolbar-height: 32px;
-$toolbar-button: 24px;
-$toolbar-inset: calc((#{$toolbar-height} - 2 * #{$border-width-m} - #{$toolbar-button}) / 2);
 // The context menu's geometry: 28 px capsule rows, $spacing-xs inside the border.
 $row-height: 28px;
 $menu-inset: $spacing-xs;
 $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
 
 .atlas-vtt-plugin {
-  // ── Block toolbar ───────────────────────────────────────────────────────
-  .atlas-te-toolbar {
-    @include atlas-elevated-surface;
-    @include atlas-keep-in-view;
-    position: absolute;
-    left: var(--atlas-te-toolbar-x);
-    top: var(--atlas-te-toolbar-y);
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    gap: $toolbar-inset;
-    box-sizing: border-box;
-    height: $toolbar-height;
-    padding: $toolbar-inset;
-    border-radius: $toolbar-height * 0.5;
-    box-shadow: $shadow-md;
-
-    &[data-hidden] {
-      visibility: hidden;
-    }
-
-    .atlas-tool-button button.btn {
-      @include atlas-corner-shape;
-      width: $toolbar-button;
-      height: $toolbar-button;
-      padding: 0;
-      border: none;
-      border-radius: $toolbar-button * 0.5;
-      background: transparent;
-      box-shadow: none;
-      color: var(--text-muted);
-
-      &:hover:not([aria-disabled='true']) {
-        background: var(--background-modifier-hover);
-        color: var(--text-normal);
-      }
-
-      &[aria-expanded='true'] {
-        background: var(--background-modifier-hover);
-      }
-
-      &:focus-visible {
-        outline: 2px solid var(--interactive-accent);
-        outline-offset: -2px;
-      }
-
-      svg {
-        width: $icon-s;
-        height: $icon-s;
-      }
-    }
-  }
-
-  .atlas-te-toolbar__handle,
-  .atlas-te-toolbar__more {
-    display: flex;
-  }
-
-  .atlas-te-toolbar__handle .atlas-tool-button--disabled {
-    cursor: grab;
-  }
-
-  .atlas-te-toolbar-menu {
-    z-index: 3;
-  }
-
   // ── Insert menu ─────────────────────────────────────────────────────────
   .atlas-te-insert {
     @include atlas-keep-in-view;
@@ -127,7 +58,7 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
   }
 
   .atlas-te-insert__list,
-  .atlas-te-preview-picker__list {
+  .atlas-te-show-with__list {
     @include atlas-flex-col(var(--size-2-1));
     align-items: stretch;
     max-height: 320px;
@@ -161,39 +92,5 @@ $menu-radius: $row-height * 0.5 + $menu-inset + $border-width-m;
     border-radius: $radius-l;
     background: var(--background-secondary);
     pointer-events: none;
-  }
-
-  // ── Preview picker ──────────────────────────────────────────────────────
-  .atlas-te-preview-picker {
-    @include atlas-flex-row($spacing-s);
-    position: relative;
-    color: var(--text-muted);
-    font-size: $font-ui-smaller;
-  }
-
-  .atlas-te-preview-picker__trigger {
-    @include atlas-flex-row($spacing-xs);
-    @include atlas-corner-shape;
-
-    svg {
-      width: $icon-xs;
-      height: $icon-xs;
-    }
-  }
-
-  .atlas-te-preview-picker__popover {
-    @include atlas-elevated-surface;
-    @include atlas-panel-radius($menu-radius);
-    @include atlas-flex-col($menu-inset);
-    @include atlas-keep-in-view;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 3;
-    align-items: stretch;
-    width: 260px;
-    margin-top: $spacing-xs;
-    padding: $menu-inset;
-    box-shadow: $shadow-md;
   }
 }

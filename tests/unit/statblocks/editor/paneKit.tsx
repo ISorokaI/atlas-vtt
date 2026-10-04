@@ -7,6 +7,7 @@ import type { NotePatch } from '../../../../src/app/statblocks/notes/patchTypes'
 import type { NoteSnapshot } from '../../../../src/app/statblocks/notes/noteSource';
 import type { WriteOutcome } from '../../../../src/app/statblocks/notes/NoteFieldWriter';
 import type { PaneServices } from '../../../../src/app/statblocks/editor/paneServices';
+import { SurfaceMenuProvider } from '../../../../src/app/statblocks/editor/interaction/SurfaceMenuProvider';
 import { StatblockPane } from '../../../../src/app/statblocks/editor/statblock-pane/StatblockPane';
 import type { StatblockPaneActions, StatblockPaneProps } from '../../../../src/app/statblocks/editor/statblock-pane/paneTypes';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
@@ -84,6 +85,8 @@ export interface PaneOptions extends Partial<StatblockPaneProps> {
   problem?: NoteSnapshot['problem'];
   /** Vault path → text; the note itself by default. */
   files?: Record<string, string>;
+  /** Where the pane is drawn: another window's element (a popout), else the page's own. */
+  container?: HTMLElement;
 }
 
 /** Renders the pane over a note whose values the fake source holds; the vault holds the note. */
@@ -97,6 +100,7 @@ export async function renderPane(options: PaneOptions = {}): Promise<PaneHarness
     changeCollection: vi.fn(),
     ...options.actions,
   };
+  const { container: _container, ...paneOptions } = options;
   const props = (extra: Partial<StatblockPaneProps> = {}): StatblockPaneProps => ({
     app,
     services: { source, writer },
@@ -106,16 +110,16 @@ export async function renderPane(options: PaneOptions = {}): Promise<PaneHarness
     announcement: '',
     focusRequest: 0,
     pendingCommit: { current: null },
-    ...options,
+    ...paneOptions,
     actions,
     ...extra,
   });
   const tree = (extra?: Partial<StatblockPaneProps>): React.JSX.Element => (
-    <TooltipProvider><StatblockPane {...props(extra)} /></TooltipProvider>
+    <TooltipProvider><SurfaceMenuProvider ownerId="pane"><StatblockPane {...props(extra)} /></SurfaceMenuProvider></TooltipProvider>
   );
   let result!: RenderResult;
   await act(async () => {
-    result = render(tree());
+    result = options.container ? render(tree(), { container: options.container, baseElement: options.container.ownerDocument.body }) : render(tree());
   });
   // The library and the collection context settle in microtasks.
   await act(async () => { await Promise.resolve(); });

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { isModHeld } from '../../../keyboard/modKey';
@@ -6,15 +6,15 @@ import { Button } from '../../../packages/components/primitives/button';
 import type { FieldValue, TemplateField } from '../../model/templateTypes';
 import { deepEqual } from '../../notes/listIdentity';
 import type { NotePatch } from '../../notes/patchTypes';
+import { entryItemKeys } from '../../values/entryKeys';
 import { entryName, entryText } from '../../values/entryValues';
-import { SortableEntries, SortableEntry } from '../dnd/SortableEntries';
 import {
-  entryList, entryPartPatches, entryWithPart, insertEntryPatch, moveEntryPatch, moveEntryToPatch, newEntry, removeEntryPatch,
+  entryList, entryPartPatches, entryWithPart, insertEntryPatch, moveEntryPatch, moveEntryToPatch, newEntry,
   shownEntryIndexes, type EntryPart,
 } from './entryPatches';
 import { EntryRow, type PendingPart } from './EntryRow';
-import { removedMessage } from './announcements';
 import { focusStaysIn } from './focusWithin';
+import { movedFocusIndex, typingCaret } from './entryFocus';
 import { usePaneEdit } from './paneEditContext';
 
 interface EntriesEditorProps {
@@ -23,6 +23,8 @@ interface EntriesEditorProps {
   entry: number | undefined;
   /** "Add action": the block's own words for a new entry. */
   addLabel: string | undefined;
+  /** A new entry starts right after `entry` (the menu's "Add action below"). */
+  add?: boolean | undefined;
 }
 
 /**
@@ -30,7 +32,13 @@ interface EntriesEditorProps {
  * duplicate): the row is focused only once the note holds `entry` at `index`,
  * since a row focused earlier shows its neighbour and would take its text.
  */
-type Focus = { index: number; part: EntryPart; awaits?: { list: FieldValue[]; entry: FieldValue } } | null;
+type Focus = {
+  index: number;
+  part: EntryPart;
+  awaits?: { list: FieldValue[]; entry: FieldValue };
+  /** Where the caret stood, put back after a drop the text went along with. */
+  caret?: readonly [number, number] | undefined;
+} | null;
 
 /** "Action" for "Actions", "Ability" for "Abilities": what one entry of the field is called. */
 export function singular(label: string): string {
@@ -46,7 +54,7 @@ export function singular(label: string): string {
  * identity, so a list that changed in the note meanwhile is never written
  * into the wrong entry.
  */
-export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): React.JSX.Element {
+export function EntriesEditor({ field, entry, addLabel, add }: EntriesEditorProps): React.JSX.Element {
   const pane = usePaneEdit();
   const read = pane.read(field);
   const items = entryList(read.value);
@@ -55,9 +63,17 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
   const rootRef = useRef<HTMLDivElement>(null);
   const [focus, setFocus] = useState<Focus>(() => {
     const index = shownEntryIndexes(items, shape)[entry ?? 0];
-    return index === undefined ? null : { index, part: 'name' };
+    return index === undefined || add ? null : { index, part: 'name' };
   });
-  const [adding, setAdding] = useState<{ afterIndex: number | null } | null>(() => (items.length ? null : { afterIndex: null }));
+  const [adding, setAdding] = useState<{ afterIndex: number | null } | null>(() => {
+    if (!items.length) return { afterIndex: null };
+    return add ? { afterIndex: shownEntryIndexes(items, shape)[entry ?? 0] ?? items.length - 1 } : null;
+  });
+  const typing = useRef(new Map<string, () => PendingPart | null>());
+  const registerTyping = useCallback((rowId: string, typed: (() => PendingPart | null) | null): void => {
+    if (typed) typing.current.set(rowId, typed);
+    else typing.current.delete(rowId);
+  }, []);
   const noun = singular(field.label) || 'Entry';
 
   useLayoutEffect(() => {
@@ -70,8 +86,34 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
     }
     const row = rootRef.current?.querySelector(`[data-entry-row="${focus.index}"] [data-entry-part="${focus.part}"]`);
     if (row?.instanceOf(HTMLElement)) row.focus();
+    if (focus.caret && (row?.instanceOf(HTMLInputElement) || row?.instanceOf(HTMLTextAreaElement))) row.setSelectionRange(...focus.caret);
     setFocus(null);
   }, [focus, items]);
+
+  /**
+   * A drag's drop while the list is edited (spec §7.2): one write carries the
+   * text being typed and the move, based on the entry as it reads once the
+   * text lands; focus and caret then come back to the same input.
+   */
+  const dropMove = (from: number, to: number): void => {
+    const active = rootRef.current?.doc.activeElement ?? null;
+    const row = active?.closest('[data-entry-row]');
+    const focused = row ? Number(row.getAttribute('data-entry-row')) : null;
+    const part = active?.getAttribute('data-entry-part') as EntryPart | null | undefined;
+    const typed = row ? typing.current.get(row.getAttribute('data-entry-row') ?? '')?.() ?? null : null;
+    const index = focused !== null && Number.isInteger(focused) ? focused : null;
+    const parts = typed && index !== null ? entryPartPatches(list, index, typed.from, shape, typed.part, typed.text) : [];
+    const before = index === null ? undefined : items[index];
+    const after = typed && before !== undefined ? entryWithPart(before, shape, typed.part, typed.text) : before;
+    const order = items.map((value, at): FieldValue => (at === index && after !== undefined ? after : value));
+    write([...parts, moveEntryToPatch(list, order, from, to)]);
+    if (index !== null && part && after !== undefined) {
+      setFocus({ index: movedFocusIndex(index, from, to), part, caret: typingCaret(active), awaits: { list: items, entry: after } });
+    }
+  };
+  const dropMoveRef = useRef(dropMove);
+  dropMoveRef.current = dropMove;
+  useEffect(() => pane.registerMover(field.key, (from, to) => dropMoveRef.current(from, to)), [pane, field.key]);
 
   const write = (patches: Array<NotePatch | null>): void => {
     void pane.write(field, patches.filter((patch): patch is NotePatch => patch !== null));
@@ -121,44 +163,27 @@ export function EntriesEditor({ field, entry, addLabel }: EntriesEditorProps): R
     }
   };
 
-  const moveTo = (from: number, to: number): void => {
-    const item = items[from];
-    write([moveEntryToPatch(list, items, from, to)]);
-    if (item !== undefined) pane.announce(`Moved ${entryName(item, shape) ?? noun.toLowerCase()} to position ${to + 1} of ${items.length}.`);
-  };
+  const keys = entryItemKeys(items);
 
   return (
     <div ref={rootRef} className="atlas-sb-pane-entries">
-      <SortableEntries ids={items.map((_, index) => String(index))} onMove={moveTo}>
-        {items.map((item, index) => (
-          <React.Fragment key={index}>
-            <SortableEntry id={String(index)}>
-              {(handle) => (
-                <EntryRow
-                  index={index}
-                  item={item}
-                  rowId={String(index)}
-                  name={entryName(item, shape) ?? ''}
-                  text={entryText(item, shape) ?? ''}
-                  noun={noun}
-                  canMoveUp={index > 0}
-                  canMoveDown={index < items.length - 1}
-                  handle={handle}
-                  onCommit={(part, text, from) => write(entryPartPatches(list, index, from, shape, part, text))}
-                  onRowKey={rowKey(index)}
-                  onMove={(step) => write([moveEntryPatch(list, items, index, step)])}
-                  onDuplicate={() => write([insertEntryPatch(list, items, index, item)])}
-                  onDelete={() => {
-                    write([removeEntryPatch(list, item)]);
-                    pane.announce(removedMessage(entryName(item, shape) ?? noun.toLowerCase()));
-                  }}
-                />
-              )}
-            </SortableEntry>
-            {adding?.afterIndex === index && <NewEntryRow noun={noun} onDone={commitNew} />}
-          </React.Fragment>
-        ))}
-      </SortableEntries>
+      {items.map((item, index) => (
+        <React.Fragment key={index}>
+          <EntryRow
+            index={index}
+            item={item}
+            rowId={String(index)}
+            itemKey={keys[index] ?? String(index)}
+            name={entryName(item, shape) ?? ''}
+            text={entryText(item, shape) ?? ''}
+            noun={noun}
+            onCommit={(part, text, from) => write(entryPartPatches(list, index, from, shape, part, text))}
+            onRowKey={rowKey(index)}
+            registerTyping={registerTyping}
+          />
+          {adding?.afterIndex === index && <NewEntryRow noun={noun} onDone={commitNew} />}
+        </React.Fragment>
+      ))}
       {adding?.afterIndex === null && <NewEntryRow noun={noun} onDone={commitNew} />}
       <Button
         type="button"

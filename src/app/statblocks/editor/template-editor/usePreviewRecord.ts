@@ -4,6 +4,7 @@ import { sampleRecord } from '../../model/sampleValues';
 import type { StatblockTemplate } from '../../model/templateTypes';
 import { cachedFrontmatter } from '../../notes/statblockSource';
 import type { FieldRecord } from '../../values/fieldValues';
+import type { ShowWith } from './shell/showWith';
 
 export interface PreviewRecord {
   /** What the canvas shows the template with. */
@@ -20,11 +21,16 @@ function readNote(app: App, path: string): FieldRecord | undefined {
   return file instanceof TFile ? cachedFrontmatter(app, file) : undefined;
 }
 
+/** Show with Empty: no values, so every block shows the prompt a new statblock shows. */
+const EMPTY_RECORD: FieldRecord = {};
+
 /**
- * The values the canvas previews the template with (§7.4, §7.9): sample
- * values, or a statblock's own, read-only, followed as its note changes.
+ * The values the canvas shows the template with (§2.3, §6.2): sample values,
+ * none (Empty), or a statblock's own, read-only, followed as its note changes.
  */
-export function usePreviewRecord(app: App | undefined, template: StatblockTemplate, previewPath: string | null): PreviewRecord {
+export function usePreviewRecord(app: App | undefined, template: StatblockTemplate, showWith: ShowWith): PreviewRecord {
+  const previewPath = showWith.kind === 'note' ? showWith.path : null;
+  const empty = showWith.kind === 'empty';
   const samples = useMemo(() => sampleRecord(template), [template]);
   const [note, setNote] = useState<FieldRecord | undefined>(() => (app && previewPath ? readNote(app, previewPath) : undefined));
 
@@ -41,7 +47,8 @@ export function usePreviewRecord(app: App | undefined, template: StatblockTempla
   }, [app, previewPath]);
 
   return useMemo((): PreviewRecord => {
+    if (empty) return { record: EMPTY_RECORD, sourcePath: undefined, missing: false };
     if (!previewPath || !note) return { record: samples, sourcePath: undefined, missing: previewPath !== null };
     return { record: note, sourcePath: previewPath, missing: false };
-  }, [samples, note, previewPath]);
+  }, [samples, note, previewPath, empty]);
 }

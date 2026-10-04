@@ -10,9 +10,11 @@ import { templateKeyPatch } from './addFieldFlow';
 import { AddFieldRow } from './AddFieldRow';
 import { ChangeTemplateDialog } from './ChangeTemplateDialog';
 import { noteKeyChoice } from './fieldChoices';
+import { PanelFrame } from '../panel-frame/PanelFrame';
 import { MorePropertiesTray } from './MorePropertiesTray';
 import { PaneCanvas } from './PaneCanvas';
 import { PaneDiceRolls } from './PaneDiceRolls';
+import { PaneHandles } from './PaneHandles';
 import { PaneHeader } from './PaneHeader';
 import { headerTemplate } from './paneHeaderTemplate';
 import { NewerTemplateBar, NoteDeletedBar, NotNativeState, TemplateMissingBar, UnreadableState, WriteProblemBar } from './PaneStates';
@@ -108,6 +110,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     return (
       <>
         {hint && <p className="atlas-sb-pane-hint-line">Click a value to change it. Tab moves to the next.</p>}
+        {bars}
         <PaneCanvas
           // One editing session per note: what was typed for a note is written to that note, never the next one.
           key={notePath}
@@ -120,7 +123,6 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           record={note.record}
           writable={writable}
           pendingCommit={props.pendingCommit}
-          header={bars}
           footer={writable && paneTemplate.status === 'ok' && (
             <AddFieldRow
               app={app}
@@ -146,14 +148,23 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
               onAddToTemplate={actions.openTemplateAt && paneTemplate.status === 'ok' ? (key) => adder.choose(noteKeyChoice(key, note.record), true) : undefined}
             />
           )}
+          <PaneHandles
+            paneRef={rootRef}
+            template={paneTemplate.template}
+            entry={paneTemplate.status === 'ok' ? paneTemplate.entry : null}
+            services={services}
+            actions={actions}
+          />
         </PaneCanvas>
       </>
     );
   })();
 
   return (
-    <div ref={rootRef} className="atlas-sb-pane">
-      <PaneDiceRolls app={app} collectionId={collectionId}>
+    <PanelFrame
+      ref={rootRef}
+      wrap={(content) => <PaneDiceRolls app={app} collectionId={collectionId}>{content}</PaneDiceRolls>}
+      header={(
         <PaneHeader
           ref={templateRef}
           collection={collection.context}
@@ -163,24 +174,27 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
           linkToToken={note.kind === 'atlas' && (hasSocket || (actions.linkToToken && collectionId)) ? linkToToken : undefined}
           hide={actions.hide}
         />
-        <div className="atlas-sb-pane-body">
-          {body}
-        </div>
-        <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
-      </PaneDiceRolls>
-      {choosing && note.kind === 'atlas' && rootRef.current && library && (
-        <ChangeTemplateDialog
-          app={app}
-          anchor={rootRef.current}
-          notePath={notePath}
-          record={note.record}
-          currentId={note.templateId}
-          templates={library.templates}
-          roles={collection.roles}
-          onApply={applyTemplate}
-          onClose={() => setChoosing(false)}
-        />
       )}
-    </div>
+      after={(
+        <>
+          <div className="atlas-sb-pane-live" role="status" aria-live="polite">{said}</div>
+          {choosing && note.kind === 'atlas' && rootRef.current && library && (
+            <ChangeTemplateDialog
+              app={app}
+              anchor={rootRef.current}
+              notePath={notePath}
+              record={note.record}
+              currentId={note.templateId}
+              templates={library.templates}
+              roles={collection.roles}
+              onApply={applyTemplate}
+              onClose={() => setChoosing(false)}
+            />
+          )}
+        </>
+      )}
+    >
+      {body}
+    </PanelFrame>
   );
 }

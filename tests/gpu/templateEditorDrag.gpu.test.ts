@@ -6,7 +6,7 @@ import { userEvent } from 'vitest/browser';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
 import { TemplateEditor } from '../../src/app/statblocks/editor/template-editor/TemplateEditor';
 import { FakeSession, sampleTemplate, shape } from '../unit/statblocks/template-editor/editorKit';
-import { drop, dropLine, openPopout, pickUpAndMove, pointer, pointIn, press } from './dragHarness';
+import { drop, dropLine, gripOf, openPopout, pickUpAndMove, pointer, pointIn, press } from './dragHarness';
 import { frame, frames, mount, useEditorStyles, wait } from './sidePanesHarness';
 
 // Dice links and the header's file actions reach the map view and the token link service, whose
@@ -30,8 +30,9 @@ const sectionShape = (session: FakeSession): string => shape(session.template.la
 
 /**
  * Drag and drop in the template editor with the real stylesheet (§7.6, §14.2):
- * where the line shows is where the block lands, edge zones make a Row, the
- * keyboard moves blocks too, focus and announcements follow the block.
+ * where the line shows is where the block lands, only a block's handle drags
+ * it, no edge zones make a Row, the keyboard moves blocks too, focus and
+ * announcements follow the block.
  */
 describe('dragging blocks in the template editor', () => {
   useEditorStyles();
@@ -42,7 +43,7 @@ describe('dragging blocks in the template editor', () => {
     mount(session, 1280);
     await frames(2);
     const hp = frame('stat-hp1').getBoundingClientRect();
-    await pickUpAndMove(window, pointIn(frame('divider1')), { x: hp.left + hp.width / 2, y: hp.top + 2 });
+    await pickUpAndMove(window, pointIn(await gripOf(frame('divider1'))), { x: hp.left + hp.width / 2, y: hp.top + 2 });
     const line = dropLine();
     expect(line?.orientation).toBe('horizontal');
     expect(live()).toBe('Section Defenses, position 2 of 3.');
@@ -63,24 +64,32 @@ describe('dragging blocks in the template editor', () => {
     expect(document.querySelector('.atlas-te-drop-line')).toBeNull();
   });
 
-  it('makes a row of a block dropped on the left or right fifth of another', async () => {
+  it('never makes a row: a block dropped on the edge of another lands between blocks (no edge zones, spec §7.3)', async () => {
     const session = new FakeSession(sampleTemplate());
     mount(session, 1280);
     await frames(2);
     const ac = frame('stat-ac1').getBoundingClientRect();
-    const at = { x: ac.right - ac.width * 0.08, y: ac.top + ac.height / 2 };
-    await pickUpAndMove(window, pointIn(frame('title001')), at);
-    const tint = document.querySelector('.atlas-te-drop-tint')?.getBoundingClientRect();
-    expect(tint?.width).toBeCloseTo(ac.width / 2, 0);
-    expect(tint?.right).toBeCloseTo(ac.right, 0);
-    expect(dropLine()?.orientation).toBe('vertical');
-    expect(live()).toBe('After Armor class, side by side.');
+    const at = { x: ac.right - ac.width * 0.08, y: ac.top + ac.height / 2 + 1 };
+    await pickUpAndMove(window, pointIn(await gripOf(frame('title001'))), at);
+    expect(document.querySelector('.atlas-te-drop-tint')).toBeNull();
+    expect(dropLine()?.orientation).toBe('horizontal');
 
     await drop(window, at);
     await wait(SETTLED_MS);
-    expect(sectionShape(session)).toMatch(/^section1\(\w+\(stat-ac1 title001\) stat-hp1\) row00001/);
+    expect(sectionShape(session)).toBe('section1(stat-ac1 title001 stat-hp1) row00001(stat-sp1 stat-cr1) divider1');
     expect(session.steps).toBe(1);
-    expect(document.activeElement?.getAttribute('data-block-id')).toBe('title001');
+  });
+
+  it('starts no drag from a press on a block\'s body: only its handle drags it', async () => {
+    const session = new FakeSession(sampleTemplate());
+    mount(session, 1280);
+    await frames(2);
+    const hp = frame('stat-hp1').getBoundingClientRect();
+    await pickUpAndMove(window, pointIn(frame('divider1')), { x: hp.left + hp.width / 2, y: hp.top + 2 });
+    expect(dropLine()).toBeNull();
+    expect(session.gestureOpen).toBe(false);
+    await drop(window, { x: hp.left + hp.width / 2, y: hp.top + 2 });
+    expect(session.steps).toBe(0);
   });
 
   it('moves a block with Space and the arrow keys, and Escape puts it back', async () => {
@@ -121,7 +130,7 @@ describe('dragging blocks in the template editor', () => {
     await userEvent.click(frame('divider1'));
     const hp = frame('stat-hp1').getBoundingClientRect();
     const at = { x: hp.left + hp.width / 2, y: hp.top + 2 };
-    await pickUpAndMove(window, pointIn(frame('divider1')), at);
+    await pickUpAndMove(window, pointIn(await gripOf(frame('divider1'))), at);
     expect(dropLine()).not.toBeNull();
     expect(session.gestureOpen).toBe(true);
     await userEvent.keyboard('{Escape}');
@@ -136,10 +145,14 @@ describe('dragging blocks in the template editor', () => {
     expect(document.activeElement?.getAttribute('data-block-id')).toBe('divider1');
   });
 
-  it('inserts a palette tile where it is dropped and opens its label', async () => {
+  it('inserts a palette tile where it is dropped and selects it, without opening its label', async () => {
     const session = new FakeSession(sampleTemplate());
     mount(session, 1280);
     await frames(2);
+    // The palette is the dock's Add panel.
+    const add = [...document.querySelectorAll<HTMLButtonElement>('.atlas-te-dock button')].find((element) => element.textContent === 'Add')!;
+    await act(async () => { add.click(); });
+    await act(() => wait(300));
     const tile = document.querySelector<HTMLElement>('.atlas-te-tile[data-item="block:stat"]')!;
     const hp = frame('stat-hp1').getBoundingClientRect();
     const at = { x: hp.left + hp.width / 2, y: hp.bottom - 2 };
@@ -150,7 +163,9 @@ describe('dragging blocks in the template editor', () => {
     const section = session.template.layout.blocks[1];
     expect(section && 'blocks' in section ? section.blocks.map((block) => block.type) : []).toEqual(['stat', 'stat', 'stat']);
     expect(session.steps).toBe(1);
-    expect(document.activeElement?.classList.contains('atlas-te-label-input')).toBe(true);
+    const inserted = section && 'blocks' in section ? section.blocks[2]?.id : undefined;
+    expect(document.querySelector('.atlas-te-label-input')).toBeNull();
+    expect(document.activeElement?.getAttribute('data-block-id')).toBe(inserted);
   });
 
   it('keeps one owner of each transform: the drag slides frames, framer animates none of them', async () => {
@@ -158,7 +173,7 @@ describe('dragging blocks in the template editor', () => {
     mount(session, 1280);
     await frames(2);
     const hp = frame('stat-hp1').getBoundingClientRect();
-    await pickUpAndMove(window, pointIn(frame('stat-ac1')), { x: hp.left + hp.width / 2, y: hp.bottom - 3 });
+    await pickUpAndMove(window, pointIn(await gripOf(frame('stat-ac1'))), { x: hp.left + hp.width / 2, y: hp.bottom - 3 });
     await wait(80);
     const slid = [...document.querySelectorAll<HTMLElement>('[data-te-shift]')];
     expect(slid.map((element) => element.dataset.blockId).sort()).toEqual(['stat-ac1', 'stat-hp1']);
@@ -185,20 +200,24 @@ describe('dragging blocks in the template editor', () => {
       vi.restoreAllMocks();
       spies = [vi.spyOn(window, 'addEventListener'), vi.spyOn(document, 'addEventListener')];
     };
-    const boundInFirstWindow = (): string[] => spies.flatMap((spy) => spy.mock.calls.map(([type]) => type)).filter((type) => /pointer|mouse|key|touch/.test(type));
+    // A tooltip's trigger (the handle's) listens once for the press's end on the global document, Radix's own; the drag binds nothing there.
+    const once = (options: unknown): boolean => typeof options === 'object' && options !== null && (options as AddEventListenerOptions).once === true;
+    const boundInFirstWindow = (): string[] => spies
+      .flatMap((spy) => spy.mock.calls.filter(([, , options]) => !once(options)).map(([type]) => type))
+      .filter((type) => /pointer|mouse|key|touch/.test(type));
     try {
       const h = React.createElement;
       const noop = (): void => undefined;
       render(h(TooltipProvider, null, h('div', { className: 'atlas-vtt-plugin' }, h('div', { className: 'atlas-statblock-editor', style: { height: 700, width: 1000 } },
         h(TemplateEditor, {
-          session, host: { openTemplate: noop, openNote: noop, close: noop }, previewPath: null, onPreviewPathChange: noop, collectionId: null, onCollectionChange: noop,
+          session, host: { openTemplate: noop, openNote: noop, close: noop }, previewPath: null, onShowWithChange: noop, collectionId: null, onCollectionChange: noop,
         })))), { container: popout.container, baseElement: popout.win.document.body });
       const { win } = popout;
       const doc = win.document;
       await frames(3, win);
       watchFirstWindow();
       // Over the section's heading the top level's blocks have slid back where the targets are worked out.
-      await pickUpAndMove(win, pointIn(frame('divider1', doc)), pointIn(frame('section1', doc), 0.5, 0.05));
+      await pickUpAndMove(win, pointIn(await gripOf(frame('divider1', doc))), pointIn(frame('section1', doc), 0.5, 0.05));
       await wait(250);
       act(() => session.apply((template) => ({
         ...template, layout: { ...template.layout, blocks: [{ id: 'heading9', type: 'heading', text: 'Added during the drag', level: 'section' }, ...template.layout.blocks] },

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { EntriesBlock, EntryShape, FieldValue } from '../../model/templateTypes';
-import { entryExtras, entryItems, entryName, entryText } from '../../values/entryValues';
+import { keyedEntryItems } from '../../values/entryKeys';
+import { entryExtras, entryName, entryText } from '../../values/entryValues';
 import { valueText } from '../../values/valueText';
 import { EntryLine } from '../shared/EntryLine';
 import { useSheet } from '../sheetContext';
@@ -28,7 +29,7 @@ function EntryExtras({ entry, shape }: { entry: FieldValue; shape: EntryShape | 
 export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): React.JSX.Element {
   const { state, app, sourcePath } = useSheet();
   const shape = state.fields.get(block.field)?.entry;
-  const entries = display.state === 'value' ? entryItems(state.reader(block.field)) : [];
+  const entries = display.state === 'value' ? keyedEntryItems(state.reader(block.field)) : [];
   const intro = block.introField && display.state === 'value' ? valueText(state.reader(block.introField)) : '';
 
   return (
@@ -41,16 +42,18 @@ export function EntriesView({ block, display }: BlockViewProps<EntriesBlock>): R
       )}
       <ValueSlot block={block}>
         {display.state !== 'value' && <StandIn display={display} />}
-        {entries.map((entry, index) => (
+        {entries.map(({ item, key, index }) => (
           <EntryLine
-            key={`${entryName(entry, shape) ?? 'entry'}-${index}`}
-            name={entryName(entry, shape)}
-            text={entryText(entry, shape) ?? ''}
+            key={key}
+            itemKey={key}
+            itemIndex={index}
+            name={entryName(item, shape)}
+            text={entryText(item, shape) ?? ''}
             app={app}
             sourcePath={sourcePath}
             nameStyle={block.nameStyle ?? 'run-in'}
           >
-            <EntryExtras entry={entry} shape={shape} />
+            <EntryExtras entry={item} shape={shape} />
           </EntryLine>
         ))}
       </ValueSlot>

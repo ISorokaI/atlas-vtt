@@ -17,7 +17,6 @@ function Line({ line }: { line: DropLine }): React.JSX.Element {
 function ViewOf({ view }: { view: DropView }): React.JSX.Element | null {
   switch (view.kind) {
     case 'line': return <Line line={view.line} />;
-    case 'beside': return <><div className="atlas-te-drop-tint" style={boxStyle(view.tint)} /><Line line={view.line} /></>;
     case 'into': return <div className="atlas-te-drop-into" style={boxStyle(view.outline)}><span className="atlas-te-drop-into__text">Drop blocks here</span></div>;
     case 'refused': return null;
   }
@@ -56,8 +55,8 @@ export interface DropIndicatorProps {
 }
 
 /**
- * The drop line, the half a drop beside a block takes, the empty container
- * it goes into, and the wash where it landed. Drawn in the stage over the
+ * The drop line, the empty container a drop goes into, and the wash where
+ * it landed. Drawn in the stage over the
  * card, in the gutter between blocks; never in the card's own flow.
  */
 export function DropIndicator({ stage, view, landed, onLanded }: DropIndicatorProps): React.JSX.Element | null {

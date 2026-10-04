@@ -5,13 +5,12 @@ import { afterEach, beforeEach } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import { TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
-import { Inspector } from '../../src/app/statblocks/editor/template-editor/inspector/Inspector';
-import { LeftPanel } from '../../src/app/statblocks/editor/template-editor/LeftPanel';
+import { SurfaceMenuProvider } from '../../src/app/statblocks/editor/interaction/SurfaceMenuProvider';
 import { TemplateEditor, type TemplateEditorHost } from '../../src/app/statblocks/editor/template-editor/TemplateEditor';
 import type { FakeSession } from '../unit/statblocks/template-editor/editorKit';
 
 /**
- * The template editor with its real left pane and inspector, styled by the
+ * The template editor with its real dock and floating panels, styled by the
  * plugin's stylesheet, between two buttons outside it ("Before", "After").
  * Test files that use it mock the dice links and the header's file actions,
  * which reach Node's `events` (no browser build).
@@ -40,17 +39,16 @@ export function useEditorStyles(): void {
   afterEach(() => style.remove());
 }
 
-/** Mounts the editor `width` px wide; below 900 px both panes fold. Returns its root. */
+/** Mounts the editor `width` px wide (below 720 px the card stands above the note). Returns its root. */
 export function mount(session: FakeSession, width: number): HTMLElement {
-  render(h(TooltipProvider, null,
+  render(h(TooltipProvider, null, h(SurfaceMenuProvider, { ownerId: 'template-editor' },
     h('div', { className: 'atlas-vtt-plugin' },
       h('button', null, 'Before'),
       h('div', { className: 'atlas-statblock-editor', 'data-surface': 'template-editor', style: { height: 760, width } },
         h(TemplateEditor, {
-          session, host, previewPath: null, onPreviewPathChange: noop, collectionId: null, onCollectionChange: noop,
-          leftPanel: LeftPanel, inspector: Inspector,
+          session, host, previewPath: null, onShowWithChange: noop, collectionId: null, onCollectionChange: noop,
         })),
-      h('button', null, 'After'))));
+      h('button', null, 'After')))));
   return document.querySelector<HTMLElement>('.atlas-te')!;
 }
 
@@ -58,6 +56,7 @@ export function mount(session: FakeSession, width: number): HTMLElement {
 export function whereFocus(): string {
   const active = document.activeElement;
   if (!active || active === document.body) return 'body';
+  if (active.closest('.atlas-sb-note-panel__handle')) return 'resize';
   return active.closest('[data-te-region]')?.getAttribute('data-te-region') ?? active.textContent?.trim() ?? active.tagName;
 }
 

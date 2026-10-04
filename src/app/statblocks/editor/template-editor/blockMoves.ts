@@ -108,3 +108,13 @@ export function moveOutOfParent(session: EditorSession, id: string): EditOutcome
   if (edit && !out) return { announce: 'Already at the top level.' };
   return moveOutcome(session, edit, id);
 }
+
+/** Move ▸ Into: to the end of a container (the menu offers the block's sibling containers). */
+export function moveIntoContainer(session: EditorSession, id: string, containerId: string): EditOutcome {
+  const edit = applyTree(session, (layout) => {
+    const container = findBlock(layout.blocks, containerId)?.block;
+    if (!container || !isContainerBlock(container)) return { ok: false, layout, reason: 'not-a-container' };
+    return moveBlock(layout, id, { parentId: containerId, index: container.blocks.length });
+  });
+  return moveOutcome(session, edit, id);
+}

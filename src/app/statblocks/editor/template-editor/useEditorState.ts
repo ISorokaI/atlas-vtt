@@ -91,8 +91,12 @@ export function useEditorState(input: EditorStateInput): EditorState {
   }, [stageRef]);
 
   const labels = useLabelEditing({ session, snapshot, collectionKeys: input.collectionKeys, select, announce, drawn });
-  const { editLabel } = labels;
 
+  /**
+   * Takes an edit's outcome. An insert selects the new block and shows its
+   * toolbar; it never opens the label (spec §6.1), so Delete right after an
+   * insert deletes the block instead of erasing a label being typed.
+   */
   const settle = useCallback((outcome: EditOutcome & { inserted?: string }, focusPrimary = false): void => {
     if (outcome.select !== undefined) select(outcome.select);
     else if (focusPrimary) select(latest.current.selection);
@@ -101,9 +105,8 @@ export function useEditorState(input: EditorStateInput): EditorState {
     if (outcome.inserted) {
       setWashId(outcome.inserted);
       setHinted(false);
-      editLabel(outcome.inserted);
     }
-  }, [select, announce, session, editLabel]);
+  }, [select, announce, session]);
 
   /** Where a floating part hangs below a box of the stage, in the layer's coordinates. */
   const toLayer = useCallback((box: Box): Box => {

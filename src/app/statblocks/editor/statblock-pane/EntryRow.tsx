@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActionsMenuButton } from '../../../packages/components/shared/ActionsMenuButton';
-import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import type { FieldValue } from '../../model/templateTypes';
 import type { EntryPart } from './entryPatches';
 
@@ -74,22 +72,19 @@ export interface EntryRowProps {
   noun: string;
   /** Mark of the row's inputs, so the editor can focus a part. */
   rowId: string;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  /** The drag handle, under the row's menu. */
-  handle?: React.ReactNode;
+  /** The entry's identity in its list: the handle in its gutter drags and opens its menu by it (spec §7.2). */
+  itemKey: string;
   /** Writes typed text; `from` is the entry typing started on. */
   onCommit: (part: EntryPart, text: string, from: FieldValue) => void;
   /** Keys the editor handles for the row: Alt+↑/↓ move it, Mod+Enter in its text adds the next entry, Escape leaves. */
   onRowKey: (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, part: EntryPart, pending: () => PendingPart | null) => void;
-  onMove: (step: 1 | -1) => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
+  /** Hands the editor what is being typed in the row (a drop takes it along); null takes it back. */
+  registerTyping: (rowId: string, typed: (() => PendingPart | null) | null) => void;
 }
 
-/** One entry being edited: its name, run in as the card writes it, then its text, and a menu. */
+/** One entry being edited: its name, run in as the card writes it, then its text. Its menu and handle stand in the gutter. */
 export function EntryRow(props: EntryRowProps): React.JSX.Element {
-  const { item, name, text, noun, rowId } = props;
+  const { item, name, text, noun, rowId, registerTyping } = props;
   const nameDraft = usePartDraft(name, item);
   const textDraft = usePartDraft(text, item);
   const finish = (part: EntryPart): void => {
@@ -107,15 +102,15 @@ export function EntryRow(props: EntryRowProps): React.JSX.Element {
     const typed = (part === 'name' ? nameDraft : textDraft).end();
     return typed === null ? null : { part, ...typed };
   };
-  const menu: ContextMenuEntry[] = [
-    { type: 'item', label: 'Move up', icon: 'arrow-up', disabled: !props.canMoveUp, onClick: () => props.onMove(-1) },
-    { type: 'item', label: 'Move down', icon: 'arrow-down', disabled: !props.canMoveDown, onClick: () => props.onMove(1) },
-    { type: 'item', label: 'Duplicate', icon: 'copy', onClick: props.onDuplicate },
-    { type: 'item', label: 'Delete', icon: 'trash-2', destructive: true, onClick: props.onDelete },
-  ];
+  const typedRef = useRef(() => pendingOf('name')() ?? pendingOf('text')());
+  typedRef.current = () => pendingOf('name')() ?? pendingOf('text')();
+  useEffect(() => {
+    registerTyping(rowId, () => typedRef.current());
+    return () => registerTyping(rowId, null);
+  }, [registerTyping, rowId]);
 
   return (
-    <div className="atlas-sb-pane-entry" data-entry-row={rowId}>
+    <div className="atlas-sb-pane-entry" data-entry-row={rowId} data-item-key={props.itemKey}>
       <input
         type="text"
         className="atlas-sb-pane-input atlas-sb-pane-entry__name"
@@ -140,8 +135,6 @@ export function EntryRow(props: EntryRowProps): React.JSX.Element {
         onBlur={() => finish('text')}
         onKeyDown={(event) => props.onRowKey(event, 'text', pendingOf('text'))}
       />
-      <ActionsMenuButton label={`Options for ${name.trim() || noun.toLowerCase()}`} entries={menu} className="atlas-sb-pane-entry__menu" />
-      {props.handle}
     </div>
   );
 }

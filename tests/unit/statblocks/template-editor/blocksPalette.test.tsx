@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { findBlock } from '../../../../src/app/statblocks/model/treeQueries';
@@ -24,8 +24,8 @@ const tile = (name: string): HTMLElement => {
 
 describe('the Blocks tab', () => {
   it('lists the recipes, then the catalogue by group, as live miniatures', () => {
-    mountEditor();
-    const pane = document.querySelector<HTMLElement>('.atlas-te-pane')!;
+    mountEditor(undefined, { dock: 'Add' });
+    const pane = document.querySelector<HTMLElement>('.atlas-te-dock-panel')!;
     expect([...pane.querySelectorAll('.atlas-te-palette__group-label')].map((label) => label.textContent))
       .toEqual(['Common', 'Basics', 'Lists', 'Numbers', 'Layout', 'Media']);
     const common = within(pane).getByRole('group', { name: 'Common' });
@@ -36,19 +36,21 @@ describe('the Blocks tab', () => {
     expect(preview.hasAttribute('inert')).toBe(true);
   });
 
-  it('inserts a clicked block after the selection, in one step, and opens its label', () => {
-    const { session, frame } = mountEditor();
+  it('inserts a clicked block after the selection, in one step, and selects it without opening its label', () => {
+    const { session, frame } = mountEditor(undefined, { dock: 'Add' });
     fireEvent.click(frame('stat-ac1'));
     fireEvent.click(tile('Stat'));
     const section = findBlock(session.template.layout.blocks, 'section1')?.block;
     expect(section && 'blocks' in section ? section.blocks.map((block) => block.type) : []).toEqual(['stat', 'stat', 'stat']);
     expect(section && 'blocks' in section ? section.blocks[0]?.id : '').toBe('stat-ac1');
     expect(session.steps).toBe(1);
-    expect(document.querySelector<HTMLInputElement>('.atlas-te-label-input')?.value).toBe('Stat');
+    // Inserting never opens the label (spec §6.1): Delete right after it deletes the block.
+    expect(document.querySelector('.atlas-te-label-input')).toBeNull();
+    expect(document.querySelector('[data-te-selected="primary"]')?.getAttribute('data-block-id')).toBe(section && 'blocks' in section ? section.blocks[1]?.id : '');
   });
 
   it('inserts a recipe at the end without a selection', () => {
-    const { session } = mountEditor();
+    const { session } = mountEditor(undefined, { dock: 'Add' });
     fireEvent.click(tile('Actions'));
     expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'entries', heading: 'Actions' });
     expect(session.template.fields.at(-1)).toMatchObject({ key: 'actions', type: 'entries' });
@@ -56,7 +58,7 @@ describe('the Blocks tab', () => {
   });
 
   it('finds blocks in a list that stands open, and inserts the highlighted one with Enter', () => {
-    const { session } = mountEditor();
+    const { session } = mountEditor(undefined, { dock: 'Add' });
     const search = screen.getByRole('combobox', { name: 'Find a block' });
     fireEvent.change(search, { target: { value: 'sc' } });
     const results = screen.getByRole('listbox', { name: 'Blocks found' });
@@ -72,8 +74,8 @@ describe('the Blocks tab', () => {
     expect((search as HTMLInputElement).value).toBe('');
   });
 
-  it('clears the search with Escape and leaves an empty search\'s Escape alone', () => {
-    mountEditor();
+  it('clears the search with Escape, and an empty search\'s Escape puts the panel away', async () => {
+    mountEditor(undefined, { dock: 'Add' });
     const search = screen.getByRole<HTMLInputElement>('combobox', { name: 'Find a block' });
     fireEvent.change(search, { target: { value: 'zzz' } });
     expect(screen.getByText('No block matches')).toBeTruthy();
@@ -81,13 +83,14 @@ describe('the Blocks tab', () => {
     act(() => { search.dispatchEvent(clearing); });
     expect(clearing.defaultPrevented).toBe(true);
     expect(search.value).toBe('');
-    const passing = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
-    act(() => { search.dispatchEvent(passing); });
-    expect(passing.defaultPrevented).toBe(false);
+    const closing = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    act(() => { search.dispatchEvent(closing); });
+    expect(closing.defaultPrevented).toBe(true);
+    await waitFor(() => expect(document.querySelector('.atlas-te-dock-panel')).toBeNull());
   });
 
   it('is one tab stop whose arrows move between the tiles', () => {
-    mountEditor();
+    mountEditor(undefined, { dock: 'Add' });
     const tiles = [...document.querySelectorAll<HTMLElement>('.atlas-te-tile')];
     expect(tiles.filter((element) => element.tabIndex === 0)).toEqual([tiles[0]]);
     act(() => tiles[0]?.focus());
@@ -102,7 +105,7 @@ describe('the Blocks tab', () => {
 
   it('says why a built-in takes no block', () => {
     const session = new FakeSession(sampleTemplate(), { readOnly: true, readOnlyReason: 'built-in', path: null });
-    mountEditor(session);
+    mountEditor(session, { dock: 'Add' });
     expect(tile('Stat').getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(tile('Stat'));
     expect(session.steps).toBe(0);

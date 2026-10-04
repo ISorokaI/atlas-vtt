@@ -46,7 +46,7 @@ function BlockEditor({ block, fields, target }: BlockEditorProps): React.JSX.Ele
   return (
     <span ref={ref} className="atlas-sb-pane-editor" onBlur={onBlur}>
       {entries
-        ? <EntriesEditor field={entries} entry={target.entry} addLabel={block.type === 'entries' ? block.addLabel : undefined} />
+        ? <EntriesEditor field={entries} entry={target.entry} add={target.add} addLabel={block.type === 'entries' ? block.addLabel : undefined} />
         : fields.map((field, index) => (
           <React.Fragment key={field.key}>
             {index > 0 && ' '}

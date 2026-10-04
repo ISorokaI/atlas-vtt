@@ -20,9 +20,11 @@ vi.mock('../../src/app/statblocks/editor/template-editor/templateEditorActions',
 }));
 
 /**
- * The template editor's left pane and inspector with the real stylesheet
- * (§7.10): padding equals the gap, corners are concentric, only transform and
- * opacity animate, and below 900 px the inspector folds into a popover.
+ * The template editor's shell with the real stylesheet (§2, §14, §17 D):
+ * the note view's row with the dock and the floating panels over the note
+ * column, never over the card where the view is wide; padding equals the gap,
+ * corners are concentric, only transform and opacity animate, and below
+ * 720 px the card stands above the note.
  */
 const TOLERANCE = 0.5;
 /**
@@ -110,154 +112,171 @@ async function animatedWhile(run: () => void | Promise<void>): Promise<string[]>
   return [...props].filter((name) => !ANIMATABLE.has(name));
 }
 
-describe('the template editor\'s side panes', () => {
+const overlaps = (a: DOMRect, b: DOMRect): boolean => a.left < b.right - TOLERANCE && a.right > b.left + TOLERANCE && a.top < b.bottom - TOLERANCE && a.bottom > b.top + TOLERANCE;
+const card = (): DOMRect => document.querySelector('.atlas-sb-pane-card')!.getBoundingClientRect();
+
+async function openDock(name: string): Promise<HTMLElement> {
+  const button = [...document.querySelectorAll<HTMLButtonElement>('.atlas-te-dock button')].find((element) => element.textContent === name)!;
+  await act(async () => { button.click(); });
+  await wait(300);
+  return document.querySelector<HTMLElement>('.atlas-te-dock-panel')!;
+}
+
+async function openSettings(id: string): Promise<HTMLElement> {
+  await act(async () => { frame(id).click(); });
+  await act(async () => { frame(id).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true })); });
+  await wait(300);
+  return document.querySelector<HTMLElement>('.atlas-te-settings')!;
+}
+
+describe('the template editor as the note view', () => {
   useEditorStyles();
   afterEach(cleanup);
 
-  it('pads the left pane, the palette tiles and the inspector groups as much as they space their children', async () => {
-    mount(new FakeSession(sampleTemplate()), 1180);
-    await frames(2);
-    expect(document.querySelector('.atlas-te-left')!.getBoundingClientRect().width).toBeCloseTo(260, 0);
-    expectUniform(document.querySelector('.atlas-te-pane__body')!, 'left pane');
-    const grid = document.querySelector('.atlas-te-palette__grid')!;
-    const tilePadding = expectUniform(document.querySelector('.atlas-te-tile')!, 'palette tile');
-    expect(spacing(grid).columnGap, 'tiles stand as far apart as their padding').toBeCloseTo(tilePadding, 1);
-    const tile = document.querySelector('.atlas-te-tile')!.getBoundingClientRect();
-    expect(grid.getBoundingClientRect().width).toBeCloseTo(tile.width * 2 + tilePadding, 0);
-    // The miniature and the name, measured: the gap between them is the tile's padding.
-    const preview = document.querySelector('.atlas-te-tile__preview')!.getBoundingClientRect();
-    const label = document.querySelector('.atlas-te-tile__label')!.getBoundingClientRect();
-    expect(label.top - preview.bottom).toBeCloseTo(tilePadding, 0);
+  it('is the note view\'s row: the note on the left, the panel at its width on the right, under a capsule of one line', async () => {
+    const root = mount(new FakeSession(sampleTemplate()), 1180);
+    await frames(3);
+    const note = root.querySelector('.atlas-te-note')!.getBoundingClientRect();
+    const panel = root.querySelector('.atlas-sb-note-panel')!.getBoundingClientRect();
+    expect(note.right).toBeCloseTo(panel.left, 0);
+    expect(panel.right).toBeCloseTo(root.getBoundingClientRect().right, 0);
+    const capsule = root.querySelector<HTMLElement>('.atlas-te-capsule')!;
+    const control = px(getComputedStyle(capsule).getPropertyValue('--input-height')) || 30;
+    const inner = capsule.clientHeight - px(getComputedStyle(capsule).paddingTop) - px(getComputedStyle(capsule).paddingBottom);
+    expect(inner, 'the capsule holds one line of controls').toBeCloseTo(control, 0);
+    expect(root.querySelector('.atlas-te-floating')).toBeNull();
+  });
 
-    await act(async () => { frame('stat-ac1').click(); });
-    await frames(2);
-    for (const group of document.querySelectorAll('.atlas-te-inspector .atlas-te-group')) {
-      expectUniform(group, `inspector group ${group.getAttribute('data-group') ?? ''}`, ['rowGap', 'columnGap']);
+  it('keeps the capsule on one line at every panel width from 320 px', async () => {
+    const root = mount(new FakeSession(sampleTemplate(), { name: 'A template with a rather long name indeed' }), 1180);
+    for (const width of [960, 600, 420, 360, 320]) {
+      root.querySelector<HTMLElement>('.atlas-sb-note-panel')!.style.setProperty('--atlas-sb-panel-width', `${width}px`);
+      root.querySelector<HTMLElement>('.atlas-sb-note-panel')!.style.width = `${width}px`;
+      await wait(60);
+      const capsule = root.querySelector<HTMLElement>('.atlas-te-capsule')!;
+      // Centred on one line: every part's middle at the same height.
+      const middles = new Set([...capsule.children].map((child) => {
+        const box = child.getBoundingClientRect();
+        return Math.round(box.top + box.height / 2);
+      }));
+      expect(middles.size, `one line at ${width}px`).toBe(1);
+      expect(capsule.scrollWidth, `nothing hangs out at ${width}px`).toBeLessThanOrEqual(capsule.clientWidth + 1);
     }
-    expect(document.querySelector('.atlas-te-inspector')!.getBoundingClientRect().width).toBeCloseTo(280, 0);
   });
 
-  it('keeps the block toolbar\'s capsule and the dialogs\' close buttons concentric', async () => {
-    mount(new FakeSession({ ...sampleTemplate(), source: SRD_5_2_1_SOURCE }), 1180);
-    await act(async () => { frame('stat-ac1').click(); });
+  it('pads the dock panel, the palette tiles and the Settings groups as much as they space their children', async () => {
+    mount(new FakeSession(sampleTemplate()), 1400);
     await frames(2);
-    const toolbar = document.querySelector('.atlas-te-toolbar')!;
-    const bar = toolbar.getBoundingClientRect();
-    const button = toolbar.querySelector('.atlas-tool-button button')!.getBoundingClientRect();
-    const barRadius = px(getComputedStyle(toolbar).borderTopLeftRadius);
-    const buttonRadius = px(getComputedStyle(toolbar.querySelector('.atlas-tool-button button')!).borderTopLeftRadius);
-    const start = button.left - bar.left + BORDER - drawnBorder(toolbar);
-    expect(barRadius, 'the toolbar is a capsule').toBeCloseTo(bar.height / 2, 1);
-    expect(button.top - bar.top, 'its buttons stand as far from the top as from the start').toBeCloseTo(start, 1);
-    expect(Math.abs(buttonRadius + start - barRadius), 'its buttons concentric with its ends').toBeLessThan(TOLERANCE);
+    const panel = await openDock('Add');
+    expect(panel.getBoundingClientRect().width).toBeCloseTo(280, 0);
+    expectUniform(panel.querySelector('.atlas-te-floating__content')!, 'dock panel');
+    const grid = panel.querySelector('.atlas-te-palette__grid')!;
+    const tilePadding = expectUniform(panel.querySelector('.atlas-te-tile')!, 'palette tile');
+    expect(spacing(grid).columnGap, 'tiles stand as far apart as their padding').toBeCloseTo(tilePadding, 1);
+    expectConcentricClose(panel, 'dock panel');
 
-    const advanced = [...document.querySelectorAll<HTMLElement>('.atlas-te-inspector .atlas-te-group__header')].find((header) => header.textContent === 'Advanced')!;
-    await act(async () => { advanced.click(); });
-    const rename = [...document.querySelectorAll<HTMLButtonElement>('.atlas-te-inspector button')].find((element) => element.textContent === 'Rename…')!;
-    await act(async () => { rename.click(); });
-    await wait(400);
-    expectConcentricClose(document.querySelector('.atlas-te-dialog')!, 'Rename key');
-    await act(async () => { document.querySelector<HTMLButtonElement>('.atlas-te-dialog .atlas-close-btn')!.click(); });
-    await wait(300);
-
-    await act(async () => { document.querySelector<HTMLElement>('.atlas-te-stage')!.click(); });
-    const remove = [...document.querySelectorAll<HTMLButtonElement>('.atlas-te-inspector button')].find((element) => element.textContent === 'Remove attribution')!;
-    await act(async () => { remove.click(); });
-    await wait(400);
-    expectConcentricClose(document.querySelector('.atlas-te-dialog')!, 'Remove attribution');
+    const settings = await openSettings('stat-ac1');
+    expect(settings.getBoundingClientRect().width).toBeCloseTo(300, 0);
+    for (const group of settings.querySelectorAll('.atlas-te-group')) {
+      expectUniform(group, `settings group ${group.getAttribute('data-group') ?? ''}`, ['rowGap', 'columnGap']);
+    }
+    expectConcentricClose(settings, 'settings');
   });
 
-  it('keeps the block toolbar on its block when a conflict bar opens above the canvas and when it goes', async () => {
+  it('keeps every floating panel off the card where the view is at least 900 px wide', async () => {
+    for (const width of [1400, 900]) {
+      mount(new FakeSession(sampleTemplate()), width);
+      await frames(3);
+      const dock = document.querySelector('.atlas-te-dock')!.getBoundingClientRect();
+      expect(overlaps(dock, card()), `the dock at ${width}px`).toBe(false);
+      const panel = await openDock('Structure');
+      expect(overlaps(panel.getBoundingClientRect(), card()), `the dock panel at ${width}px`).toBe(false);
+      const settings = await openSettings('stat-hp1');
+      expect(overlaps(settings.getBoundingClientRect(), card()), `Settings at ${width}px`).toBe(false);
+      const open = document.querySelector('.atlas-te-dock-panel');
+      if (open) expect(overlaps(open.getBoundingClientRect(), settings.getBoundingClientRect()), `the two panels at ${width}px`).toBe(false);
+      cleanup();
+    }
+  });
+
+  it('shows the dock panel and Settings one at a time below 900 px', async () => {
+    mount(new FakeSession(sampleTemplate()), 899);
+    await frames(3);
+    await openDock('Structure');
+    await openSettings('stat-hp1');
+    await wait(300);
+    expect(document.querySelector('.atlas-te-dock-panel')).toBeNull();
+    expect(document.querySelector('.atlas-te-settings')).not.toBeNull();
+  });
+
+  it('stands the card above the note below 720 px, with the dock\'s panels in the capsule\'s menu', async () => {
+    const root = mount(new FakeSession(sampleTemplate()), 719);
+    await frames(3);
+    const panel = root.querySelector('.atlas-sb-note-panel')!.getBoundingClientRect();
+    const note = root.querySelector('.atlas-te-note')!.getBoundingClientRect();
+    expect(panel.bottom).toBeLessThanOrEqual(note.top + TOLERANCE);
+    expect(root.querySelector('.atlas-te-dock')).toBeNull();
+    expect(card().width).toBeGreaterThanOrEqual(320);
+  });
+
+  it('keeps the block toolbar on its block when a conflict bar opens above the card and when it goes', async () => {
     const session = new FakeSession(sampleTemplate());
     mount(session, 1180);
     await act(async () => { frame('stat-hp1').click(); });
     await frames(2);
-    const gap = (): number => frame('stat-hp1').getBoundingClientRect().top - document.querySelector('.atlas-te-toolbar')!.getBoundingClientRect().bottom;
-    const resting = gap();
-    expect(resting).toBeGreaterThan(0);
+    const toolbar = (): DOMRect => document.querySelector('.atlas-te-toolbar')!.getBoundingClientRect();
+    const offset = (): number => toolbar().top - frame('stat-hp1').getBoundingClientRect().top;
+    const resting = offset();
     const blockTop = frame('stat-hp1').getBoundingClientRect().top;
     await act(async () => { session.patch({ conflict: 'changed', saveState: 'conflict' }); });
     await frames(3);
-    expect(frame('stat-hp1').getBoundingClientRect().top, 'the bar moved the canvas down').toBeGreaterThan(blockTop + 10);
-    expect(gap()).toBeCloseTo(resting, 0);
+    expect(frame('stat-hp1').getBoundingClientRect().top, 'the bar moved the card down').toBeGreaterThan(blockTop + 10);
+    expect(offset()).toBeCloseTo(resting, 0);
     await act(async () => { session.patch({ conflict: null, saveState: 'saved' }); });
     await frames(3);
-    expect(gap()).toBeCloseTo(resting, 0);
+    expect(offset()).toBeCloseTo(resting, 0);
   });
 
-  it('keeps the narrow inspector popover\'s border whole where it is taller than the room: the panel scrolls inside it', async () => {
-    mount(new FakeSession(sampleTemplate()), 860);
+  it('keeps the Settings panel\'s border whole where it is taller than the room: it scrolls inside it', async () => {
+    mount(new FakeSession(sampleTemplate()), 1400);
     await frames(3);
-    await act(async () => { frame('stat-hp1').click(); });
-    await wait(400);
+    const settings = await openSettings('stat-hp1');
     for (const name of ['Look', 'When empty', 'Format', 'Advanced']) {
-      const header = [...document.querySelectorAll<HTMLElement>('.atlas-te-insp-popover .atlas-te-group__header')].find((element) => element.textContent === name);
+      const header = [...settings.querySelectorAll<HTMLElement>('.atlas-te-group__header')].find((element) => element.textContent === name);
       if (header?.getAttribute('aria-expanded') !== 'true') await act(async () => { header?.click(); });
     }
     await wait(400);
-    const panel = document.querySelector<HTMLElement>('.atlas-te-insp-popover__panel')!;
-    expect(panel.scrollHeight, 'the open groups are taller than the room').toBeGreaterThan(panel.clientHeight);
-    const box = panel.getBoundingClientRect();
-    expect(box.bottom, 'its bottom border shows inside the window').toBeLessThanOrEqual(window.innerHeight);
-    expect(px(getComputedStyle(panel).borderBottomWidth)).toBeGreaterThan(0);
+    expect(settings.scrollHeight, 'the open groups are taller than the room').toBeGreaterThan(settings.clientHeight);
+    expect(settings.getBoundingClientRect().bottom, 'its bottom border shows inside the editor').toBeLessThanOrEqual(document.querySelector('.atlas-te')!.getBoundingClientRect().bottom);
   });
 
-  it('animates only transform and opacity: the inspector\'s crossfade, its groups, the panels and the popover', async () => {
-    const root = mount(new FakeSession(sampleTemplate()), 1180);
+  it('animates only transform and opacity: the dock panel, Settings, its crossfade and its groups', async () => {
+    mount(new FakeSession(sampleTemplate()), 1400);
     await frames(2);
+    const dockButton = (name: string): HTMLButtonElement => [...document.querySelectorAll<HTMLButtonElement>('.atlas-te-dock button')].find((element) => element.textContent === name)!;
+    expect(await animatedWhile(() => dockButton('Add').click()), 'a dock panel opening').toEqual([]);
+    expect(await animatedWhile(() => dockButton('Structure').click()), 'the dock panel swapping').toEqual([]);
     expect(await animatedWhile(() => frame('stat-ac1').click()), 'selecting a block').toEqual([]);
-    expect(await animatedWhile(() => frame('stat-hp1').click()), 'the next block').toEqual([]);
-    const look = [...document.querySelectorAll<HTMLElement>('.atlas-te-inspector .atlas-te-group__header')].find((header) => header.textContent === 'Look')!;
+    expect(await animatedWhile(() => {
+      frame('stat-ac1').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true }));
+    }), 'Settings opening').toEqual([]);
+    expect(await animatedWhile(() => frame('stat-hp1').click()), 'Settings following the selection').toEqual([]);
+    const look = [...document.querySelectorAll<HTMLElement>('.atlas-te-settings .atlas-te-group__header')].find((header) => header.textContent === 'Look')!;
     expect(await animatedWhile(() => look.click()), 'opening a group').toEqual([]);
-    const outline = [...root.querySelectorAll<HTMLButtonElement>('.atlas-segmented__option')].find((option) => option.textContent === 'Outline')!;
-    expect(await animatedWhile(() => outline.click()), 'switching tabs').toEqual([]);
-
-    root.parentElement!.style.width = '860px';
-    await wait(100);
-    expect(root.getAttribute('data-layout')).toBe('narrow');
-    const blocks = [...root.querySelectorAll<HTMLButtonElement>('.atlas-te-rail button')].find((button) => button.textContent === 'Blocks')!;
-    expect(await animatedWhile(() => blocks.click()), 'a rail panel').toEqual([]);
-    await act(async () => { root.querySelector<HTMLElement>('.atlas-te-stage')!.click(); });
-    await wait(300);
-    expect(await animatedWhile(() => frame('stat-ac1').click()), 'the popover opening').toEqual([]);
-    expect(await animatedWhile(() => frame('stat-hp1').click()), 'the popover\'s crossfade').toEqual([]);
   });
 
-  it('folds the left pane into a rail and the inspector into a popover beside the block below 900 px', async () => {
-    const root = mount(new FakeSession(sampleTemplate()), 860);
-    await frames(3);
-    expect(root.getAttribute('data-layout')).toBe('narrow');
-    expect(document.querySelector('.atlas-te-left')!.getBoundingClientRect().width).toBeCloseTo(40, 0);
-    expect(document.querySelector('.atlas-te-inspector')!.getBoundingClientRect().width).toBe(0);
-    for (const button of document.querySelectorAll('.atlas-te-rail button')) {
-      const box = button.getBoundingClientRect();
-      expect(Math.min(box.width, box.height), 'rail targets are at least 24 px').toBeGreaterThanOrEqual(24);
-    }
-    expectUniform(document.querySelector('.atlas-te-rail')!, 'rail');
-    expect(document.querySelector('.atlas-te-main')!.getBoundingClientRect().width).toBeGreaterThanOrEqual(320);
-
-    await act(async () => { frame('stat-hp1').click(); });
+  it('keeps the dialogs\' close buttons concentric', async () => {
+    mount(new FakeSession({ ...sampleTemplate(), source: SRD_5_2_1_SOURCE }), 1400);
+    await openSettings('stat-ac1');
+    await wait(300);
+    // The content shown now: the one before fades out beside it.
+    const content = (): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-te-settings .atlas-te-insp__fade')].at(-1)!;
+    const advanced = [...content().querySelectorAll<HTMLElement>('.atlas-te-group__header')].find((header) => header.textContent === 'Advanced')!;
+    if (advanced.getAttribute('aria-expanded') !== 'true') await act(async () => { advanced.click(); });
+    await wait(300);
+    const rename = [...content().querySelectorAll<HTMLButtonElement>('button')].find((element) => element.textContent === 'Rename…')!;
+    await act(async () => { rename.click(); });
     await wait(400);
-    const popover = document.querySelector<HTMLElement>('.atlas-te-insp-popover')!;
-    expect(popover.getAttribute('role')).toBe('dialog');
-    const box = popover.getBoundingClientRect();
-    const block = frame('stat-hp1').getBoundingClientRect();
-    const view = document.querySelector('.atlas-te-canvas__scroller')!.getBoundingClientRect();
-    const overlaps = box.left < block.right && box.right > block.left && box.top < block.bottom && box.bottom > block.top;
-    expect(overlaps, 'the popover stands beside the block, not over it').toBe(false);
-    expect(box.width).toBeCloseTo(280, 0);
-    expect(box.left).toBeGreaterThanOrEqual(view.left - TOLERANCE);
-    expect(box.right).toBeLessThanOrEqual(view.right + TOLERANCE);
-    expectConcentricClose(popover.querySelector('.atlas-te-insp-popover__panel')!, 'inspector popover');
-    for (const group of popover.querySelectorAll('.atlas-te-group')) expectUniform(group, 'popover group', ['rowGap', 'columnGap']);
-
-    const outline = [...root.querySelectorAll<HTMLButtonElement>('.atlas-te-rail button')].find((button) => button.textContent === 'Outline')!;
-    await act(async () => { outline.click(); });
-    await wait(400);
-    const flyout = document.querySelector('.atlas-te-flyout__panel')!;
-    expect(flyout.querySelector('[role="tree"]')).not.toBeNull();
-    expect(flyout.getBoundingClientRect().left).toBeGreaterThan(document.querySelector('.atlas-te-rail')!.getBoundingClientRect().right);
-    expectConcentricClose(flyout, 'rail panel');
-    expectUniform(flyout.querySelector('.atlas-te-flyout__body')!, 'rail panel body');
+    expectConcentricClose(document.querySelector('.atlas-te-dialog')!, 'Rename key');
   });
 });

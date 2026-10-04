@@ -91,7 +91,8 @@ export function AddFieldRow({ app, adder, collectionId, template, templateName, 
   // The new block takes the focus once the card shows it (a copy shows only after the note names it).
   useEffect(() => {
     if (!adder.added) return;
-    const card = rowRef.current?.closest('.atlas-sb-pane-card');
+    // The row stands under the card, in the pane's body.
+    const card = rowRef.current?.closest('.atlas-sb-pane-body')?.querySelector('.atlas-sb-pane-card');
     card?.querySelector<HTMLElement>(`[data-block-id="${adder.added}"]`)?.focus({ preventScroll: false });
   }, [adder.added, template]);
 

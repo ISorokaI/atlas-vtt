@@ -60,7 +60,7 @@ describe('TemplateEditorView', () => {
     const before = new Map(files);
     const state = { templateId: BUILT_IN, previewPath: 'Bestiary/Bog Hag.md', collectionId: 'campaign' };
     await act(async () => { await view.setState(state, { history: false }); });
-    expect(view.getState()).toEqual(state);
+    expect(view.getState()).toEqual({ ...state, previewMode: null });
     expect(screen.getByText('Built-in template. Make a copy to change it.')).toBeTruthy();
     expect(files).toEqual(before);
   });
@@ -70,7 +70,7 @@ describe('TemplateEditorView', () => {
     const before = files.get(MARSH_PATH);
     await act(async () => { await view.setState({ file: MARSH_PATH, previewPath: null, collectionId: null }, { history: false }); });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Marsh creature' })).toBeTruthy());
-    expect(view.getState()).toEqual({ file: MARSH_PATH, previewPath: null, collectionId: null });
+    expect(view.getState()).toEqual({ file: MARSH_PATH, previewPath: null, previewMode: null, collectionId: null });
     expect(view.getDisplayText()).toBe('Marsh creature');
     expect(files.get(MARSH_PATH)).toBe(before);
   });

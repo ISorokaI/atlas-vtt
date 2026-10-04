@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import panelCss from '../../src/app/statblocks/editor/note-panel/note-statblock-panel.scss?inline';
+import frameCss from '../../src/app/statblocks/editor/panel-frame/panel-frame.scss?inline';
 import sheetCss from '../../src/app/statblocks/render/statblock-sheet.scss?inline';
 import { PanelResizeHandle } from '../../src/app/statblocks/editor/note-panel/PanelResizeHandle';
 import { DEFAULT_MAX_WIDTH, MIN_PANEL_WIDTH, NOTE_MIN_WIDTH, defaultPanelWidth } from '../../src/app/statblocks/editor/note-panel/panelPrefs';
@@ -73,7 +74,7 @@ const frame = (): Promise<void> => new Promise((resolve) => requestAnimationFram
 
 describe('the statblock beside its note', () => {
   const style = document.createElement('style');
-  style.textContent = OBSIDIAN + css + panelCss + sheetCss;
+  style.textContent = OBSIDIAN + css + panelCss + frameCss + sheetCss;
 
   beforeEach(async () => {
     await page.viewport(1400, 900);

@@ -192,10 +192,9 @@ describe('the statblock pane over a native note', () => {
 
   it('says how to get a deleted entry back', async () => {
     const { result, writer } = await pane();
-    fireEvent.click(blockOf(result.container, 'gcaction').querySelectorAll('.atlas-sb-trait')[0]!);
-    const more = screen.getByRole('button', { name: 'Options for Bite' });
-    fireEvent.keyDown(more, { key: 'Enter' });
-    await act(async () => { fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' })); });
+    // The ability's menu, by right-click at rest (spec §5.5): the same rows as its handle's.
+    fireEvent.contextMenu(blockOf(result.container, 'gcaction').querySelectorAll('.atlas-sb-trait')[0]!);
+    await act(async () => { fireEvent.click(await screen.findByRole('menuitem', { name: /^Delete Bite/ })); });
     expect(writer.patches()).toEqual([{ op: 'remove', list: 'actions', item: WARDEN.actions[0] }]);
     expect(result.container.querySelector('.atlas-sb-pane-live')?.textContent).toBe('Deleted Bite. Press Ctrl+Z to undo.');
   });

@@ -34,22 +34,13 @@ const host: TemplateEditorHost = { openTemplate: noop, openNote: noop, close: no
 /** The platform's own undo key in a text field: Playwright sends macOS's editing command for Meta+Z. */
 const NATIVE_UNDO = navigator.platform.includes('Mac') ? '{Meta>}z{/Meta}' : '{Control>}z{/Control}';
 
-function LeftPanel(): React.ReactElement {
-  return h('div', { className: 'test-left' }, h('button', null, 'Blocks'), h('button', null, 'Outline'));
-}
-
-function Inspector(): React.ReactElement {
-  return h('div', { className: 'test-inspector' }, h('input', { 'aria-label': 'Field key' }));
-}
-
 function mount(session: FakeSession): void {
   render(h(TooltipProvider, null,
     h('div', { className: 'atlas-vtt-plugin' },
       h('button', null, 'Before'),
       h('div', { className: 'atlas-statblock-editor', 'data-surface': 'template-editor', style: { height: 720, width: 1180 } },
         h(TemplateEditor, {
-          session, host, previewPath: null, onPreviewPathChange: noop, collectionId: null, onCollectionChange: noop,
-          leftPanel: LeftPanel, inspector: Inspector,
+          session, host, previewPath: null, onShowWithChange: noop, collectionId: null, onCollectionChange: noop,
         })),
       h('button', null, 'After'))));
 }
@@ -60,6 +51,7 @@ function whereFocus(): string {
   if (!active || active === document.body) return 'body';
   const region = active.closest('[data-te-region]')?.getAttribute('data-te-region');
   if (region) return region;
+  if (active.closest('.atlas-sb-note-panel__handle')) return 'resize';
   if (active.closest('.atlas-te-layer')) return 'toolbar';
   return active.textContent?.trim() ?? active.tagName;
 }
@@ -91,15 +83,15 @@ describe('the template editor by keyboard', () => {
     style.remove();
   });
 
-  it('leaves every region with Tab and Shift+Tab, stopping once on the canvas', async () => {
+  it('leaves every region with Tab and Shift+Tab, stopping once on the canvas: the panel\'s edge, the capsule, the card, the dock', async () => {
     mount(new FakeSession(sampleTemplate()));
     page.getByRole('button', { name: 'Before' }).element().focus();
     const forward = await walk('After', false);
-    expect(regionsOf(forward)).toEqual(['header', 'left', 'preview', 'canvas', 'inspector', 'After']);
+    expect(regionsOf(forward)).toEqual(['resize', 'header', 'canvas', 'dock', 'After']);
     expect(forward.filter((place) => place === 'canvas')).toHaveLength(1);
 
     const backward = await walk('Before', true);
-    expect(regionsOf(backward)).toEqual(['inspector', 'canvas', 'preview', 'left', 'header', 'Before']);
+    expect(regionsOf(backward)).toEqual(['dock', 'canvas', 'header', 'resize', 'Before']);
     expect(backward.filter((place) => place === 'canvas')).toHaveLength(1);
   });
 
@@ -107,7 +99,7 @@ describe('the template editor by keyboard', () => {
     mount(new FakeSession(sampleTemplate()));
     await userEvent.click(document.querySelector('[data-block-id="stat-hp1"]')!);
     await userEvent.keyboard('{Tab}');
-    expect(whereFocus()).toBe('inspector');
+    expect(whereFocus()).toBe('dock');
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
     expect(document.activeElement?.getAttribute('data-block-id')).toBe('stat-hp1');
   });
