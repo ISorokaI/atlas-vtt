@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { AssetService } from '../../../../src/app/services/AssetService';
-import { SettingsService } from '../../../../src/app/services/SettingsService';
+import { SystemPresetFiles } from '../../../../src/app/services/systemPresets/SystemPresetFiles';
 import { SystemPresetService } from '../../../../src/app/services/SystemPresetService';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../../../src/app/gameSystems/builtInPresets';
 import { exportCollectionBundle, prepareCollectionExport } from '../../../../src/app/services/collectionBundle/collectionExport';
@@ -13,7 +13,7 @@ import { NoteFieldWriter } from '../../../../src/app/statblocks/notes/NoteFieldW
 import { findCode } from '../../../../src/app/statblocks/model/fsCodeKeys';
 import { MARSH_CREATURE_JSON } from '../../../fixtures/statblockTemplateFixtures';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../../../mocks/inMemoryVault';
-import { memorySettings } from '../../../mocks/memorySettings';
+import { memoryPresets } from '../../../mocks/memoryPresets';
 
 vi.mock('../../../../src/app/atlas-view', () => ({
   ATLAS_VIEW_TYPE: 'atlas-vtt',
@@ -123,12 +123,12 @@ describe('exporting a collection with statblock templates', () => {
   });
 
   it('writes out the roles a collection reads from a user preset, which then counts as unchanged where that preset is', async () => {
-    const settings = memorySettings();
+    const settings = memoryPresets();
     const dnd = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!;
     const preset = new SystemPresetService(settings).create('Marsh', { ...dnd.rules, statblockRoles: [ROLE] });
     const creator = await creatorVault({ systemPresetId: preset.id });
     creator.vault.files.set(NOTE, '---\nstatblock: true\nname: Hag\n---\nA hag.');
-    vi.spyOn(SettingsService, 'forApp').mockReturnValue(settings as unknown as SettingsService);
+    vi.spyOn(SystemPresetFiles, 'forApp').mockReturnValue(settings as unknown as SystemPresetFiles);
 
     const blob = await release(creator);
     const { manifest } = await unzip(blob);

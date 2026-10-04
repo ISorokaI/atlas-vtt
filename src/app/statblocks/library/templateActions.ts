@@ -8,7 +8,7 @@
 
 import type { App } from 'obsidian';
 import { AssetService } from '../../services/AssetService';
-import { SettingsService } from '../../services/SettingsService';
+import { SystemPresetFiles } from '../../services/systemPresets/SystemPresetFiles';
 import { SystemPresetService } from '../../services/SystemPresetService';
 import type { StatblockRole } from '../model/roleTypes';
 import { isBuiltInTemplateId, type StatblockTemplate, type TemplateId } from '../model/templateTypes';
@@ -73,9 +73,9 @@ async function replaceRoleTemplates(app: App, from: TemplateId, to: TemplateId):
     const statblockRoles = rolesWith(collection.settings?.statblockRoles, from, to);
     if (statblockRoles) await assets.updateCollectionSettings(collection.id, { statblockRoles });
   }
-  const settings = SettingsService.forApp(app);
-  if (!settings) return;
-  const presets = new SystemPresetService(settings);
+  const files = SystemPresetFiles.forApp(app);
+  if (!files) return;
+  const presets = new SystemPresetService(files);
   for (const preset of presets.list()) {
     const statblockRoles = preset.builtIn ? null : rolesWith(preset.rules.statblockRoles, from, to);
     if (statblockRoles) presets.update(preset.id, { ...preset.rules, statblockRoles });

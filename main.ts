@@ -55,6 +55,8 @@ import { registerCommands } from './src/app/plugin/registerCommands';
 import { registerPlayerWindowReloadCleanup } from './src/app/plugin/playerWindowReload';
 import { registerReturnToAtlasOnClose } from './src/app/plugin/returnToAtlasOnClose';
 import { runStartupMigration } from './src/app/plugin/startupMigration';
+import { migrateSettingsToPluginData } from './src/app/plugin/settingsMigration';
+import { SystemPresetFiles } from './src/app/services/systemPresets/SystemPresetFiles';
 import { registerStatusBarVisibility } from './src/app/plugin/statusBarVisibility';
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
@@ -88,9 +90,16 @@ export default class AtlasVTTPlugin extends Plugin {
       await initializeAtlasStorage(this.app);
       await runStartupMigration(this.app);
     });
+    // The user's game system presets are vault files; reading them needs no migration.
+    const presetFiles = SystemPresetFiles.open(this.app);
+    // Settings carried over even when the data file migration failed, so they are not lost to the defaults.
+    const settingsReady = storageReady.catch(() => undefined).then(async () => {
+      await presetFiles.load();
+      await migrateSettingsToPluginData(this.app, this, presetFiles);
+    }).catch((error: unknown) => console.error('[Atlas] Carrying the settings over into the plugin data failed:', error));
     // Created before the views so every restored tab shares it; it reads the
-    // settings file only once the migration has put it in place.
-    this.settingsService = new SettingsService(this.app, storageReady);
+    // plugin's data only once the migration has put the settings there.
+    this.settingsService = new SettingsService(this.app, settingsReady, this);
 
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
@@ -162,9 +171,15 @@ export default class AtlasVTTPlugin extends Plugin {
     await migratePlayerResourceVisibility(this.settingsService, assets);
   }
 
+  /** Obsidian calls this when `data.json` changed on disk, e.g. a sync brought another device's settings. */
+  async onExternalSettingsChange(): Promise<void> {
+    await this.settingsService?.reload();
+  }
+
   onunload(): void {
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
+    SystemPresetFiles.release(this.app);
     this.widgetSyncService?.destroy();
     this.widgetSyncService = undefined;
 
