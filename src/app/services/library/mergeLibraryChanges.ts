@@ -1,7 +1,8 @@
 import type { Asset, AssetMetadata } from '../AssetService';
 import type { FileReading, LibraryChanges, RecordReading } from './libraryReader';
 import { recordFilePath } from './libraryPaths';
-import { assetKey, collectionIdentity, collectionKey, hashText, idOfKey, ignoredKey, LIBRARY_KEY, type FileStamp, type LibraryState } from './libraryState';
+import { assetKey, collectionIdentity, collectionKey, duplicateKey, hashText, idOfKey, LIBRARY_KEY, type FileStamp, type LibraryState } from './libraryState';
+import { baseName } from '../../utils/pathUtils';
 import { collectionFolderPath } from '../assetPaths';
 import { moveCollectionRecord } from '../collectionRecords';
 import type { PathMove } from '../renamedPaths';
@@ -33,12 +34,19 @@ function stamp(state: LibraryState, reading: FileReading, key: string): void {
   state.files[reading.path] = entry;
 }
 
-/** The file a record lives in when several hold it: the one the index already places it in, else the newest record. */
-function pickWinner(readings: RecordReading[], current: Asset | undefined): RecordReading {
-  const home = current ? recordFilePath(current) : null;
-  const atHome = readings.find((reading) => reading.path === home);
-  if (atHome) return atHome;
-  return [...readings].sort((a, b) => b.record.modifiedAt - a.record.modifiedAt || a.path.localeCompare(b.path))[0]!;
+/** Whether the file is named as Atlas names a record's file, which copies a sync tool makes on a conflict never are. */
+const hasRecordName = (reading: RecordReading): boolean => baseName(reading.path) === `${reading.record.id}.json`;
+
+/**
+ * The file a record lives in when several hold it, chosen from their content
+ * alone so every device chooses the same: a file named for the record before a
+ * conflict copy, then the newest edit, then the first path.
+ */
+function pickWinner(readings: readonly RecordReading[]): RecordReading {
+  return [...readings].sort((a, b) =>
+    Number(hasRecordName(b)) - Number(hasRecordName(a))
+    || b.record.modifiedAt - a.record.modifiedAt
+    || a.path.localeCompare(b.path))[0]!;
 }
 
 /**
@@ -53,13 +61,12 @@ export function mergeLibraryChanges(
   state: LibraryState,
   changes: LibraryChanges,
   migrated: boolean,
-  folders: ReadonlySet<string>,
+  hasCollectionFile: (collectionId: string) => boolean,
 ): LibraryMergeResult {
   let changed = false;
   const duplicates: string[] = [];
   const changedCollections: string[] = [];
   const folderMoves: PathMove[] = [];
-  const removedPaths = new Set(changes.removed.map(({ path }) => path));
 
   for (const reading of changes.touched) {
     const previous = state.files[reading.path];
@@ -75,14 +82,12 @@ export function mergeLibraryChanges(
   const upserted = new Set<string>();
   for (const [id, readings] of readingsById) {
     const key = assetKey(id);
-    const known = Object.entries(state.files).find(([path, entry]) => entry.key === key && !removedPaths.has(path) && !readings.some((reading) => reading.path === path));
-    const winner = known ? null : pickWinner(readings, metadata.assets[id]);
+    const winner = pickWinner(readings);
     for (const reading of readings) {
       if (reading === winner) continue;
       duplicates.push(reading.path);
-      stamp(state, reading, ignoredKey(reading.path));
+      stamp(state, reading, duplicateKey(id));
     }
-    if (!winner) continue;
     stamp(state, winner, key);
     delete state.derived[key];
     upserted.add(id);
@@ -99,7 +104,8 @@ export function mergeLibraryChanges(
     const id = reading.collection.id;
     let collection = reading.collection;
     const sameUid = Object.values(metadata.collections).find((other) => other.uid === collection.uid && other.id !== id);
-    if (sameUid && !folders.has(sameUid.id)) {
+    // A copied folder leaves the original's collection.json where it was; a renamed one took it along.
+    if (sameUid && !hasCollectionFile(sameUid.id)) {
       moveCollectionRecord(metadata, sameUid.id, id);
       folderMoves.push({ from: collectionFolderPath(sameUid.id), to: collectionFolderPath(id) });
     } else if (sameUid) {

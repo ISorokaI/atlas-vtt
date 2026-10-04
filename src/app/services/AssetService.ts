@@ -13,7 +13,7 @@ import { collectionNameKey, uniqueCollectionName } from './collectionNaming';
 import { collectionFolderName, collectionFolderPath, collectionIdOfFolder, collectionNameProblem, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, ATLAS_VTT_DIR } from './assetPaths';
 import { planFolderNameFixes } from './collectionFolderNames';
 import { migrateInstallRecords } from './collectionBundle/installRecord';
-import { createCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
+import { createCollectionRecord, derivedCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
 import { assetFilePath, groupTokenRefs } from './vault-sync/assetFiles';
 import { reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
 import { listVault, readVault } from './vault-sync/vaultListing';
@@ -430,7 +430,7 @@ export class AssetService {
 
   private async createDefaultMetadata(): Promise<AssetMetadata> {
     return {
-      collections: { [INITIAL_COLLECTION_ID]: createCollectionRecord(INITIAL_COLLECTION_ID) },
+      collections: { [INITIAL_COLLECTION_ID]: derivedCollectionRecord(INITIAL_COLLECTION_ID) },
       defaultCollectionId: INITIAL_COLLECTION_ID,
       assets: {},
       version: 2
@@ -445,10 +445,6 @@ export class AssetService {
     if (!this.metadata) return;
 
     let needsSave = false;
-    if (!this.metadata.vaultId) {
-      this.metadata.vaultId = crypto.randomUUID();
-      needsSave = true;
-    }
     for (const collection of Object.values(this.metadata.collections)) {
       if (!collection.uid) {
         collection.uid = crypto.randomUUID();
@@ -527,11 +523,11 @@ export class AssetService {
     const persistFiles = this.automaticDepth === 0;
     this.saveCount++;
     return this.writes.run(async () => {
-      let failure: unknown = null;
+      let failure: Error | null = null;
       try {
         if (persistFiles) await this.library.persist(snapshot);
       } catch (error) {
-        failure = error;
+        failure = error instanceof Error ? error : new Error(String(error));
       }
       // The cache follows even when a library file failed, so this device keeps what the files will get on the next save.
       await this.writeMetadataFile(JSON.stringify({ ...snapshot, [LIBRARY_STATE_KEY]: this.library.bookkeeping }));
@@ -664,7 +660,7 @@ export class AssetService {
     await this.ensureLoaded();
     const id = this.assertCollectionFolderName(name);
 
-    const collection: CollectionMetadata = { ...createCollectionRecord(id), publisherId: this.metadata!.vaultId! };
+    const collection: CollectionMetadata = { ...createCollectionRecord(id), publisherId: this.vaultIdNow() };
     if (description === undefined) delete collection.description;
     else collection.description = description;
 
@@ -700,7 +696,7 @@ export class AssetService {
     if (this.metadata!.collections[id]) return;
     // The folder first: a vault check forgets records whose folder is missing.
     await this.ensureCollectionStructure(id);
-    this.metadata!.collections[id] ??= createCollectionRecord(id);
+    this.metadata!.collections[id] ??= derivedCollectionRecord(id);
     await this.saveMetadata();
   }
 
@@ -1189,7 +1185,20 @@ export class AssetService {
   /** This vault's identity as a publisher of collections. */
   async getVaultId(): Promise<string> {
     await this.ensureLoaded();
-    return this.metadata!.vaultId!;
+    if (this.metadata!.vaultId) return this.metadata!.vaultId;
+    const id = this.vaultIdNow();
+    await this.saveMetadata();
+    return id;
+  }
+
+  /**
+   * This vault's publisher id, made when first needed (a collection created or
+   * published) rather than at start: a device that starts before sync delivers
+   * the library would otherwise make an id of its own and write it over the vault's.
+   */
+  private vaultIdNow(): string {
+    this.metadata!.vaultId ??= crypto.randomUUID();
+    return this.metadata!.vaultId;
   }
 
   /** Whether another collection than `exceptId` already uses `name`; names are compared without case. */
@@ -1245,7 +1254,7 @@ export class AssetService {
     else collection.author = release.author;
     if (release.coverPath === undefined) delete collection.coverPath;
     else collection.coverPath = release.coverPath;
-    collection.publisherId = this.metadata!.vaultId!;
+    collection.publisherId = this.vaultIdNow();
     await this.saveMetadata();
   }
 
@@ -1261,7 +1270,7 @@ export class AssetService {
     const id = name.trim() === collectionId ? collectionId : this.assertCollectionFolderName(name, collectionId);
     collection.uid = uid;
     collection.version = 1;
-    collection.publisherId = this.metadata!.vaultId!;
+    collection.publisherId = this.vaultIdNow();
     delete collection.releasedAt;
     collection.modifiedAt = Date.now();
     if (id !== collectionId) await this.moveCollectionFolder(collectionId, id);

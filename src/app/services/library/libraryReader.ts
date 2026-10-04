@@ -4,7 +4,7 @@ import type { Asset, CollectionMetadata } from '../AssetService';
 import { collectionOfCollectionFile, isLibraryFile, isRecordFileCandidate, LIBRARY_FILE } from './libraryPaths';
 import { parseCollectionFile, parseLibraryFile, type LibraryFacts } from './collectionFile';
 import { parseRecordFile } from './recordFile';
-import { hashText, type FileStamp, type LibraryState } from './libraryState';
+import { hashText, idOfKey, type FileStamp, type LibraryState } from './libraryState';
 
 /** How a file was found on disk: what its stamp will say once the change is taken in. */
 export interface FileReading {
@@ -70,11 +70,37 @@ export async function readLibraryChanges(app: App, state: LibraryState, recordFo
     classify(changes, file, text, hash, recordFormat, fileFormat);
   }
   // A vault without any collection folder is not listed yet (the default collection's folder always exists): nothing counts as gone.
-  if (!hasCollectionFolder(app)) return changes;
-  for (const [path, stamp] of Object.entries(state.files)) {
-    if (!present.has(path)) changes.removed.push({ path, stamp });
+  if (hasCollectionFolder(app)) {
+    for (const [path, stamp] of Object.entries(state.files)) {
+      if (!present.has(path)) changes.removed.push({ path, stamp });
+    }
   }
+  await readOtherHolders(app, state, changes, recordFormat);
   return changes;
+}
+
+const recordIdOf = (key: string): string | null => idOfKey(key, 'asset') ?? idOfKey(key, 'duplicate');
+
+/**
+ * When a file holding a record changed or went, every other file holding it is
+ * read too, so the file the record lives in is chosen from all of them, by
+ * their content alone, the same on every device.
+ */
+async function readOtherHolders(app: App, state: LibraryState, changes: LibraryChanges, recordFormat: number): Promise<void> {
+  const ids = new Set([
+    ...changes.records.map((reading) => reading.record.id),
+    ...changes.removed.map(({ stamp }) => recordIdOf(stamp.key)).filter((id): id is string => id !== null),
+  ]);
+  const read = new Set(changes.records.map((reading) => reading.path));
+  for (const [path, stamp] of Object.entries(state.files)) {
+    const id = recordIdOf(stamp.key);
+    if (!id || !ids.has(id) || read.has(path)) continue;
+    const file = app.vault.getFileByPath(path);
+    if (!file) continue;
+    const text = await app.vault.read(file);
+    const parsed = parseRecordFile(text, path);
+    if (parsed?.record) changes.records.push({ ...readingOf(file, hashText(text), (parsed.format ?? 0) > recordFormat), record: parsed.record });
+  }
 }
 
 const hasCollectionFolder = (app: App): boolean =>

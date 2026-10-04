@@ -2,7 +2,7 @@ import { isRecord } from '../assetMetadataGuards';
 
 /** What this device last knew of one library file, so unchanged files are neither read nor written again. */
 export interface FileStamp {
-  /** The entity the file holds: `asset:<id>`, `collection:<id>`, `library`, or `ignored:<path>` for a duplicate. */
+  /** The entity the file holds: `asset:<id>`, `collection:<id>`, `library`, or `duplicate:<id>` for another file holding a record. */
   key: string;
   hash: string;
   mtime: number;
@@ -34,10 +34,10 @@ export const collectionKey = (id: string): string => `collection:${id}`;
 /** A collection's identity, which survives renaming its folder; derived records are kept by identity. */
 export const collectionIdentity = (uid: string): string => `collection-uid:${uid}`;
 export const LIBRARY_KEY = 'library';
-export const ignoredKey = (path: string): string => `ignored:${path}`;
+export const duplicateKey = (id: string): string => `duplicate:${id}`;
 
-/** The id of an `asset:` or `collection:` key, or null for another kind. */
-export function idOfKey(key: string, kind: 'asset' | 'collection'): string | null {
+/** The id of an `asset:`, `collection:` or `duplicate:` key, or null for another kind. */
+export function idOfKey(key: string, kind: 'asset' | 'collection' | 'duplicate'): string | null {
   const prefix = `${kind}:`;
   return key.startsWith(prefix) ? key.slice(prefix.length) : null;
 }

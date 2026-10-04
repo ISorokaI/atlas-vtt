@@ -1,5 +1,5 @@
-import { TFolder, type App } from 'obsidian';
-import { COLLECTIONS_DIR } from '../assetPaths';
+import type { App } from 'obsidian';
+import { collectionFilePath } from './libraryPaths';
 import type { AssetMetadata } from '../AssetService';
 import { desiredLibraryFiles } from './libraryFiles';
 import { readLibraryChanges } from './libraryReader';
@@ -13,11 +13,6 @@ import { isRecoveredId } from '../vault-sync/recoveredIds';
 /** Local-storage key recording that this device keeps its library in vault files. Per device on purpose: every device migrates its own index. */
 const MIGRATED_KEY = 'atlas-vtt:library-files';
 
-
-/** The folders directly inside the collections folder. */
-const collectionFolders = (app: App): Set<string> => new Set(
-  (app.vault.getFolderByPath(COLLECTIONS_DIR)?.children ?? []).filter((child) => child instanceof TFolder).map((child) => child.name),
-);
 
 /**
  * Keeps the library's vault files and the index, this device's cache of them,
@@ -58,7 +53,8 @@ export class LibrarySync {
   /** Reads the library files that changed and takes them into `metadata`. */
   async read(metadata: AssetMetadata): Promise<LibraryMergeResult> {
     const changes = await readLibraryChanges(this.app, this.state, RECORD_FORMAT, LIBRARY_FILE_FORMAT);
-    const result = mergeLibraryChanges(metadata, this.state, changes, this.migrated, collectionFolders(this.app));
+    const hasCollectionFile = (id: string): boolean => this.app.vault.getFileByPath(collectionFilePath(id)) !== null;
+    const result = mergeLibraryChanges(metadata, this.state, changes, this.migrated, hasCollectionFile);
     this.filesRead = true;
     if (result.duplicates.length > 0) {
       console.warn('[Atlas library] These files hold a record another file already holds (copies a sync tool made on a conflict) and were left alone:', result.duplicates);
