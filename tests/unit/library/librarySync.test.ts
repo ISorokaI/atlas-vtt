@@ -90,18 +90,36 @@ describe('the first start of this version', () => {
     expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [{ imagePath: moved }], [RECORD_KEY]: { id: 'encounter-1' } });
   });
 
-  it('takes the older file\'s payload where another device edited it after this index last did', async () => {
+  it('keeps the payload the index held when the file is newer, as after an art rename older versions followed in the index alone', async () => {
     const files = olderVault();
     const index = JSON.parse(files[CACHE]!);
-    // This device's index holds the encounter as it was before the other device added the hag.
-    index.assets['encounter-1'].data = { description: 'At the ford', tokens: [] };
-    index.assets['encounter-1'].tokens = [];
+    const moved = `${FEN}/tokens/hag-moved.webp`;
+    // The rename left `modifiedAt` as it was, older than the file.
+    index.assets['encounter-1'].tokens = [{ id: 'token-1', name: 'Bog hag', imagePath: moved }];
+    index.assets['encounter-1'].data = { description: 'At the ford', tokens: [{ id: 'token-1', name: 'Bog hag', imagePath: moved }] };
     files[CACHE] = JSON.stringify(index);
 
     const a = await device(files);
 
-    expect(await a.assets.getAssetById('encounter-1')).toMatchObject({ tokens: [{ id: 'token-1' }], data: { tokens: [{ id: 'token-1' }] } });
-    expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [{ id: 'token-1' }] });
+    expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [{ imagePath: moved }] });
+  });
+
+  it('keeps an edit another device made on an older version, though the device that upgrades first writes its older copy', async () => {
+    // Both devices ran an older version; A added the hag to the encounter later than B last changed it.
+    const shared = olderVault();
+    const indexOn = (tokens: unknown[], modifiedAt: number): string => {
+      const index = JSON.parse(shared[CACHE]!);
+      index.assets['encounter-1'] = { ...index.assets['encounter-1'], tokens, data: { description: 'At the ford', tokens }, modifiedAt };
+      return JSON.stringify(index);
+    };
+    const hag = [{ id: 'token-1', name: 'Bog hag', imagePath: ART }];
+
+    const b = await device({ ...shared, [CACHE]: indexOn([], 5) });
+    expect(JSON.parse(b.files.get(ENCOUNTER)!)).toMatchObject({ tokens: [] });
+
+    const a = await device({ ...syncedFiles(b), [CACHE]: indexOn(hag, 50) });
+    expect(await a.assets.getAssetById('encounter-1')).toMatchObject({ tokens: hag });
+    expect(JSON.parse(a.files.get(ENCOUNTER)!)).toMatchObject({ tokens: hag });
   });
 
   it('keeps a record this device edited after the version another device migrated, and writes it', async () => {
@@ -227,8 +245,22 @@ describe('a device whose older version adopted art another device has a record f
     const b = await device(files);
 
     expect(await b.assets.getAssetById('token-recovered-abc')).toBeNull();
-    expect(await b.assets.getAssetById('token-1')).toMatchObject({ name: 'Swamp witch', tags: ['boss'], statblockPath: 'Bestiary/Hag.md' });
+    expect(await b.assets.getAssetById('token-1')).toMatchObject({ name: 'Swamp witch', tags: ['hag', 'boss'], statblockPath: 'Bestiary/Hag.md' });
     expect((await b.assets.getAssetById('encounter-1')) as { tokens: Array<{ id: string }> }).toMatchObject({ tokens: [{ id: 'token-1' }] });
+  });
+
+  it('passes no value rebuilding made: a name from the file and empty tags leave the record as it is', async () => {
+    const a = await device(olderVault());
+    const files = { ...syncedFiles(a), [CACHE]: olderVault()[CACHE]! };
+    const index = JSON.parse(files[CACHE]!);
+    delete index.assets['token-1'];
+    // Tidied by an older version: renamed after its file, which stamped `modifiedAt`.
+    index.assets['token-recovered-abc'] = { id: 'token-recovered-abc', type: 'token', name: 'Hag', imagePath: ART, tags: [], collection: 'Fen', createdAt: 5, modifiedAt: 1_000_000 };
+    files[CACHE] = JSON.stringify(index);
+
+    const b = await device(files);
+
+    expect(await b.assets.getAssetById('token-1')).toMatchObject({ name: 'Bog hag', tags: ['hag'] });
   });
 });
 

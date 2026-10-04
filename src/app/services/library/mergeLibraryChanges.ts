@@ -106,12 +106,14 @@ function upsert(context: MergeContext, record: Asset, upserted: Set<string>): vo
 
 /**
  * Payloads older versions wrote into the JSON of records the index knows. Until
- * this device has written its library files, the later of the two wins: older
- * versions rewrote token refs of encounters and parties in the index alone
- * (stamping the record's `modifiedAt`), while another device's edit reached
- * this one only as the file. A payload the index keeps is written over the
- * file; one it lacks comes from the file. Once migrated, the file's payload
- * wins, as records do.
+ * this device has written its library files, its index is what older versions
+ * kept current: they rewrote token refs of encounters and parties in the index
+ * alone, after a token edit or an art rename (the latter without touching
+ * `modifiedAt`), so neither time tells a stale file from a newer one. A payload
+ * the index holds stays and is written over the file; one it lacks comes from
+ * the file. An edit another device made reaches this one through its record
+ * file once that device migrated, where the later edit wins (`takeIn`). Once
+ * migrated, the file's payload wins, as records do.
  */
 function mergePayloads(context: MergeContext, readings: readonly PayloadReading[]): void {
   if (readings.length === 0) return;
@@ -124,7 +126,7 @@ function mergePayloads(context: MergeContext, readings: readonly PayloadReading[
     const asset = byPath.get(reading.path);
     if (!asset) continue;
     stamp(state, reading, assetKey(asset.id));
-    if (!migrated && !isPayloadUnread(asset) && asset.modifiedAt >= reading.mtime) continue;
+    if (!migrated && !isPayloadUnread(asset)) continue;
     if (sameJson('data' in asset ? asset.data : undefined, reading.payload)) continue;
     const updated: Record<string, unknown> = { ...asset, data: reading.payload };
     for (const key of MIRRORED_FIELDS[asset.type] ?? []) {

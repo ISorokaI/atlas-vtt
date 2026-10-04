@@ -52,8 +52,28 @@ export function tidyRecoveredTokens(metadata: AssetMetadata, now: number): boole
   return changed;
 }
 
-/** Fields a record keeps whoever edited it last: who it is and where it lives. */
-const IDENTITY_FIELDS = new Set(['id', 'type', 'collection', 'createdAt', 'filePath']);
+/** Fields a rebuilt token got from rebuilding (`adoptTokenArtwork`), not from the user. */
+const REBUILT_FIELDS = new Set(['id', 'type', 'name', 'imagePath', 'tags', 'collection', 'createdAt', 'modifiedAt']);
+
+/**
+ * Passes to `owner` what the user did with a token an older version rebuilt from
+ * the same art: a name other than the one its file gives, its tags, and every
+ * field rebuilding never sets (a statblock link, a size). A name or field the
+ * owner was edited to later stays.
+ */
+function passEdits(rebuilt: TokenAsset, owner: TokenAsset): void {
+  const later = rebuilt.modifiedAt > owner.modifiedAt;
+  const stem = stemOf(rebuilt.imagePath);
+  const named = rebuilt.name !== recoveredTokenName(rebuilt.imagePath) && rebuilt.name !== stem && rebuilt.name !== prettifyIdentifier(stem);
+  const edits: Partial<TokenAsset> = later ? Object.fromEntries(Object.entries(rebuilt).filter(([key]) => !REBUILT_FIELDS.has(key))) : {};
+  if (later && named) edits.name = rebuilt.name;
+  const ownTags = owner.tags ?? [];
+  const tags = [...new Set([...ownTags, ...(rebuilt.tags ?? [])])];
+  if (tags.length !== ownTags.length) edits.tags = tags;
+  if (Object.keys(edits).length === 0) return;
+  Object.assign(owner, edits);
+  owner.modifiedAt = Math.max(owner.modifiedAt, rebuilt.modifiedAt);
+}
 
 /** Points every encounter and player group at `to` where it names `from`. */
 function moveGroupRefs(metadata: AssetMetadata, from: string, to: string, now: number): void {
@@ -76,8 +96,8 @@ function moveGroupRefs(metadata: AssetMetadata, from: string, to: string, now: n
  * Removes records an earlier check rebuilt from a file that a real record now
  * owns: a sync tool delivered the art or map before the record that goes with
  * it, or an older version on another device adopted the same art. What the user
- * did with the rebuilt record is kept: an edit newer than the real record's
- * passes to it, and encounters and player groups that name it name the real
+ * did with a rebuilt token is kept: their edits pass to the real record
+ * (`passEdits`), and encounters and player groups that name it name the real
  * record instead. Returns whether anything changed.
  */
 export function dropShadowedRecoveries(metadata: AssetMetadata, now: number): boolean {
@@ -90,11 +110,10 @@ export function dropShadowedRecoveries(metadata: AssetMetadata, now: number): bo
     const primary = primaryPath(asset);
     const owner = primary ? owners.get(primary) : undefined;
     if (!isRecoveredId(id) || !owner) continue;
-    if (owner.type === asset.type && asset.modifiedAt !== asset.createdAt && asset.modifiedAt > owner.modifiedAt) {
-      const edits = Object.fromEntries(Object.entries(asset).filter(([key]) => !IDENTITY_FIELDS.has(key)));
-      Object.assign(owner, edits);
+    if (asset.type === 'token' && owner.type === 'token') {
+      passEdits(asset, owner);
+      moveGroupRefs(metadata, id, owner.id, now);
     }
-    if (asset.type === 'token') moveGroupRefs(metadata, id, owner.id, now);
     delete metadata.assets[id];
     changed = true;
   }
