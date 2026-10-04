@@ -1,5 +1,6 @@
 import type { Texture } from 'pixi.js';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
+import type { FogReveal } from '../fog/fogReveal';
 import type { AmbientLight, LightReach, Sight } from '../../vision/sight';
 import type { HideableLayer } from '../playerSafeFrame';
 import type { SceneFrame } from './engine/types';
@@ -27,6 +28,8 @@ export interface SceneLightingView {
   lightReaches(): LightReach[];
   /** The ambient light the CPU checks tokens against. */
   ambientLight(): AmbientLight;
+  /** What lifts painted fog in the players' view; null leaves it as painted (the fallback's answer). */
+  fogReveal(): FogReveal | null;
   refreshBounds(): void;
   /** Forgets all the scene remembers: an undo step where the memory can be edited. */
   resetExplored(): void;

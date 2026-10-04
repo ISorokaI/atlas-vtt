@@ -21,7 +21,9 @@ it('captures painted fog at full opacity and preserves the DM preview across rep
   }));
   const renderer = new FogOfWarRenderer(new Container() as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any);
   try {
-    const fog = renderer.getContainer().children.find(child => child instanceof Sprite && child.alpha > 0)!;
+    // The painted fog's display: the GM's translucent fog, the players' at full opacity.
+    const fog = renderer.getContainer().children.find(child => child.label === 'fogDisplay')!;
+    expect(fog.children.some(child => child instanceof Sprite && child.visible)).toBe(true);
     expect(fog.visible).toBe(true);
     expect(fog.alpha).toBe(0.5);
     const renderedOpacity: number[] = [];

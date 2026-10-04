@@ -24,7 +24,7 @@ function fogTool(): { tool: FogToolHarness; viewport: { pause: boolean }; addFog
     stroke: Object.assign(new ShapeStroke(), { mode: 'rectangle' }),
     container: {},
     fogSprites: new Map(),
-    previewSprite: {},
+    display: { view: {} },
     renderPreviewFromStore: vi.fn(),
     rectPreviewGraphics: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
   }) as unknown as FogToolHarness;

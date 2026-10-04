@@ -1,6 +1,7 @@
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
 import type { AmbientLight, LightReach, Sight } from '../../vision/sight';
+import type { FogReveal } from '../fog/fogReveal';
 import type { HideableLayer } from '../playerSafeFrame';
 import type { SceneFrame } from './engine/types';
 import type { LightingUnavailable } from './LightingRenderer';
@@ -78,6 +79,7 @@ export class LightingViewHost implements SceneLightingView {
   currentSight(): Sight { return this.view.currentSight(); }
   lightReaches(): LightReach[] { return this.view.lightReaches(); }
   ambientLight(): AmbientLight { return this.view.ambientLight(); }
+  fogReveal(): FogReveal | null { return this.view.fogReveal(); }
   refreshBounds(): void { this.view.refreshBounds(); }
   resetExplored(): void { this.view.resetExplored(); }
   editExplored(edit: ExploredEdit): boolean { return this.view.editExplored(edit); }
