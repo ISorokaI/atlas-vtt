@@ -25,11 +25,11 @@ export interface PaneCanvasProps {
   header?: React.ReactNode;
   /** Shown under the blocks, inside the card: "Add a field…". */
   footer?: React.ReactNode;
-  /** Raised to move focus to the first empty value (a pair just opened); 0 never does. */
+  /** Raised to move focus to the first empty value (a statblock just created); 0 never does. */
   focusRequest: number;
   /**
    * The last request acted on, kept by the pane across notes: the canvas is
-   * made anew for each note, and following the partner must not move focus.
+   * made anew for each note, and a view turning to another note must not move focus.
    */
   handledFocusRequest: React.RefObject<number>;
   onExit: (step: 1 | -1) => void;
@@ -52,7 +52,7 @@ export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
   const editor = usePaneEditor({ ...props, cardRef });
   const { spots } = editor.controller;
 
-  // A pair opens with focus on the first empty value; a restored workspace never moves focus.
+  // A statblock just created opens with focus on the first empty value; a restored workspace never moves focus.
   useEffect(() => {
     if (focusRequest === handledFocusRequest.current || !writable) return;
     handledFocusRequest.current = focusRequest;

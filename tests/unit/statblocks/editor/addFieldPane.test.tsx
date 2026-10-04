@@ -136,22 +136,3 @@ describe('Add to template in the tray', () => {
   });
 });
 
-describe('Save as a template', () => {
-  it('turns a Fantasy Statblocks statblock read without the plugin into a template, opened previewing it', async () => {
-    const { openTemplateEditor } = await import('../../../../src/app/statblocks/editor/openTemplateEditor');
-    const harness = await renderPane({ frontmatter: { statblock: true, name: 'Bog Hag', hp: 30 } });
-    apps.push(harness.app);
-    fireEvent.keyDown(screen.getByRole('button', { name: 'More statblock actions' }), { key: 'Enter' });
-    await act(async () => { fireEvent.click(await screen.findByRole('menuitem', { name: 'Save as a template' })); });
-    const path = `${TEMPLATE_FOLDER}/Marsh Warden.atlastemplate`;
-    await waitFor(() => expect(openTemplateEditor).toHaveBeenCalledWith(harness.app, expect.objectContaining({ path, previewPath: NOTE_PATH })));
-    expect((await templateAt(harness, path)).fields.map((field) => field.key)).toEqual(['name', 'hp']);
-  });
-
-  it('is not offered for a native statblock', async () => {
-    await pane();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'More statblock actions' }), { key: 'Enter' });
-    await screen.findByRole('menuitem', { name: 'Open in new window' });
-    expect(screen.queryByRole('menuitem', { name: 'Save as a template' })).toBeNull();
-  });
-});

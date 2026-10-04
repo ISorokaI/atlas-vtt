@@ -17,18 +17,21 @@ import {
 } from 'lucide-react';
 import { runInBackground } from './utils/backgroundTask';
 import { mapThumbnailPath } from './utils/dataFileMigration';
+import { byLastOpened, SceneOpenHistory, type SceneRecency } from './services/sceneOpenHistory';
 
 export const DASHBOARD_VIEW_TYPE = "atlas-vtt-dashboard";
 
-interface RecentScene {
+interface RecentScene extends SceneRecency {
   id: string;
   path: string;
   name: string;
   collectionName: string;
   collectionId: string;
-  modifiedAt: number;
   thumbnailUrl: string | null;
 }
+
+/** When the scene was last played, or else when its record last changed. */
+const lastActivity = (scene: RecentScene): number => scene.openedAt ?? scene.modifiedAt;
 
 interface DashboardProps {
   app: App;
@@ -56,9 +59,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     void loadRecentScenes();
     const refreshRef = app.workspace.on('atlas-vtt:refresh-assets', () => { void loadRecentScenes(); });
     const thumbnailRef = app.workspace.on('atlas-vtt:scene-thumbnail-updated', () => { void loadRecentScenes(); });
+    const openedRef = app.workspace.on('atlas-vtt:scene-opened', () => { void loadRecentScenes(); });
     return () => {
       app.workspace.offref(refreshRef);
       app.workspace.offref(thumbnailRef);
+      app.workspace.offref(openedRef);
     };
   }, []);
 
@@ -66,6 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     try {
       const assetService = AssetService.getInstance(app);
       const collections = await assetService.getCollections();
+      const openHistory = SceneOpenHistory.forApp(app);
 
       // Only scenes open in the Atlas view; a map asset is an image to build a scene from
       const scenePromises = collections.map(async (col) => {
@@ -78,6 +84,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             name: asset.name,
             collectionName: col.name,
             collectionId: col.id,
+            openedAt: openHistory.openedAt(asset.id),
             modifiedAt: asset.modifiedAt,
             thumbnailUrl: path ? resolveSceneThumbnail(app, path) : null,
           } satisfies RecentScene;
@@ -87,7 +94,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       const allScenes = (await Promise.all(scenePromises))
         .flat()
         .filter((scene) => scene.path !== '')
-        .sort((a, b) => b.modifiedAt - a.modifiedAt)
+        .sort(byLastOpened)
         .slice(0, 8);
 
       setRecentScenes(allScenes);
@@ -150,7 +157,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </span>
                     <span className="hero-card-title">{heroScene.name}</span>
                     <span className="hero-card-meta">
-                      {heroScene.collectionName} &middot; {formatRelativeTime(heroScene.modifiedAt)}
+                      {heroScene.collectionName} &middot; {formatRelativeTime(lastActivity(heroScene))}
                     </span>
                   </div>
                   <span className="hero-card-go">
@@ -220,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           <div className="recent-scene-meta">
                             <span className="recent-scene-collection">{scene.collectionName}</span>
                             <span className="recent-scene-separator">&middot;</span>
-                            <span>{formatRelativeTime(scene.modifiedAt)}</span>
+                            <span>{formatRelativeTime(lastActivity(scene))}</span>
                           </div>
                         </div>
                       </Button>

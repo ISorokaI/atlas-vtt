@@ -64,7 +64,7 @@ describe('the DM screen\'s statblock menu', () => {
     expect(opened.entries).toEqual([]);
   });
 
-  it('opens the pair for a native statblock with the map\'s collection, and closes the DM screen', () => {
+  it('opens a native statblock\'s note with the map\'s collection, and closes the DM screen', () => {
     withStatblockEditor(app());
     const { onOpened } = feed(NATIVE);
     chooseEdit();
@@ -72,12 +72,12 @@ describe('the DM screen\'s statblock menu', () => {
     expect(onOpened).toHaveBeenCalled();
   });
 
-  it('opens the pair of a Fantasy Statblocks statblock too (D9, M6)', () => {
+  it('opens a Fantasy Statblocks statblock\'s note as before (M6)', () => {
     withStatblockEditor(app());
     const { onOpened } = feed(FANTASY);
     chooseEdit();
-    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: FANTASY, collectionId: 'marsh', from: 'map' });
-    expect(harness.app.workspace.openLinkText).not.toHaveBeenCalled();
+    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', FANTASY, true);
+    expect(openStatblockEditor).not.toHaveBeenCalled();
     expect(onOpened).toHaveBeenCalled();
   });
 });

@@ -1,75 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { WorkspaceLeaf } from 'obsidian';
 import { chooseCollection, linkingCollectionIds, roleNameFor } from '../../../../src/app/statblocks/editor/collectionContext';
-import { BESIDE_ATTRIBUTE, PAIR_ATTRIBUTE, PairPropertiesMark, isLeafMarked, markPairedLeaf } from '../../../../src/app/statblocks/editor/pairProperties';
-import { newPairId, readPaneState } from '../../../../src/app/statblocks/editor/paneState';
 import { choiceOptions } from '../../../../src/app/statblocks/editor/statblock-pane/ChoiceValueInput';
 import { singular } from '../../../../src/app/statblocks/editor/statblock-pane/EntriesEditor';
 import { keysOutsideTemplate, templateGroups, unshownKeys } from '../../../../src/app/statblocks/editor/statblock-pane/templateChoices';
 import { builtInEntry } from '../../../../src/app/statblocks/library/templateFiles';
 import { GENERIC_CREATURE, GENERIC_NPC, GENERIC_HAZARD } from '../../../../src/app/statblocks/presets/generic';
-import { FakeLeaf } from './workspaceKit';
-
-const leaf = (): WorkspaceLeaf => new FakeLeaf() as unknown as WorkspaceLeaf;
-
-describe('the pair attribute', () => {
-  it('is set while Properties hide and removed only for its own pair', () => {
-    const note = leaf();
-    markPairedLeaf(note, 'pair-a', true);
-    expect(note.containerEl.getAttribute(PAIR_ATTRIBUTE)).toBe('pair-a');
-    markPairedLeaf(note, 'pair-b', false);
-    expect(isLeafMarked(note, 'pair-a')).toBe(true);
-    markPairedLeaf(note, 'pair-a', false);
-    expect(note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
-  });
-
-  it('follows the partner: the old one loses the mark, and release shows Properties again', () => {
-    const first = leaf();
-    const second = leaf();
-    const mark = new PairPropertiesMark('pair-a');
-    const both = { hideProperties: true, shownBeside: true };
-    mark.update(first, both);
-    mark.update(second, both);
-    expect(isLeafMarked(first, 'pair-a')).toBe(false);
-    expect(first.containerEl.hasAttribute(BESIDE_ATTRIBUTE)).toBe(false);
-    expect(isLeafMarked(second, 'pair-a')).toBe(true);
-    mark.update(second, { hideProperties: false, shownBeside: false });
-    expect(isLeafMarked(second, 'pair-a')).toBe(false);
-    mark.update(first, both);
-    mark.release();
-    expect(isLeafMarked(first, 'pair-a')).toBe(false);
-    expect(first.containerEl.hasAttribute(BESIDE_ATTRIBUTE)).toBe(false);
-  });
-
-  it('shrinks the note\'s fence beside any statblock the pane draws, and hides Properties only where asked', () => {
-    const note = leaf();
-    const mark = new PairPropertiesMark('pair-a');
-    mark.update(note, { hideProperties: false, shownBeside: true });
-    expect(note.containerEl.getAttribute(BESIDE_ATTRIBUTE)).toBe('pair-a');
-    expect(note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
-    mark.update(note, { hideProperties: true, shownBeside: true });
-    expect(note.containerEl.getAttribute(PAIR_ATTRIBUTE)).toBe('pair-a');
-    mark.update(note, { hideProperties: false, shownBeside: true });
-    expect(note.containerEl.hasAttribute(PAIR_ATTRIBUTE)).toBe(false);
-    expect(note.containerEl.getAttribute(BESIDE_ATTRIBUTE)).toBe('pair-a');
-  });
-});
-
-describe('the pane state', () => {
-  it('restores what it saved and refuses a state without a note or pair', () => {
-    expect(readPaneState({ notePath: 'a.md', pairId: 'p', collectionId: 'c', previewPath: 'b.md' }))
-      .toEqual({ notePath: 'a.md', pairId: 'p', collectionId: 'c', previewPath: 'b.md' });
-    expect(readPaneState({ notePath: 'a.md', pairId: 'p', collectionId: 4 })).toEqual({ notePath: 'a.md', pairId: 'p', collectionId: null });
-    expect(readPaneState({ notePath: 'a.md' })).toBeNull();
-    expect(readPaneState(null)).toBeNull();
-  });
-
-  it('makes pair ids of its own that never repeat', () => {
-    const ids = new Set(Array.from({ length: 50 }, () => newPairId()));
-    expect(ids.size).toBe(50);
-    for (const id of ids) expect(id).toMatch(/^atlas-pair-[0-9a-z]+-[0-9a-z]{6}$/);
-  });
-});
 
 describe('the collection context', () => {
   const tokens = [

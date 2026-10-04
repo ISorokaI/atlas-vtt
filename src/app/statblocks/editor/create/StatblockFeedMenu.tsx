@@ -19,7 +19,7 @@ interface StatblockFeedMenuProps {
 
 /**
  * The DM screen's menu on a statblock (right-click): **Edit statblock**, which
- * opens the pair, for a statblock of Fantasy Statblocks too (D9). Without the
+ * opens the note, a native statblock with its statblock beside it (D9). Without the
  * statblock editor the feed is drawn as before, with no menu and no element
  * of its own.
  */

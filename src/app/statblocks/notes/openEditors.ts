@@ -11,8 +11,8 @@
 
 import { MarkdownView, type App } from 'obsidian';
 
-/** Set on the note leaf of a statblock pair while the pair lasts (D7); writes prefer that leaf's editor. */
-export const PAIRED_LEAF_ATTRIBUTE = 'data-atlas-statblock-pair';
+/** On the container of a Markdown view while its statblock shows beside the note; writes prefer that view's editor. */
+export const STATBLOCK_NOTE_CLASS = 'atlas-sb-note';
 
 /** Every loaded Markdown view in the workspace, in any window and mode. */
 export function loadedMarkdownViews(app: App): MarkdownView[] {
@@ -29,10 +29,10 @@ export function loadedViewsOf(app: App, path: string): MarkdownView[] {
   return loadedMarkdownViews(app).filter((view) => view.file?.path === path);
 }
 
-/** The view whose editor holds the note and takes writes: an editing one, the paired leaf's first; null when none. */
+/** The view whose editor holds the note and takes writes: an editing one, one showing its statblock first; null when none. */
 export function editingViewOf(app: App, path: string): MarkdownView | null {
   const editing = loadedViewsOf(app, path).filter(isEditing);
-  return editing.find(isPaired) ?? editing[0] ?? null;
+  return editing.find(showsStatblock) ?? editing[0] ?? null;
 }
 
 /** The view to read the note from: an editing one (it holds unsaved typing), else one in Reading view; null when none. */
@@ -41,10 +41,9 @@ export function bufferViewOf(app: App, path: string): MarkdownView | null {
   return views.find(isEditing) ?? views[0] ?? null;
 }
 
-/** Whether the view's leaf is the note leaf of a pair; `containerEl` is undocumented, so it may be missing. */
-function isPaired(view: MarkdownView): boolean {
-  const el: HTMLElement | undefined = view.leaf.containerEl;
-  return el?.hasAttribute(PAIRED_LEAF_ATTRIBUTE) ?? false;
+/** Whether the view shows its note's statblock beside it. */
+function showsStatblock(view: MarkdownView): boolean {
+  return view.containerEl.classList.contains(STATBLOCK_NOTE_CLASS);
 }
 
 /** Live Preview and Source mode; Obsidian names both `source`. */

@@ -9,7 +9,7 @@ import { usePaneEdit } from './paneEditContext';
 import { keysOutsideTemplate } from './templateChoices';
 import { TrayValueRow } from './TrayValueRow';
 
-/** Obsidian's own properties, edited here while Properties are hidden beside the pane (D7). */
+/** Obsidian's own properties, edited here while the note's Properties are hidden (D7). */
 const NOTE_FIELDS: readonly TemplateField[] = [
   { key: 'tags', label: 'Tags', type: 'list' },
   { key: 'aliases', label: 'Aliases', type: 'list' },

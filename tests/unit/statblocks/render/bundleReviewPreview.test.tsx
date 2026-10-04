@@ -63,7 +63,8 @@ describe('the bundle review\'s statblock preview', () => {
     const card = sheetOf(preview)!;
     expect(card.dataset.template).toBe('marsh-creature');
     expect(card.dataset.variant).toBe('hover');
-    expect(card.textContent).toContain('Marsh Warden');
+    // Values reach the card through Obsidian's Markdown renderer, after the card itself.
+    await vi.waitFor(() => expect(card.textContent).toContain('Marsh Warden'));
     expect(barOf(preview)).toBeNull();
   });
 

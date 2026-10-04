@@ -19,7 +19,8 @@ export interface FenceStatblockProps {
 /**
  * What a note's `atlas-statblock` fence shows (D14): the note's statblock and,
  * above it for a native statblock while the statblock editor is switched on,
- * **Edit statblock**, which opens the pair.
+ * **Edit statblock**, which shows the statblock beside the note. While it
+ * shows there, the fence shrinks to one line (note-panel/).
  */
 export function FenceStatblock({ app, path, onEdit }: FenceStatblockProps): React.JSX.Element {
   const editorOn = useExperimentalFeature('statblockEditor', SettingsService.forApp(app));

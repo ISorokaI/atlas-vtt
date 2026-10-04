@@ -111,7 +111,7 @@ export interface NoteHarness extends InMemoryApp {
   vaultEvents: Bus;
   cacheEvents: Bus;
   leaves: WorkspaceLeaf[];
-  open(path: string, mode?: 'source' | 'preview', paired?: boolean): TestMarkdownView;
+  open(path: string, mode?: 'source' | 'preview', withStatblock?: boolean): TestMarkdownView;
   /** A background tab after a reload: listed as `markdown`, but no `MarkdownView` yet. */
   defer(path: string): WorkspaceLeaf;
   close(view: TestMarkdownView): void;
@@ -191,12 +191,12 @@ export function noteHarness(files: Record<string, string>): NoteHarness {
     vaultEvents,
     cacheEvents,
     leaves,
-    open(path, mode = 'source', paired = false) {
+    open(path, mode = 'source', withStatblock = false) {
       const leaf = newLeaf();
       const view = new TestMarkdownView(leaf, path, vault.files.get(path) ?? '', saveTo, workspace);
       view.setMode(mode);
       leaf.view = view;
-      if (paired) leaf.containerEl.setAttribute('data-atlas-statblock-pair', 'pair-1');
+      if (withStatblock) view.containerEl.classList.add('atlas-sb-note');
       workspace.trigger('layout-change');
       return view;
     },

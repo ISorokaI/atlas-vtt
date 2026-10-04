@@ -13,7 +13,7 @@ interface HeaderTemplateInput {
   roles: readonly StatblockRole[];
   collectionId: string | null;
   actions: StatblockPaneActions;
-  /** Opens Change template…; unset while the note is not open beside the pane. */
+  /** Opens Change template…; unset where the template cannot be changed. */
   choose: (() => void) | undefined;
 }
 

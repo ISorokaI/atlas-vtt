@@ -1,4 +1,3 @@
-import React from 'react';
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
@@ -19,11 +18,6 @@ vi.mock('../../../../src/app/services/AssetService', async (importOriginal) => {
   };
   return { ...actual, AssetService: { getInstance: () => assets } };
 });
-
-// The read-only Fantasy Statblocks look is LinkedStatblock's own; here it only has to be there.
-vi.mock('../../../../src/app/statblocks/render/LinkedStatblock', () => ({
-  LinkedStatblock: ({ path }: { path: string }) => <div data-testid="fs-statblock">{path}</div>,
-}));
 
 const apps: App[] = [];
 afterEach(() => {
@@ -69,46 +63,16 @@ describe('the statblock pane\'s edge states', () => {
     expect(editableBlocks(result.container)).toBeGreaterThan(0);
   });
 
-  it('shows a Fantasy Statblocks statblock read-only while the plugin is on, offering an Atlas template, and Open note once unpaired', async () => {
-    Object.assign(window, { FantasyStatblocks: {} });
-    try {
-      const { result, actions, rerender } = await pane({ frontmatter: { statblock: true, name: 'Goblin' } });
-      expect(screen.getByTestId('fs-statblock').textContent).toBe(NOTE_PATH);
-      expect(editableBlocks(result.container)).toBe(0);
-      expect(screen.getByRole('button', { name: 'Edit with an Atlas template' })).toBeTruthy();
-      rerender({ paired: false });
-      fireEvent.click(screen.getByRole('button', { name: 'Open note' }));
-      expect(actions.openNote).toHaveBeenCalled();
-    } finally {
-      Reflect.deleteProperty(window, 'FantasyStatblocks');
-    }
-  });
-
-  it('offers to create a statblock in a note without one', async () => {
-    const createStatblock = vi.fn();
-    await pane({
-      frontmatter: { name: 'Just a note' },
-      files: { [NOTE_PATH]: '---\nname: Just a note\n---\nNo fence here.\n' },
-      actions: { openNote: vi.fn(), openInNewWindow: vi.fn(), showProperties: vi.fn(), changeCollection: vi.fn(), reportKind: vi.fn(), createStatblock },
-    });
-    await screen.findByText('No statblock in this note');
-    fireEvent.click(screen.getByRole('button', { name: 'Create statblock' }));
-    expect(createStatblock).toHaveBeenCalledWith(NOTE_PATH, 'monster', 'campaign');
+  it('says so when the note no longer names an Atlas template, and offers nothing to edit', async () => {
+    const { result } = await pane({ frontmatter: { statblock: true, name: 'Goblin' } });
+    expect(screen.getByText('This note has no Atlas statblock.')).toBeTruthy();
+    expect(editableBlocks(result.container)).toBe(0);
   });
 
   it('never writes into properties Obsidian cannot read', async () => {
     const { result } = await pane({ frontmatter: null, problem: { line: 3, message: 'Bad indentation' } });
     expect(screen.getByText('The note\'s properties can\'t be read (line 3)')).toBeTruthy();
     expect(editableBlocks(result.container)).toBe(0);
-  });
-
-  it('turns read-only when the partner closed, and offers Open note', async () => {
-    const { result, actions } = await pane({ frontmatter: NATIVE, paired: false });
-    expect(screen.getByText('Open the note to edit')).toBeTruthy();
-    expect(editableBlocks(result.container)).toBe(0);
-    expect(screen.queryByRole('button', { name: /More properties/ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Open note' }));
-    expect(actions.openNote).toHaveBeenCalled();
   });
 
   it('keeps what a deleted note held on screen, read-only', async () => {
@@ -119,11 +83,16 @@ describe('the statblock pane\'s edge states', () => {
     expect(screen.getByText(/Note deleted/)).toBeTruthy();
     expect(harness.result.container.querySelector('[data-block-id="gctitle0"]')?.textContent).toBe('Marsh Warden');
     expect(editableBlocks(harness.result.container)).toBe(0);
-    expect(harness.actions.reportKind).toHaveBeenLastCalledWith('deleted');
   });
 
-  it('tells its view what the note is', async () => {
-    const { actions } = await pane({ frontmatter: NATIVE });
-    expect(actions.reportKind).toHaveBeenLastCalledWith('atlas');
+  it('offers Show Properties and Hide statblock in its menu', async () => {
+    const hide = vi.fn();
+    const { actions } = await pane({ frontmatter: NATIVE, actions: { showProperties: vi.fn(), changeCollection: vi.fn(), hide } });
+    fireEvent.keyDown(screen.getByRole('button', { name: 'More statblock actions' }), { key: 'Enter' });
+    await act(async () => { fireEvent.click(await screen.findByRole('menuitem', { name: 'Show Properties' })); });
+    expect(actions.showProperties).toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole('button', { name: 'More statblock actions' }), { key: 'Enter' });
+    await act(async () => { fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide statblock' })); });
+    expect(hide).toHaveBeenCalled();
   });
 });
