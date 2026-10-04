@@ -144,3 +144,26 @@ describe('Lighting in the editor', () => {
     expect(harness.store.getState().isToolbarEditing).toBe(true);
   });
 });
+
+describe('a press outside the editor', () => {
+  it('ends edit mode with the left button, and not on the bars, the tray or with the right button', () => {
+    const harness = renderToolbar({ stored: { hidden: ['text'] }, undoBar: true });
+    startEditing(harness);
+    const outside = document.body.appendChild(document.createElement('div'));
+    const press = (target: Element, button = 0): void => {
+      const event = pointer('pointerdown', 10, 10);
+      Object.defineProperty(event, 'button', { value: button });
+      act(() => { target.dispatchEvent(event); });
+    };
+
+    press(handle(harness.container, 'fog'));
+    press(handle(harness.container, 'text', 'tray'));
+    press(handle(harness.container, 'undo'));
+    press(outside, 2);
+    expect(harness.store.getState().isToolbarEditing).toBe(true);
+
+    press(outside);
+    expect(harness.store.getState().isToolbarEditing).toBe(false);
+    outside.remove();
+  });
+});

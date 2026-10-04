@@ -17,6 +17,9 @@ import { ToolbarEditTooltip } from './ToolbarEditTooltip'
 import { faceItemOf } from './ToolbarFace'
 import { ToolbarTray } from './ToolbarTray'
 
+/** Where a press keeps edit mode open: the bars, the tray and its card, "More tools", and the editor's context menu. */
+const EDITOR_SURFACES = '.atlas-main-toolbar, .atlas-undo-bar, .atlas-toolbar-editor, .atlas-toolbar-ghost-layer, .atlas-ctx-menu'
+
 interface ToolbarEditorProps {
   /** Every control this view offers, in layout order: the tray shows the hidden ones, a flight any. */
   items: readonly ResponsiveToolbarItem[]
@@ -29,7 +32,8 @@ interface ToolbarEditorProps {
 /**
  * Edit mode's own parts, mounted while it lasts: the tray hanging above the
  * bar, and the ways out other than Done and the panels that end it (Escape no
- * control used, another tab coming to the front, the scene unloading). It
+ * control used, a left press outside the bars and the tray, another tab coming to the
+ * front, the scene unloading). It
  * sits over the bar's cell of the bottom row without taking one, so the bar's
  * width and corners are those of any other moment; the layer that holds a
  * flying or dragged tool spans the whole row. While the tray sinks away after edit mode
@@ -86,6 +90,21 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
     doc.addEventListener('keydown', onKeyDown)
     return () => doc.removeEventListener('keydown', onKeyDown)
   }, [finish, viewId])
+
+  // A left press outside the bars, the tray and the editor's menu ends edit mode; the press still does what it does there.
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || !finish) return undefined
+    const doc = root.doc
+    const onPointerDown = (event: PointerEvent): void => {
+      if (event.button !== 0) return
+      const target = event.target as Element | null
+      if (target?.closest?.(EDITOR_SURFACES)) return
+      finish()
+    }
+    doc.addEventListener('pointerdown', onPointerDown, true)
+    return () => doc.removeEventListener('pointerdown', onPointerDown, true)
+  }, [finish])
 
   useEffect(() => {
     if (!finish) return undefined
