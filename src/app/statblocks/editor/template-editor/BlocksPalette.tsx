@@ -17,13 +17,12 @@ interface Shown {
 type PreviewStyle = React.CSSProperties & Record<`--${string}`, string>;
 
 /**
- * The Add panel (spec §10.7, §12.3): "Find a block or part", then the parts
- * of a statblock by book part (Common, Tracks, Dense lines, Tags and costs)
- * and the blocks by group, each a row with its plain name and one line
- * saying what it makes. The row under the pointer or the keys shows its
+ * The Add panel (spec §10.7): "Find a block", then the primitives statblocks
+ * are made of, each once, by group, each a row with its plain name and one
+ * line saying what it makes. The row under the pointer or the keys shows its
  * preview beside the panel, drawn as the card draws it. A click or Enter
  * inserts below the selection; a drag inserts where the line shows. When
- * nothing matches, a stat of the typed name is offered.
+ * nothing matches, a value of the typed name is offered.
  */
 export function BlocksPalette(): React.JSX.Element {
   const { insert, insertNamedStat } = useTemplateEditor();
@@ -85,8 +84,8 @@ export function BlocksPalette(): React.JSX.Element {
       <input
         type="search"
         className="atlas-te-input atlas-te-palette__search"
-        placeholder="Find a block or part"
-        aria-label="Find a block or part"
+        placeholder="Find a block"
+        aria-label="Find a block"
         role="combobox"
         aria-expanded="true"
         aria-controls={listId}
@@ -99,12 +98,12 @@ export function BlocksPalette(): React.JSX.Element {
           setActive(bestMatch(findItems(ALL_ITEMS, event.target.value), event.target.value));
         }}
       />
-      <div id={listId} className="atlas-te-palette__groups" role="listbox" aria-label="Blocks and parts" {...STANDING_LIST}>
+      <div id={listId} className="atlas-te-palette__groups" role="listbox" aria-label="Blocks" {...STANDING_LIST}>
         {items.length === 0 && (
           <div className="atlas-te-palette__empty">
             Nothing called “{query.trim()}”.{' '}
             <button type="button" className="atlas-te-palette__make" onClick={() => { insertNamedStat(query); setQuery(''); }}>
-              Make a stat called “{query.trim()}”
+              Make a value called “{query.trim()}”
             </button>
           </div>
         )}

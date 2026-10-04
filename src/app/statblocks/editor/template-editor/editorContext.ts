@@ -17,9 +17,9 @@ export interface TemplateEditorContextValue {
   selection: BlockSelection;
   /** Selects blocks; focus moves to the primary one in the canvas when `focus` is set. */
   select: (selection: BlockSelection, focus?: boolean) => void;
-  /** Inserts a block or recipe after the selection and selects it (§6.1: its label stays closed). */
+  /** Inserts a block after the selection and selects it (§6.1: its label stays closed). */
   insert: (item: InsertItem) => void;
-  /** Inserts a Stat showing a new property of this name after the selection ("Make a stat called mana"). */
+  /** Inserts a Value showing a new property of this name after the selection ("Make a value called mana"). */
   insertNamedStat: (name: string) => void;
   /** Opens a block's label for editing in the canvas. */
   editLabel: (id: string) => void;

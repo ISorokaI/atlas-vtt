@@ -79,7 +79,7 @@ describe('dropTargetAt', () => {
     expect(target).toMatchObject({ kind: 'between', parentId: null, index: 2, line: { y: 145 } });
   });
 
-  it('offers no edge zones to a recipe of several blocks', () => {
+  it('offers no edge zones to a drop of several blocks', () => {
     const target = dropTargetAt(scene(), fresh('stat', 'stat'), { x: 10, y: 100 });
     expect(target).toMatchObject({ kind: 'between', parentId: 'S', index: 1 });
   });

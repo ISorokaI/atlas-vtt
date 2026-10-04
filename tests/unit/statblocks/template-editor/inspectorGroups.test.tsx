@@ -46,7 +46,7 @@ describe('the Settings panel in layers (spec §10)', () => {
     const { frame } = mountEditor();
     fireEvent.click(frame('stat-ac1'));
     expect(inspector().querySelector('.atlas-te-insp__name')?.textContent).toBe('Armor class');
-    expect(inspector().querySelector('.atlas-te-insp__type')?.textContent).toBe('Stat');
+    expect(inspector().querySelector('.atlas-te-insp__type')?.textContent).toBe('Value');
     expect(within(group('Basics')).getByRole('textbox', { name: 'Label' })).toBeTruthy();
     expect(header('Visibility').getAttribute('aria-expanded')).toBe('false');
     expect(header('Visibility').textContent).toContain('Hides when empty');
@@ -179,6 +179,30 @@ describe('the Settings panel in layers (spec §10)', () => {
     expect(session.steps).toBe(3);
   });
 
+  it('changes what a List\'s items are, turning the block in one step and keeping its words', () => {
+    const session = new FakeSession(template([{ id: 'list0001', type: 'entries', field: '', heading: 'Actions' }]));
+    const { frame } = mountEditor(session);
+    fireEvent.click(frame('list0001'));
+    expect(inspector().querySelector('.atlas-te-insp__type')?.textContent).toBe('List');
+    choose(group('Basics'), 'Each item is', 'A word');
+    expect(blockOf(session, 'list0001')).toMatchObject({ type: 'tags', label: 'Actions', look: 'comma' });
+    expect(session.steps).toBe(1);
+    choose(group('Basics'), 'Style', 'Numbered');
+    expect(blockOf(session, 'list0001')).toMatchObject({ type: 'tags', look: 'numbered' });
+  });
+
+  it('takes a Heading\'s text from a property or has it typed', () => {
+    const session = new FakeSession(template([{ id: 'head0001', type: 'heading', text: 'Name', level: 'section' }], [{ key: 'name', label: 'Name', type: 'text' }]));
+    const { frame } = mountEditor(session);
+    fireEvent.click(frame('head0001'));
+    expect(within(group('Basics')).getByRole('textbox', { name: 'Heading' })).toBeTruthy();
+    fireEvent.click(within(group('Basics')).getByRole('radio', { name: 'From a property' }));
+    expect(blockOf(session, 'head0001')).toEqual({ id: 'head0001', type: 'title', field: 'name', level: 2 });
+    fireEvent.click(within(group('Basics')).getByRole('radio', { name: 'Typed' }));
+    expect(blockOf(session, 'head0001')).toEqual({ id: 'head0001', type: 'heading', text: 'Name', level: 'section' });
+    expect(session.steps).toBe(2);
+  });
+
   it('asks one block at a time', () => {
     const { frame } = mountEditor();
     fireEvent.click(frame('stat-ac1'));
@@ -191,7 +215,7 @@ describe('the Settings panel in layers (spec §10)', () => {
     const { frame } = mountEditor(session);
     fireEvent.click(frame('script01'));
     expect(within(group('Basics')).getByText(/Rolls a d20/)).toBeTruthy();
-    choose(group('Basics'), 'Replace with', 'Stat');
+    choose(group('Basics'), 'Replace with', 'Value');
     expect(session.template.layout.blocks.map((block) => block.type)).toEqual(['stat']);
     expect(session.steps).toBe(1);
   });

@@ -4,7 +4,6 @@
  */
 
 import { createBlock } from '../../model/blockCatalogue';
-import { recipeById } from '../../model/blockRecipes';
 import { blockFor } from '../../model/autoTemplate';
 import { fieldByKey } from '../../model/fieldKeys';
 import type { BlockIdSource } from '../../model/templateIds';
@@ -46,9 +45,7 @@ function newBlocks(template: StatblockTemplate, source: Exclude<DragSource, { ki
     const field = fieldByKey(template.fields, source.key);
     return field ? [fieldBlock(field, ids())] : [];
   }
-  const { item } = source;
-  if (item.kind === 'block') return [createBlock(item.type, ids())];
-  return recipeById(item.id)?.create(ids(), []).blocks ?? [];
+  return [createBlock(source.item.type, ids())];
 }
 
 /** What the drop puts in, for working out where it may go; null where the source names nothing in the template. */

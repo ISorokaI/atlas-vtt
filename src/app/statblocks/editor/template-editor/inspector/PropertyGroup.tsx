@@ -57,7 +57,7 @@ export function PropertyGroup({ block, template, session, readOnly }: GroupProps
         </>
       )}
       {field.type === 'scores' && (
-        <TextSetting label="Scores" value={textFromList(field.slots)} placeholder="STR, DEX, CON" session={session} disabled={readOnly}
+        <TextSetting label="Labels" value={textFromList(field.slots)} placeholder="Body, Mind, Spirit" session={session} disabled={readOnly}
           onText={(text) => {
             const slots = listFromText(text);
             if (!sameList(slots, field.slots)) edit({ slots });

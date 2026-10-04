@@ -9,14 +9,13 @@
 
 import { escapePatternText } from '../expressions/patternParse';
 import { own } from '../format/jsonValues';
+import { MODIFIER_FORMULA } from '../model/scoreFormulas';
 import type { FieldKey, TemplateBlock } from '../model/templateTypes';
 import {
   asScript, flags, full, hasCallback, headingOf, keysOf, refused, textOf, type FsRecord, type Heading, type Leaf,
 } from './fsBlockParts';
 import { callbackPattern, entryTextKey, modifierFormula, returnsItemUnchanged } from './fsCallbackPatterns';
 import type { ImportContext } from './fsImportState';
-
-const DEFAULT_MODIFIER = 'floor((value - 10) / 2)';
 
 /** A block under a heading read from a field: a Section around it, as FS draws a section heading first. */
 function underHeadingField(block: TemplateBlock, heading: Heading, ctx: ImportContext): TemplateBlock {
@@ -101,7 +100,7 @@ const table: Leaf = (record, ctx, at) => {
   if (!ctx.fields.use(key, 'scores', { slots: slots.length > 0 ? slots : undefined })) return refused(key);
   const calculates = own(record, 'calculate') === true;
   const modifier = textOf(record, 'modifier')?.trim();
-  const formula = !calculates ? null : modifier ? modifierFormula(modifier) : DEFAULT_MODIFIER;
+  const formula = !calculates ? null : modifier ? modifierFormula(modifier) : MODIFIER_FORMULA;
   // A modifier left in JavaScript stays with `calculate` for export; FS ignores both without `calculate`
   const read = ['headers', ...(formula !== null ? ['calculate', 'modifier'] : calculates ? [] : ['calculate'])];
   const scores: TemplateBlock = {

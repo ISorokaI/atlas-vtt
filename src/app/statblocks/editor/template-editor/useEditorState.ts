@@ -9,7 +9,7 @@ import { useCallback, useRef, useState, type RefObject } from 'react';
 import { findBlock } from '../../model/treeQueries';
 import type { StatblockTemplate } from '../../model/templateTypes';
 import { useAnnouncer } from './announcer';
-import { insertCatalogueBlock, insertRecipe, type InsertPlace } from './blockActions';
+import { insertCatalogueBlock, type InsertPlace } from './blockActions';
 import { boxIn, type CanvasGap } from './canvasGaps';
 import { blockFrame } from './editorChrome';
 import type { Box } from './gapGeometry';
@@ -149,7 +149,7 @@ export function useEditorState(input: EditorStateInput): EditorState {
   const insert = useCallback((item: InsertItem, place?: InsertPlace): void => {
     setInsertMenu(null);
     const where = place ?? { after: primaryOf(latest.current.selection) };
-    settle(item.kind === 'recipe' ? insertRecipe(session, item.id, where) : insertCatalogueBlock(session, item.type, where));
+    settle(insertCatalogueBlock(session, item.type, where));
   }, [session, settle]);
 
   return {

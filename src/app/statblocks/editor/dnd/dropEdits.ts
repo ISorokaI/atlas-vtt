@@ -10,7 +10,7 @@ import { moveBlock } from '../../model/treeOps';
 import type { TreeTarget } from '../../model/treeEdit';
 import { findBlock } from '../../model/treeQueries';
 import type { TemplateLayout } from '../../model/templateTypes';
-import { insertCatalogueBlock, insertParts, insertRecipe, type InsertPlace } from '../template-editor/blockActions';
+import { insertCatalogueBlock, insertParts, type InsertPlace } from '../template-editor/blockActions';
 import { movedMessage } from '../template-editor/blockMoves';
 import { applyTree, outcomeOf, type EditOutcome } from '../template-editor/sessionEdit';
 import type { EditorSession } from '../template-editor/sessionTypes';
@@ -51,8 +51,7 @@ function insertOnto(session: EditorSession, source: Exclude<DragSource, { kind: 
   const place: InsertPlace = { at: to };
   let outcome: DropOutcome;
   if (source.kind === 'item') {
-    const { item } = source;
-    outcome = item.kind === 'recipe' ? insertRecipe(session, item.id, place) : insertCatalogueBlock(session, item.type, place);
+    outcome = insertCatalogueBlock(session, source.item.type, place);
   } else {
     const field = fieldByKey(session.getSnapshot().template.fields, source.key);
     if (!field) return {};

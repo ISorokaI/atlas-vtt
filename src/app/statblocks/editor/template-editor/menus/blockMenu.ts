@@ -7,10 +7,11 @@
  * twelve rows: quick choices give way first.
  */
 
-import { AUTHORABLE_BLOCK_TYPES, blockSpec, type AuthorableBlockType } from '../../../model/blockCatalogue';
+import { PRIMITIVES, type AuthorableBlockType } from '../../../model/blockCatalogue';
 import { childrenOf } from '../../../model/treeEdit';
 import { boundField, findBlock } from '../../../model/treeQueries';
-import { isContainerBlock, type BlockType, type StatblockTemplate, type TemplateBlock } from '../../../model/templateTypes';
+import { turnIntoPrimitives, typeForPrimitive } from '../../../model/turnInto';
+import { isContainerBlock, type StatblockTemplate, type TemplateBlock } from '../../../model/templateTypes';
 import { MAX_MENU_ROWS, rowCount, SEPARATOR, tidy, type SurfaceAction } from '../../interaction/surfaceActions';
 import type { InsertPlace } from '../blockActions';
 import { blockName, placeName } from '../blockNames';
@@ -20,13 +21,6 @@ import { inSiblingOrder, type BlockSelection } from '../selection';
 import type { EditorSession } from '../sessionTypes';
 import { shortcutText } from '../shortcutText';
 import { quickChoices } from './quickChoices';
-
-/** What a block may turn into: a container into the other container, any other block into another such block. */
-export function turnIntoTypes(type: BlockType): AuthorableBlockType[] {
-  const container = type === 'section' || type === 'row';
-  return AUTHORABLE_BLOCK_TYPES.filter((candidate) =>
-    candidate !== type && (candidate === 'section' || candidate === 'row') === container);
-}
 
 export interface BlockMenuContext {
   session: EditorSession;
@@ -85,7 +79,7 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   const what = many ? `${ctx.selection.length} blocks` : blockName(block, template.fields);
   const ordered = inSiblingOrder(template.layout, ctx.selection);
   const last = ordered.at(-1) ?? ctx.blockId;
-  const turnable = editable && !many ? turnIntoTypes(block.type) : [];
+  const turnable = editable && !many ? turnIntoPrimitives(block.type) : [];
   const head: SurfaceAction[] = [
     ...(ctx.openSettings && !many ? [item('settings', 'Settings…', ctx.openSettings, { icon: 'settings-2', hint: shortcutText(['Shift'], '⏎') })] : []),
     ...(editable && !many && labelTargetOf(block, template.fields) ? [item('rename', 'Rename', () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
@@ -101,7 +95,8 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
     },
     {
       kind: 'submenu', id: 'turn-into', label: 'Turn into', icon: 'replace',
-      children: turnable.map((type) => item(`turn-${type}`, blockSpec(type).label, () => ctx.turnInto(type), { icon: blockSpec(type).icon })),
+      children: turnable.map((id) => item(`turn-${id}`, PRIMITIVES[id].label,
+        () => ctx.turnInto(typeForPrimitive(block, id, template.fields)), { icon: PRIMITIVES[id].icon })),
     },
     { kind: 'submenu', id: 'move', label: 'Move', icon: 'move', children: moveRows(ctx, block, found.parentId, found.index) },
     {

@@ -5,6 +5,7 @@ import { applyDrop, treeTargetOf } from '../../../../src/app/statblocks/editor/d
 import type { DropLine } from '../../../../src/app/statblocks/editor/dnd/dropGeometry';
 import { siblingShifts } from '../../../../src/app/statblocks/editor/dnd/siblingShifts';
 import { FakeSession, sampleTemplate, shape } from '../template-editor/editorKit';
+import { insertItemFor } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
 
 const LINE: DropLine = { orientation: 'horizontal', x: 0, y: 0, length: 10 };
 const box = (top: number, bottom: number): { left: number; top: number; right: number; bottom: number } => ({ left: 0, top, right: 100, bottom });
@@ -29,7 +30,7 @@ describe('applyDrop', () => {
 
   it('inserts a palette block where it is dropped and opens its label, as a click would', () => {
     const session = new FakeSession(sampleTemplate());
-    const outcome = applyDrop(session, { kind: 'item', item: { kind: 'block', type: 'stat', label: 'Stat', group: 'basics' } }, { kind: 'into', parentId: null, outline: box(0, 1) });
+    const outcome = applyDrop(session, { kind: 'item', item: insertItemFor('stat') }, { kind: 'into', parentId: null, outline: box(0, 1) });
     expect(session.template.layout.blocks[0]).toMatchObject({ type: 'stat', field: '' });
     expect(outcome.inserted).toBe(session.template.layout.blocks[0]?.id);
     expect(session.steps).toBe(1);
@@ -55,7 +56,7 @@ describe('applyDrop', () => {
   it('knows what each source puts in', () => {
     const template = sampleTemplate();
     expect(subjectOf(template, { kind: 'block', id: 'row00001' })).toEqual({ types: ['row'], movingId: 'row00001' });
-    expect(subjectOf(template, { kind: 'item', item: { kind: 'recipe', id: 'stat-strip', label: 'Stat strip', group: 'common' } })).toEqual({ types: ['row'], movingId: null });
+    expect(subjectOf(template, { kind: 'item', item: insertItemFor('row') })).toEqual({ types: ['row'], movingId: null });
     expect(subjectOf(template, { kind: 'field', key: 'hp' })).toEqual({ types: ['stat'], movingId: null });
     expect(subjectOf(template, { kind: 'field', key: 'missing' })).toBeNull();
   });

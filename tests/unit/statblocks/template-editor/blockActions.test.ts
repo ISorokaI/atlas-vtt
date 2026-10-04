@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  deleteSelection, duplicateSelection, groupSelection, insertCatalogueBlock, insertRecipe, pasteClip,
+  deleteSelection, duplicateSelection, groupSelection, insertCatalogueBlock, insertNamedStat, pasteClip,
   putSelectionSideBySide, turnSelectionInto, ungroupSelection,
 } from '../../../../src/app/statblocks/editor/template-editor/blockActions';
 import { clipOf, copyBlocks, rememberClip } from '../../../../src/app/statblocks/editor/template-editor/blockClipboard';
@@ -72,20 +72,13 @@ describe('inserting', () => {
     expect(s.template.fields).toEqual([{ key: 'name', label: 'Name', type: 'text' }]);
   });
 
-  it('inserts a recipe\'s blocks and fields in one step', () => {
+  it('inserts a Value of the name typed, with a new property of that name', () => {
     const s = new FakeSession(template([]));
-    const outcome = insertRecipe(s, 'stat-strip', { after: null });
+    const outcome = insertNamedStat(s, 'Mana', { after: null });
     expect(s.steps).toBe(1);
-    expect(s.template.fields.map((field) => field.key)).toEqual(['ac', 'hp', 'speed']);
-    expect(outcome.announce).toBe('Added Armor, hit points and speed.');
-  });
-
-  it('inserts a recipe into a template that has its fields without making copies of them', () => {
-    const s = session();
-    const before = s.template.fields.map((field) => field.key);
-    expect(before).toEqual(expect.arrayContaining(['ac', 'hp', 'speed']));
-    insertRecipe(s, 'stat-strip', { after: null });
-    expect(s.template.fields.map((field) => field.key)).toEqual(before);
+    expect(s.template.fields).toEqual([{ key: 'mana', label: 'Mana', type: 'text' }]);
+    expect(s.template.layout.blocks[0]).toMatchObject({ type: 'stat', field: 'mana' });
+    expect(outcome.announce).toBe('Added Mana.');
   });
 
   it('inserts at the gap the + line named', () => {

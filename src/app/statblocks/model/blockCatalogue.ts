@@ -11,16 +11,75 @@ export type FsBlockType =
 
 /** lucide-react icon names the catalogue uses. */
 export type BlockIcon =
-  | 'square-stack' | 'columns-3' | 'heading' | 'subtitles' | 'hash' | 'table' | 'tags' | 'text' | 'swords'
-  | 'list' | 'gauge' | 'image' | 'sparkles' | 'heading-2' | 'minus' | 'code' | 'circle-help';
+  | 'heading' | 'text' | 'hash' | 'subtitles' | 'list' | 'table' | 'gauge' | 'image' | 'square-stack' | 'columns-3' | 'minus'
+  | 'code' | 'circle-help';
 
-/** The palette group a block is listed under (§7.4); recipes are "Common". */
-export type PaletteGroup = 'basics' | 'lists' | 'numbers' | 'layout' | 'media';
+/** The group of the Add panel a primitive is listed under. */
+export type PaletteGroup = 'basics' | 'lists' | 'layout' | 'media';
+
+export const PALETTE_GROUPS: ReadonlyArray<{ id: PaletteGroup; label: string }> = [
+  { id: 'basics', label: 'Text and values' },
+  { id: 'lists', label: 'Lists and tables' },
+  { id: 'layout', label: 'Layout' },
+  { id: 'media', label: 'Pictures' },
+];
+
+/**
+ * What the editor offers and names a block as: the primitive it is, whatever
+ * type it has in the file. A primitive of several kinds (a List's items are
+ * words, labels with values, names with text or groups) is one block for
+ * people; its kind is a setting, which turns the block into the other type.
+ */
+export type PrimitiveId =
+  | 'heading' | 'text' | 'value' | 'line' | 'list' | 'table' | 'track' | 'picture' | 'section' | 'side-by-side' | 'divider';
+
+type Kinds = readonly [AuthorableBlockType, ...AuthorableBlockType[]];
+
+export interface PrimitiveSpec {
+  id: PrimitiveId;
+  /** Sentence case, in plain words, as the Add panel, the toolbar, Structure and Settings show it. */
+  label: string;
+  icon: BlockIcon;
+  group: PaletteGroup;
+  /** The block type a new one gets. */
+  inserts: AuthorableBlockType;
+  /** Its block types in the order the kind setting offers them; one where it has no kinds. */
+  kinds: Kinds;
+  /** The name of the setting that picks among its kinds. */
+  kindSetting?: string;
+}
+
+function primitive(
+  id: PrimitiveId, label: string, icon: BlockIcon, group: PaletteGroup, kinds: Kinds, inserts: AuthorableBlockType = kinds[0], kindSetting?: string,
+): PrimitiveSpec {
+  return { id, label, icon, group, inserts, kinds, ...(kindSetting && { kindSetting }) };
+}
+
+/** Every primitive, in the order the Add panel and Turn into list them. */
+export const PRIMITIVES: Readonly<Record<PrimitiveId, PrimitiveSpec>> = {
+  heading: primitive('heading', 'Heading', 'heading', 'basics', ['heading', 'title'], 'heading', 'Text'),
+  text: primitive('text', 'Text', 'text', 'basics', ['text']),
+  value: primitive('value', 'Value', 'hash', 'basics', ['stat']),
+  line: primitive('line', 'Line', 'subtitles', 'basics', ['line']),
+  list: primitive('list', 'List', 'list', 'lists', ['tags', 'pairs', 'entries', 'spells'], 'entries', 'Each item is'),
+  table: primitive('table', 'Table', 'table', 'lists', ['scores']),
+  track: primitive('track', 'Track', 'gauge', 'lists', ['track']),
+  section: primitive('section', 'Section', 'square-stack', 'layout', ['section']),
+  'side-by-side': primitive('side-by-side', 'Side by side', 'columns-3', 'layout', ['row']),
+  divider: primitive('divider', 'Divider', 'minus', 'layout', ['divider']),
+  picture: primitive('picture', 'Picture', 'image', 'media', ['image']),
+};
+
+export const PRIMITIVE_IDS: readonly PrimitiveId[] = Object.keys(PRIMITIVES) as PrimitiveId[];
 
 export interface BlockSpec {
   type: BlockType;
-  /** Sentence case, in plain words (spec §1), as the Add panel, the toolbar, Structure and Settings show it. Type ids never change. */
+  /** The primitive it is; null for the blocks that only ever come from a file. */
+  primitive: PrimitiveId | null;
+  /** Its primitive's label (Type ids never change), or its own where it has no primitive. */
   label: string;
+  /** What sets it apart among its primitive's kinds ("A name and text"); unset where the primitive has one kind. */
+  kind?: string;
   icon: BlockIcon;
   /** Field types the block's own field (each of a Line's fields) may have; empty where it binds none. */
   binds: readonly FieldType[];
@@ -29,37 +88,39 @@ export interface BlockSpec {
   fsType: FsBlockType | null;
   /** Its size inside a Row while `size` is unset. */
   rowSize: 'fit' | 'fill';
-  /** null exactly for the blocks that are not authorable, which the palette does not offer. */
-  group: PaletteGroup | null;
 }
 
 const SCALAR_FIELDS: readonly FieldType[] = ['text', 'number', 'rating', 'dice', 'choice'];
 
 function spec(
-  type: BlockType, label: string, icon: BlockIcon, binds: readonly FieldType[],
-  fsType: FsBlockType | null, rowSize: 'fit' | 'fill', group: PaletteGroup | null,
+  type: AuthorableBlockType, of: PrimitiveId, binds: readonly FieldType[], fsType: FsBlockType | null, rowSize: 'fit' | 'fill', kind?: string,
 ): BlockSpec {
-  return { type, label, icon, binds, authorable: group !== null, fsType, rowSize, group };
+  const { label, icon } = PRIMITIVES[of];
+  return { type, primitive: of, label, ...(kind && { kind }), icon, binds, authorable: true, fsType, rowSize };
+}
+
+function fileOnly(type: BlockType, label: string, icon: BlockIcon, fsType: FsBlockType | null): BlockSpec {
+  return { type, primitive: null, label, icon, binds: [], authorable: false, fsType, rowSize: 'fill' };
 }
 
 export const BLOCK_CATALOGUE: Readonly<Record<BlockType, BlockSpec>> = {
-  section: spec('section', 'Section', 'square-stack', [], 'group', 'fill', 'layout'),
-  row: spec('row', 'Side by side', 'columns-3', [], 'inline', 'fill', 'layout'),
-  title: spec('title', 'Name', 'heading', ['text'], 'heading', 'fill', 'basics'),
-  line: spec('line', 'Stats on one line', 'subtitles', SCALAR_FIELDS, 'subheading', 'fill', 'basics'),
-  stat: spec('stat', 'Stat', 'hash', SCALAR_FIELDS, 'property', 'fit', 'basics'),
-  scores: spec('scores', 'Score table', 'table', ['scores'], 'table', 'fill', 'numbers'),
-  tags: spec('tags', 'Tags', 'tags', ['list'], 'property', 'fill', 'lists'),
-  text: spec('text', 'Text', 'text', ['markdown'], 'text', 'fill', 'basics'),
-  entries: spec('entries', 'Abilities', 'swords', ['entries'], 'traits', 'fill', 'lists'),
-  pairs: spec('pairs', 'Labelled values', 'list', ['pairs'], 'saves', 'fill', 'lists'),
-  track: spec('track', 'Track', 'gauge', ['number'], 'property', 'fit', 'numbers'),
-  image: spec('image', 'Picture', 'image', ['image'], 'image', 'fit', 'media'),
-  spells: spec('spells', 'Spells', 'sparkles', ['spells'], 'spells', 'fill', 'lists'),
-  heading: spec('heading', 'Heading', 'heading-2', [], 'text', 'fill', 'basics'),
-  divider: spec('divider', 'Divider', 'minus', [], null, 'fill', 'layout'),
-  script: spec('script', 'Kept from Fantasy Statblocks', 'code', [], 'javascript', 'fill', null),
-  opaque: spec('opaque', 'From a newer Atlas', 'circle-help', [], null, 'fill', null),
+  section: spec('section', 'section', [], 'group', 'fill'),
+  row: spec('row', 'side-by-side', [], 'inline', 'fill'),
+  title: spec('title', 'heading', ['text'], 'heading', 'fill', 'From a property'),
+  line: spec('line', 'line', SCALAR_FIELDS, 'subheading', 'fill'),
+  stat: spec('stat', 'value', SCALAR_FIELDS, 'property', 'fit'),
+  scores: spec('scores', 'table', ['scores'], 'table', 'fill'),
+  tags: spec('tags', 'list', ['list'], 'property', 'fill', 'A word'),
+  text: spec('text', 'text', ['markdown'], 'text', 'fill'),
+  entries: spec('entries', 'list', ['entries'], 'traits', 'fill', 'A name and text'),
+  pairs: spec('pairs', 'list', ['pairs'], 'saves', 'fill', 'A label and a value'),
+  track: spec('track', 'track', ['number'], 'property', 'fit'),
+  image: spec('image', 'picture', ['image'], 'image', 'fit'),
+  spells: spec('spells', 'list', ['spells'], 'spells', 'fill', 'A group with items'),
+  heading: spec('heading', 'heading', [], 'text', 'fill', 'Typed'),
+  divider: spec('divider', 'divider', [], null, 'fill'),
+  script: fileOnly('script', 'Kept from Fantasy Statblocks', 'code', 'javascript'),
+  opaque: fileOnly('opaque', 'From a newer Atlas', 'circle-help', null),
 };
 
 export const BLOCK_TYPES: readonly BlockType[] = Object.keys(BLOCK_CATALOGUE) as BlockType[];
@@ -73,6 +134,14 @@ export function isAuthorableBlockType(type: BlockType): type is AuthorableBlockT
 
 export function blockSpec(type: BlockType): BlockSpec {
   return BLOCK_CATALOGUE[type];
+}
+
+/** The primitive a block type is, or null for the blocks that only ever come from a file. */
+export function primitiveOf(type: AuthorableBlockType): PrimitiveSpec;
+export function primitiveOf(type: BlockType): PrimitiveSpec | null;
+export function primitiveOf(type: BlockType): PrimitiveSpec | null {
+  const id = BLOCK_CATALOGUE[type].primitive;
+  return id === null ? null : PRIMITIVES[id];
 }
 
 export function bindsFieldType(type: BlockType, fieldType: FieldType): boolean {

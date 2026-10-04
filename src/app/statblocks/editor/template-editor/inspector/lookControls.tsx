@@ -1,32 +1,59 @@
 import React from 'react';
-import { rowSizeOf } from '../../../model/blockCatalogue';
-import type { TemplateBlock } from '../../../model/templateTypes';
+import { blockSpec, primitiveOf, rowSizeOf, type AuthorableBlockType } from '../../../model/blockCatalogue';
+import { turnInto } from '../../../model/turnInto';
+import { wordsStandAlone, type TagsBlock, type TemplateBlock } from '../../../model/templateTypes';
 import { boundFieldOf, editBlock } from './blockEdits';
 import type { GroupProps, LabelledBlock } from './groupProps';
 import { ChoiceSetting, SelectSetting, SwitchSetting } from './InspectorControls';
 import { ScoreColumns } from './ScoreColumns';
+import { applyTree } from '../sessionEdit';
 import type { EditorSession } from '../sessionTypes';
 
 /** Slots side by side in a Scores table. */
 const PER_LINE = ['1', '2', '3', '4', '5', '6'] as const;
 
+/** How a list of words shows, in the inspector and the block menu's quick choice. */
+export const TAG_LOOK_OPTIONS: ReadonlyArray<{ value: TagsBlock['look']; label: string }> = [
+  { value: 'comma', label: 'Comma list' }, { value: 'chips', label: 'Chips' },
+  { value: 'bullets', label: 'Bullets' }, { value: 'numbered', label: 'Numbered' },
+];
+
 /**
- * Whether a labelled block shows its label. An empty label hides it; chips
- * show one only where the template gives one (`TagsView`).
+ * Whether a labelled block shows its label. An empty label hides it; words
+ * that stand on their own show one only where the template gives one (`TagsView`).
  */
 function labelShown(block: LabelledBlock): boolean {
-  if (block.type === 'tags' && block.look === 'chips') return Boolean(block.label);
+  if (wordsStandAlone(block)) return Boolean(block.label);
   return block.label !== '';
 }
 
 export function ShowLabel({ block, template, session, readOnly }: GroupProps & { block: LabelledBlock }): React.JSX.Element {
   const toggle = (show: boolean): void => {
-    const chips = block.type === 'tags' && block.look === 'chips';
+    const alone = wordsStandAlone(block);
     const fieldLabel = boundFieldOf(template, block)?.label;
-    const label = show ? (chips ? fieldLabel ?? block.field : undefined) : (chips ? undefined : '');
+    const label = show ? (alone ? fieldLabel ?? block.field : undefined) : (alone ? undefined : '');
     editBlock(session, block.id, block.type, { label });
   };
   return <SwitchSetting label="Show label" value={labelShown(block)} onChange={toggle} disabled={readOnly} />;
+}
+
+/**
+ * A primitive's kind: whether a Heading's text is typed or comes from a
+ * property, what a List's items are. Choosing one turns the block into that
+ * type in one step, keeping what the two share.
+ */
+export function KindSetting({ block, session, readOnly }: GroupProps): React.JSX.Element | null {
+  const primitive = primitiveOf(block.type);
+  if (!primitive?.kindSetting) return null;
+  const current = primitive.kinds.find((type) => type === block.type);
+  if (!current) return null;
+  const options = primitive.kinds.map((type) => ({ value: type, label: blockSpec(type).kind ?? blockSpec(type).label }));
+  const turn = (type: AuthorableBlockType): void => {
+    applyTree(session, (layout, template) => turnInto(layout, block.id, type, template.fields));
+  };
+  return options.length > 2
+    ? <SelectSetting label={primitive.kindSetting} value={current} options={options} disabled={readOnly} onChange={turn} />
+    : <ChoiceSetting label={primitive.kindSetting} value={current} options={options} disabled={readOnly} onChange={turn} />;
 }
 
 /** The settings of the block's own look, by type. */
@@ -42,8 +69,7 @@ export function OwnLook(props: GroupProps): React.JSX.Element | null {
         options={[{ value: 'run-in', label: 'Label first' }, { value: 'stacked', label: 'Label above' }]}
         onChange={(look) => editBlock(session, block.id, 'stat', { look })} />;
     case 'tags':
-      return <ChoiceSetting label="Style" value={block.look} disabled={disabled}
-        options={[{ value: 'comma', label: 'Comma list' }, { value: 'chips', label: 'Chips' }]}
+      return <SelectSetting label="Style" value={block.look} disabled={disabled} options={[...TAG_LOOK_OPTIONS]}
         onChange={(look) => editBlock(session, block.id, 'tags', { look })} />;
     case 'track':
       return (

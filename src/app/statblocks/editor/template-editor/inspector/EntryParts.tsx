@@ -77,7 +77,7 @@ export function EntryParts({ field, session, readOnly }: EntryPartsProps): React
     }));
   };
   return (
-    <Setting label="Each ability also has" wide>
+    <Setting label="Each item also has" wide>
       {(labelId) => (
         <div className="atlas-te-setting__list">
           {extras.map((extra, index) => (

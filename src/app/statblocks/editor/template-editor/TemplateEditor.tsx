@@ -7,7 +7,7 @@ import { TemplateDragAndDrop } from '../dnd/DndProvider';
 import { foldedBlocks } from '../../render/foldRule';
 import { FoldedChips } from '../panel-frame/FoldedChips';
 import { BlankCard } from './BlankCard';
-import { insertNamedStat, insertRecipes } from './blockActions';
+import { insertNamedStat } from './blockActions';
 import { Canvas } from './Canvas';
 import { DeleteTemplateDialog } from './DeleteTemplateDialog';
 import { dockMenuEntries } from './dock/dockPanels';
@@ -213,13 +213,7 @@ export function TemplateEditor(props: TemplateEditorProps): React.JSX.Element {
                 onInsertAt={state.openInsertAtGap}
                 focusRequest={state.focusRequest}
                 empty={(
-                  <BlankCard
-                    onInsert={snapshot.readOnly ? undefined : (item) => context.insert(item)}
-                    onStart={snapshot.readOnly ? undefined : (recipes, name) => {
-                      state.settle(insertRecipes(session, recipes, { after: null }, name));
-                      floats.inserted();
-                    }}
-                  />
+                  <BlankCard onInsert={snapshot.readOnly ? undefined : (item) => context.insert(item)} />
                 )}
                 shownWidth={showAs.width}
                 folded={foldedSet}

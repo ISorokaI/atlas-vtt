@@ -2,13 +2,10 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  AUTHORABLE_BLOCK_TYPES, BLOCK_CATALOGUE, BLOCK_TYPES, bindsFieldType, blockSpec, canContain, createBlock,
-  isAuthorableBlockType, naturalBlockFor, rowSizeOf,
+  AUTHORABLE_BLOCK_TYPES, BLOCK_TYPES, PALETTE_GROUPS, PRIMITIVE_IDS, PRIMITIVES, bindsFieldType, blockSpec, canContain, createBlock,
+  isAuthorableBlockType, naturalBlockFor, primitiveOf, rowSizeOf,
 } from '../../../../src/app/statblocks/model/blockCatalogue';
-import { BLOCK_RECIPES, recipeById } from '../../../../src/app/statblocks/model/blockRecipes';
-import { isLegalSubtree } from '../../../../src/app/statblocks/model/treeEdit';
-import { fieldsShownBy, flattenReadingOrder } from '../../../../src/app/statblocks/model/treeQueries';
-import { FIELD_TYPES, type BlockType, type TemplateBlock, type TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
+import { FIELD_TYPES, type BlockType } from '../../../../src/app/statblocks/model/templateTypes';
 import { idsFrom } from './treeFixtures';
 
 const ALL_TYPES: BlockType[] = [
@@ -29,14 +26,38 @@ describe('block catalogue', () => {
       expect(spec.label.replace(/Fantasy Statblocks|Atlas/, '')).toMatch(/^[A-Z]?[a-z ]*$/);
       expect(lucideIcon(spec.icon), `${type}: ${spec.icon}`).toBe(true);
     }
-    for (const recipe of BLOCK_RECIPES) expect(lucideIcon(recipe.icon), recipe.icon).toBe(true);
   });
 
   it('offers every block but scripts and unknown blocks to authors', () => {
     expect([...AUTHORABLE_BLOCK_TYPES].sort()).toEqual(ALL_TYPES.filter((type) => type !== 'script' && type !== 'opaque').sort());
     expect(isAuthorableBlockType('script')).toBe(false);
     expect(isAuthorableBlockType('opaque')).toBe(false);
-    for (const type of AUTHORABLE_BLOCK_TYPES) expect(BLOCK_CATALOGUE[type].group).not.toBeNull();
+    for (const type of AUTHORABLE_BLOCK_TYPES) expect(primitiveOf(type).kinds).toContain(type);
+  });
+
+  it('names every authorable block by the primitive it is, and its kind where the primitive has several', () => {
+    expect(Object.fromEntries(AUTHORABLE_BLOCK_TYPES.map((type) => [type, blockSpec(type).label]))).toEqual({
+      section: 'Section', row: 'Side by side', title: 'Heading', line: 'Line', stat: 'Value', scores: 'Table', tags: 'List',
+      text: 'Text', entries: 'List', pairs: 'List', track: 'Track', image: 'Picture', spells: 'List', heading: 'Heading', divider: 'Divider',
+    });
+    expect(PRIMITIVES.list.kinds.map((type) => blockSpec(type).kind)).toEqual(['A word', 'A label and a value', 'A name and text', 'A group with items']);
+    expect(PRIMITIVES.heading.kinds.map((type) => blockSpec(type).kind)).toEqual(['Typed', 'From a property']);
+    expect(primitiveOf('script')).toBeNull();
+  });
+
+  it('gives every primitive a lucide icon, a palette group and the block a new one gets, among its own kinds', () => {
+    const groups = PALETTE_GROUPS.map((group) => group.id);
+    for (const id of PRIMITIVE_IDS) {
+      const primitive = PRIMITIVES[id];
+      expect(lucideIcon(primitive.icon), id).toBe(true);
+      expect(groups).toContain(primitive.group);
+      expect(primitive.kinds).toContain(primitive.inserts);
+      expect(Boolean(primitive.kindSetting), id).toBe(primitive.kinds.length > 1);
+    }
+    expect(PRIMITIVES.list.inserts).toBe('entries');
+    expect(PRIMITIVES.heading.inserts).toBe('heading');
+    // Each block type is the kind of exactly one primitive.
+    expect(PRIMITIVE_IDS.flatMap((id) => PRIMITIVES[id].kinds).sort()).toEqual([...AUTHORABLE_BLOCK_TYPES].sort());
   });
 
   it('binds no field to layout blocks, headings and dividers', () => {
@@ -99,89 +120,5 @@ describe('createBlock', () => {
     ['divider', undefined, {}],
   ] as const)('makes a %s (field %s) with its defaults', (type, field, defaults) => {
     expect(createBlock(type, idsFrom('abcd1234'), field)).toStrictEqual({ id: 'abcd1234', type, ...defaults });
-  });
-});
-
-describe('recipes', () => {
-  const blocksOf = (blocks: TemplateBlock[]): TemplateBlock[] => flattenReadingOrder(blocks);
-  let counter = 0;
-  const nextId = (): string => `r${(counter++).toString(36).padStart(7, '0')}`;
-
-  it('insert legal blocks with unique ids that show every new field', () => {
-    for (const recipe of BLOCK_RECIPES) {
-      const { blocks, fields } = recipe.create(nextId, [{ key: 'name', label: 'Name', type: 'text' }]);
-      const all = blocksOf(blocks);
-      expect(new Set(all.map((block) => block.id)).size).toBe(all.length);
-      expect(blocks.every(isLegalSubtree)).toBe(true);
-      const shown = new Set(all.flatMap((block) => fieldsShownBy(block)));
-      expect(fields.map((field) => field.key).every((key) => shown.has(key)), recipe.id).toBe(true);
-      expect(new Set(fields.map((field) => field.key)).size).toBe(fields.length);
-    }
-  });
-
-  it('builds a Stat strip of three stacked Stats in a Row', () => {
-    const { blocks, fields } = recipeById('stat-strip')?.create(idsFrom('row00000', 's1', 's2', 's3'), []) ?? { blocks: [], fields: [] };
-    expect(fields).toEqual([
-      { key: 'ac', label: 'Armor class', type: 'number' },
-      { key: 'hp', label: 'Hit points', type: 'number' },
-      { key: 'speed', label: 'Speed', type: 'text' },
-    ]);
-    expect(blocks).toStrictEqual([{ id: 'row00000', type: 'row', blocks: [
-      { id: 's1', type: 'stat', field: 'ac', look: 'stacked' },
-      { id: 's2', type: 'stat', field: 'hp', look: 'stacked' },
-      { id: 's3', type: 'stat', field: 'speed', look: 'stacked' },
-    ] }]);
-  });
-
-  it('shows the template\'s own fields where it has the recipe\'s keys, and adds only the others', () => {
-    const existing: TemplateField[] = [
-      { key: 'ac', label: 'AC', type: 'number' },
-      { key: 'hit_points', label: 'HP', type: 'text', formerKeys: ['hp'] },
-      { key: 'actions', label: 'Actions', type: 'entries' },
-    ];
-    const strip = recipeById('stat-strip')?.create(idsFrom('row00000', 's1', 's2', 's3'), existing);
-    expect(strip?.fields).toEqual([{ key: 'speed', label: 'Speed', type: 'text' }]);
-    const row = strip?.blocks[0];
-    expect(row && 'blocks' in row ? row.blocks.map((block) => 'field' in block && block.field) : []).toEqual(['ac', 'hit_points', 'speed']);
-    expect(recipeById('actions')?.create(idsFrom('a'), existing)).toStrictEqual({
-      blocks: [{ id: 'a', type: 'entries', field: 'actions', heading: 'Actions', addLabel: 'Add action' }],
-      fields: [],
-    });
-  });
-
-  it('gives a new field a free key where the template\'s field of that key is one the block cannot show', () => {
-    const existing: TemplateField[] = [{ key: 'ac', label: 'AC', type: 'entries' }, { key: 'stats', label: 'Stats', type: 'text' }];
-    const { fields } = recipeById('stat-strip')?.create(nextId, existing) ?? { fields: [] };
-    expect(fields.map((field) => field.key)).toEqual(['ac_2', 'hp', 'speed']);
-    const scores = recipeById('ability-scores')?.create(nextId, existing);
-    expect(scores?.fields).toEqual([{ key: 'stats_2', label: 'Abilities', type: 'scores', slots: ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] }]);
-  });
-
-  it('builds ability scores with six slots and a signed modifier column', () => {
-    const { blocks, fields } = recipeById('ability-scores')?.create(idsFrom('sc'), []) ?? { blocks: [], fields: [] };
-    expect(fields).toEqual([{ key: 'stats', label: 'Abilities', type: 'scores', slots: ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] }]);
-    expect(blocks).toStrictEqual([{
-      id: 'sc', type: 'scores', field: 'stats', orientation: 'row',
-      columns: [{ label: 'Mod', formula: 'floor((value - 10) / 2)', display: 'signed' }],
-    }]);
-  });
-
-  it('builds Actions and Defenses, whose saving throws read as modifiers like the other saves', () => {
-    expect(recipeById('actions')?.create(idsFrom('ac'), [])).toStrictEqual({
-      blocks: [{ id: 'ac', type: 'entries', field: 'actions', heading: 'Actions', addLabel: 'Add action' }],
-      fields: [{ key: 'actions', label: 'Actions', type: 'entries' }],
-    });
-    expect(recipeById('defenses')?.create(idsFrom('d', 'p', 'r', 'i'), [])).toStrictEqual({
-      blocks: [{ id: 'd', type: 'section', heading: 'Defenses', blocks: [
-        { id: 'p', type: 'pairs', field: 'saves', display: 'signed' },
-        { id: 'r', type: 'stat', field: 'damage_resistances', look: 'run-in' },
-        { id: 'i', type: 'stat', field: 'damage_immunities', look: 'run-in' },
-      ] }],
-      fields: [
-        { key: 'saves', label: 'Saving throws', type: 'pairs' },
-        { key: 'damage_resistances', label: 'Damage resistances', type: 'text' },
-        { key: 'damage_immunities', label: 'Damage immunities', type: 'text' },
-      ],
-    });
   });
 });

@@ -75,9 +75,9 @@ function InsertList({ id, groups, current, onHover, onChoose }: InsertListProps)
 }
 
 /**
- * The insert menu (§7.6), opened by `/` or the `+` line: "Find a block", the
- * recipes, then the catalogue's blocks by group, with a preview of the row
- * under the pointer or the keys. Enter inserts, Escape closes.
+ * The insert menu (§7.6), opened by `/` or the `+` line: "Find a block",
+ * then the primitives by group, with a preview of the row under the pointer
+ * or the keys. Enter inserts, Escape closes.
  */
 export function InsertMenu({ layer, anchor, app, onInsert, onClose }: InsertMenuProps): React.JSX.Element {
   const [query, setQuery] = useState('');

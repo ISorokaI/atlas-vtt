@@ -196,32 +196,6 @@ $tag-height: 18px;
     border-radius: $radius-xl;
   }
 
-  // "Start like…": chips that put a whole statblock's worth of parts in at once.
-  .atlas-te-blank__starts {
-    @include atlas-flex-row($spacing-xs);
-    flex-wrap: wrap;
-    margin-top: $spacing-xs;
-    color: var(--text-muted);
-    font-size: $font-ui-smaller;
-  }
-
-  .atlas-te-stage button.atlas-te-blank__start {
-    @include atlas-corner-shape;
-    height: 24px;
-    padding: 0 $spacing-s;
-    border: $border-width-s solid var(--background-modifier-border);
-    border-radius: $radius-full;
-    background: transparent;
-    box-shadow: none;
-    color: var(--text-normal);
-    font-size: $font-ui-smaller;
-    cursor: pointer;
-
-    &:hover:not(:disabled) {
-      background: var(--background-modifier-hover);
-    }
-  }
-
   .atlas-te-stage button.atlas-te-blank__row {
     @include atlas-flex-row($spacing-s);
     @include atlas-corner-shape;

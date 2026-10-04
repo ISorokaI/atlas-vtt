@@ -67,6 +67,28 @@ describe('blockMenu', () => {
     expect(run).toHaveBeenCalledWith('delete');
   });
 
+  it('turns a block into the primitives, each once, into the kind that can show its property', () => {
+    const blocks: TemplateBlock[] = [{ id: 'stat0001', type: 'stat', field: 'name', look: 'run-in' }];
+    const shown = template(blocks, [{ key: 'name', label: 'Name', type: 'text' }]);
+    const turnInto = vi.fn();
+    const menu = blockMenu({ ...context(blocks, 'stat0001'), template: shown, turnInto });
+    const turn = submenu(menu, 'turn-into');
+    expect(labels(turn)).toEqual(['Heading', 'Text', 'Line', 'List', 'Table', 'Track', 'Divider', 'Picture']);
+    findAction(turn, 'turn-heading')?.run();
+    expect(turnInto).toHaveBeenLastCalledWith('title');
+    findAction(turn, 'turn-list')?.run();
+    expect(turnInto).toHaveBeenLastCalledWith('entries');
+    expect(labels(submenu(blockMenu(context([{ id: 'tags0001', type: 'tags', field: 'x', look: 'comma' }], 'tags0001')), 'turn-into')))
+      .not.toContain('List');
+  });
+
+  it('offers a list of words every way it can show, with the one in use ticked', () => {
+    const blocks: TemplateBlock[] = [{ id: 'tags0001', type: 'tags', field: 'x', look: 'bullets' }];
+    const style = submenu(blockMenu(context(blocks, 'tags0001')), 'style');
+    expect(style.map((row) => row.kind === 'item' && [row.label, row.checked]))
+      .toEqual([['Comma list', false], ['Chips', false], ['Bullets', true], ['Numbered', false]]);
+  });
+
   it('offers the block\'s quick choices with the one in use ticked, each one step', () => {
     const blocks: TemplateBlock[] = [{ id: 'track001', type: 'track', field: 'hp', look: 'boxes', counts: 'down' }];
     const ctx = context(blocks, 'track001');

@@ -5,7 +5,7 @@ import { Button } from '../../../../packages/components/primitives/button';
 import { collectionResources } from '../../../../resources/collectionResources';
 import { AssetService } from '../../../../services/AssetService';
 import { trackScripts, withTrackBlocks } from '../../../fs/fsTrackReplacement';
-import { AUTHORABLE_BLOCK_TYPES, blockSpec, createBlock, type AuthorableBlockType } from '../../../model/blockCatalogue';
+import { createBlock, PRIMITIVE_IDS, PRIMITIVES, type AuthorableBlockType } from '../../../model/blockCatalogue';
 import { blockIdSource } from '../../../model/templateIds';
 import { refuse } from '../../../model/treeEdit';
 import { insertBlock, removeBlock } from '../../../model/treeOps';
@@ -87,7 +87,7 @@ export function EntriesContent(props: PartProps<EntriesBlock>): React.JSX.Elemen
   const { block, session, readOnly } = props;
   return (
     <>
-      <TextSetting label="Each one is called" value={calledFromAddLabel(block.addLabel)} placeholder="ability" session={session} disabled={readOnly}
+      <TextSetting label="Each one is called" value={calledFromAddLabel(block.addLabel)} placeholder="item" session={session} disabled={readOnly}
         onText={(text) => editBlock(session, block.id, 'entries', { addLabel: text.trim() ? `Add ${text.trim().toLowerCase()}` : undefined })} />
       <FieldSetting label="Text before the list" value={block.introField ?? null} accepts={['markdown', 'text']} newType="markdown"
         session={session} disabled={readOnly}
@@ -160,11 +160,11 @@ export function ScriptContent({ block, template, session, readOnly }: PartProps<
         <SelectSetting<string>
           label="Replace with"
           value={CHOOSE}
-          options={[{ value: CHOOSE, label: 'Choose a block' }, ...AUTHORABLE_BLOCK_TYPES.map((type) => ({ value: type, label: blockSpec(type).label }))]}
+          options={[{ value: CHOOSE, label: 'Choose a block' }, ...PRIMITIVE_IDS.map((id) => ({ value: id, label: PRIMITIVES[id].label }))]}
           disabled={readOnly}
-          onChange={(type) => {
-            const chosen = AUTHORABLE_BLOCK_TYPES.find((candidate) => candidate === type);
-            if (chosen) replace(chosen);
+          onChange={(id) => {
+            const chosen = PRIMITIVE_IDS.find((candidate) => candidate === id);
+            if (chosen) replace(PRIMITIVES[chosen].inserts);
           }}
         />
       )}

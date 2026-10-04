@@ -30,7 +30,7 @@ export interface DropScene {
 }
 
 export interface DragSubject {
-  /** The block types the drop puts in, top to bottom (a recipe may bring several). */
+  /** The block types the drop puts in, top to bottom. */
   types: readonly BlockType[];
   /** The block moved; null for a new one. */
   movingId: string | null;

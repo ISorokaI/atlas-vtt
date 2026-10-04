@@ -125,10 +125,10 @@ describe('TemplateEditor', () => {
     act(() => frame('divider1').focus());
     key(frame('divider1'), '/');
     const search = screen.getByRole('combobox', { name: 'Find a block' });
-    fireEvent.change(search, { target: { value: 'stat' } });
-    expect(screen.getAllByRole('option').map((option) => option.textContent)).toContain('Stat');
-    // The exact match is highlighted, though recipes are listed above it.
-    expect(screen.getByRole('option', { selected: true }).textContent).toBe('Stat');
+    fireEvent.change(search, { target: { value: 'value' } });
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toContain('Value');
+    // The exact match is highlighted, though others found are listed above it.
+    expect(screen.getByRole('option', { selected: true }).textContent).toBe('Value');
     key(search, 'Enter');
     const added = session.template.layout.blocks.at(-1);
     expect(added?.type).toBe('stat');
@@ -138,7 +138,7 @@ describe('TemplateEditor', () => {
     await waitFor(() => expect(document.activeElement?.getAttribute('data-block-id')).toBe(added?.id));
     key(frame(added!.id), 'Enter');
     const label = screen.getByRole<HTMLInputElement>('textbox', { name: 'Label' });
-    expect(label.value).toBe('Stat');
+    expect(label.value).toBe('Value');
     fireEvent.change(label, { target: { value: 'Initiative' } });
     key(label, 'Enter');
     expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'stat', field: 'initiative' });
@@ -153,10 +153,10 @@ describe('TemplateEditor', () => {
     act(() => frame('divider1').focus());
     key(frame('divider1'), '/');
     const search = screen.getByRole('combobox', { name: 'Find a block' });
-    fireEvent.change(search, { target: { value: 'spells' } });
+    fireEvent.change(search, { target: { value: 'list' } });
     key(search, 'Enter');
     const added = session.template.layout.blocks.at(-1);
-    expect(added?.type).toBe('spells');
+    expect(added?.type).toBe('entries');
     await waitFor(() => expect(document.activeElement?.getAttribute('data-block-id')).toBe(added?.id));
     key(frame(added!.id), 'Delete');
     expect(session.template.layout.blocks.some((block) => block.id === added?.id)).toBe(false);
@@ -177,7 +177,7 @@ describe('TemplateEditor', () => {
   it('acts from the block toolbar: five controls, Delete and Add below among them', () => {
     const { session, frame } = setup();
     fireEvent.click(frame('stat-ac1'));
-    const toolbar = screen.getByRole('toolbar', { name: 'Stat toolbar' });
+    const toolbar = screen.getByRole('toolbar', { name: 'Value toolbar' });
     expect(within(toolbar).getAllByRole('button')).toHaveLength(5);
     fireEvent.click(within(toolbar).getByText('Delete').closest('button')!);
     expect(shape(session.template.layout.blocks)).toContain('section1(stat-hp1)');
@@ -188,8 +188,10 @@ describe('TemplateEditor', () => {
     const session = new FakeSession(template([]));
     setup(session);
     expect(screen.getByText(GESTURE_HINT)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Stats' }));
-    expect(session.template.layout.blocks[0]?.type).toBe('row');
+    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual(expect.arrayContaining(['Name', 'A line under the name', 'A value', 'A list']));
+    expect(screen.queryByText('Start like…')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'A list' }));
+    expect(session.template.layout.blocks[0]?.type).toBe('entries');
   });
 
   it('edits a built-in like any template, saying first that the change makes your own copy (§9.3)', () => {

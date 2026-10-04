@@ -4,8 +4,7 @@
  */
 
 import { removedMessage } from '../statblock-pane/announcements';
-import { blockSpec, createBlock, type AuthorableBlockType } from '../../model/blockCatalogue';
-import { recipeById, type RecipeId } from '../../model/blockRecipes';
+import { createBlock, type AuthorableBlockType } from '../../model/blockCatalogue';
 import { addField } from '../../model/fieldOps';
 import { fieldKeysOf, labelToKey } from '../../model/fieldKeys';
 import { blockIdSource, type BlockIdSource } from '../../model/templateIds';
@@ -17,7 +16,7 @@ import { turnInto } from '../../model/turnInto';
 import type { StatblockTemplate, TemplateBlock, TemplateField, TemplateLayout } from '../../model/templateTypes';
 import { pastedBlocks, type BlockClip } from './blockClipboard';
 import { insertTarget } from './blockMoves';
-import { blockName } from './blockNames';
+import { blockName, typeName } from './blockNames';
 import { focusAfterDelete, inSiblingOrder, primaryOf, type BlockSelection } from './selection';
 import { applyEdit, applyTree, chainTree, outcomeOf, readOnlyMessage, refusalMessage, type EditOutcome } from './sessionEdit';
 import type { EditorSession } from './sessionTypes';
@@ -81,30 +80,7 @@ export function insertCatalogueBlock(session: EditorSession, type: AuthorableBlo
   });
 }
 
-/** A recipe's blocks and the fields they show (§7.5). */
-export function insertRecipe(session: EditorSession, id: RecipeId, place: InsertPlace): EditOutcome & { inserted?: string } {
-  return insertRecipes(session, [id], place);
-}
-
-/**
- * Several recipes one after the other, as one step (a blank template's "Start
- * like…"): each sees the properties the ones before it made, so they share them.
- */
-export function insertRecipes(session: EditorSession, ids: readonly RecipeId[], place: InsertPlace, name?: string): EditOutcome & { inserted?: string } {
-  const recipes = ids.flatMap((id) => recipeById(id) ?? []);
-  if (recipes.length === 0) return {};
-  return insertParts(session, place, (template, nextId) => {
-    const parts: InsertParts = { blocks: [], fields: [] };
-    for (const recipe of recipes) {
-      const made = recipe.create(nextId, [...template.fields, ...parts.fields]);
-      parts.blocks.push(...made.blocks);
-      parts.fields.push(...made.fields);
-    }
-    return parts;
-  }, name ?? recipes[0]?.label);
-}
-
-/** A Stat showing a new property named `name` (the Add panel when nothing matched what was typed). */
+/** A Value showing a new property named `name` (the Add panel when nothing matched what was typed). */
 export function insertNamedStat(session: EditorSession, name: string, place: InsertPlace): EditOutcome & { inserted?: string } {
   const label = name.trim();
   if (!label) return {};
@@ -179,10 +155,10 @@ export function ungroupSelection(session: EditorSession, selection: BlockSelecti
   return outcomeOf(edit, session.getSnapshot(), (done) => ({ select: done.focus ? [done.focus] : [], announce: 'Ungrouped.' }));
 }
 
-/** Turn into…: another type, keeping the block's place, id and what it shares with the new type. */
+/** Turn into… and a primitive's kind: another type, keeping the block's place, id and what it shares with the new type. */
 export function turnSelectionInto(session: EditorSession, selection: BlockSelection, type: AuthorableBlockType): EditOutcome {
   const primary = primaryOf(selection);
   if (primary === null) return {};
   const edit = applyTree(session, (layout, template) => turnInto(layout, primary, type, template.fields));
-  return outcomeOf(edit, session.getSnapshot(), () => ({ select: [primary], announce: `Turned into ${blockSpec(type).label}.` }));
+  return outcomeOf(edit, session.getSnapshot(), () => ({ select: [primary], announce: `Turned into ${typeName(type)}.` }));
 }

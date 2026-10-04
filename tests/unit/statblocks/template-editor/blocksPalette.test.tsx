@@ -23,23 +23,21 @@ const row = (name: string): HTMLElement => {
 };
 const names = (group: HTMLElement): string[] => [...group.querySelectorAll('.atlas-te-palette__row-name')].map((name) => name.textContent ?? '');
 
-/** The Add panel (spec §10.7, §12.3). */
+/** The Add panel (spec §10.7). */
 describe('the Add panel', () => {
-  it('lists the parts of a statblock by book part, then the blocks by group, each in plain words with what it makes', () => {
+  it('lists the primitives by group, each once, in plain words with what it makes', () => {
     mountEditor(undefined, { dock: 'Add' });
     const pane = document.querySelector<HTMLElement>('.atlas-te-dock-panel')!;
     expect([...pane.querySelectorAll('.atlas-te-palette__group-label')].map((label) => label.textContent))
-      .toEqual(['Common parts', 'Tracks', 'Dense lines', 'Tags and costs', 'Text and stats', 'Lists', 'Numbers', 'Layout', 'Pictures']);
-    const common = within(pane).getByRole('group', { name: 'Common parts' });
-    expect(names(common).slice(0, 4)).toEqual(['Name and type line', 'Armor, hit points and speed', 'Ability scores', 'Actions']);
-    expect(names(within(pane).getByRole('group', { name: 'Tracks' }))).toEqual(['Hit point boxes', 'Stress boxes', 'Clock', 'Damage thresholds']);
-    expect(row('Stat').querySelector('.atlas-te-palette__row-example')?.textContent).toBe('Armor Class 17');
-    for (const banned of ['Stat strip', 'Entries', 'Pairs', 'Title', 'Line', 'Row']) expect(pane.textContent).not.toContain(banned);
+      .toEqual(['Text and values', 'Lists and tables', 'Layout', 'Pictures']);
+    expect(names(within(pane).getByRole('group', { name: 'Lists and tables' }))).toEqual(['List', 'Table', 'Track']);
+    expect(row('Value').querySelector('.atlas-te-palette__row-example')?.textContent).toBe('A label and its value: Speed 30');
+    for (const banned of ['Stat', 'Entries', 'Pairs', 'Title', 'Row', 'Hit point', 'Spell', 'Armor']) expect(pane.textContent).not.toContain(banned);
   });
 
   it('previews the row under the pointer beside the panel, drawn by the card\'s renderer, out of reach of the pointer', () => {
     mountEditor(undefined, { dock: 'Add' });
-    fireEvent.pointerEnter(row('Ability scores'));
+    fireEvent.pointerEnter(row('Table'));
     const preview = document.querySelector('.atlas-te-palette__preview')!;
     expect(preview.querySelector('.atlas-statblock')).not.toBeNull();
     expect(preview.querySelector('.atlas-te-item-preview')?.hasAttribute('inert')).toBe(true);
@@ -48,7 +46,7 @@ describe('the Add panel', () => {
   it('inserts a clicked block after the selection, in one step, and selects it without opening its label', () => {
     const { session, frame } = mountEditor(undefined, { dock: 'Add' });
     fireEvent.click(frame('stat-ac1'));
-    fireEvent.click(row('Stat'));
+    fireEvent.click(row('Value'));
     const section = findBlock(session.template.layout.blocks, 'section1')?.block;
     expect(section && 'blocks' in section ? section.blocks.map((block) => block.type) : []).toEqual(['stat', 'stat', 'stat']);
     expect(section && 'blocks' in section ? section.blocks[0]?.id : '').toBe('stat-ac1');
@@ -58,39 +56,41 @@ describe('the Add panel', () => {
     expect(document.querySelector('[data-te-selected="primary"]')?.getAttribute('data-block-id')).toBe(section && 'blocks' in section ? section.blocks[1]?.id : '');
   });
 
-  it('inserts a recipe at the end without a selection', () => {
+  it('inserts a List of names and text at the end without a selection, unbound until it is named', () => {
     const { session } = mountEditor(undefined, { dock: 'Add' });
-    fireEvent.click(row('Actions'));
-    expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'entries', heading: 'Actions' });
-    expect(session.template.fields.at(-1)).toMatchObject({ key: 'actions', type: 'entries' });
+    const fields = session.template.fields.length;
+    fireEvent.click(row('List'));
+    expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'entries', field: '' });
+    expect(session.template.fields).toHaveLength(fields);
     expect(session.steps).toBe(1);
   });
 
-  it('finds by name, line and other words ("spell" finds Spellcasting), and inserts the highlighted one with Enter', () => {
+  it('finds by name, line and other words ("abilities" finds List), and inserts the highlighted one with Enter', () => {
     const { session } = mountEditor(undefined, { dock: 'Add' });
-    const search = screen.getByRole('combobox', { name: 'Find a block or part' });
-    fireEvent.change(search, { target: { value: 'spell' } });
-    const list = screen.getByRole('listbox', { name: 'Blocks and parts' });
+    const search = screen.getByRole('combobox', { name: 'Find a block' });
+    fireEvent.change(search, { target: { value: 'scores' } });
+    const list = screen.getByRole('listbox', { name: 'Blocks' });
     expect(list.hasAttribute('data-atlas-standing-list')).toBe(true);
-    expect(names(list)).toEqual(['Spellcasting', 'Spells']);
-    key(search, 'ArrowDown');
-    expect(search.getAttribute('aria-activedescendant')).toContain('block:spells');
+    expect(names(list)).toEqual(['Table']);
+    fireEvent.change(search, { target: { value: 'abilities' } });
+    expect(names(list)).toEqual(['List']);
+    expect(search.getAttribute('aria-activedescendant')).toContain('block:entries');
     key(search, 'Enter');
-    expect(session.template.layout.blocks.at(-1)?.type).toBe('spells');
+    expect(session.template.layout.blocks.at(-1)?.type).toBe('entries');
     expect((search as HTMLInputElement).value).toBe('');
   });
 
-  it('offers a stat of the name typed when nothing matches', () => {
+  it('offers a value of the name typed when nothing matches', () => {
     const { session } = mountEditor(undefined, { dock: 'Add' });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Find a block or part' }), { target: { value: 'mana' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Make a stat called “mana”' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Find a block' }), { target: { value: 'mana' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make a value called “mana”' }));
     expect(session.template.fields.at(-1)).toEqual({ key: 'mana', label: 'mana', type: 'text' });
     expect(session.template.layout.blocks.at(-1)).toMatchObject({ type: 'stat', field: 'mana' });
   });
 
   it('clears the search with Escape, and an empty search\'s Escape puts the panel away', async () => {
     mountEditor(undefined, { dock: 'Add' });
-    const search = screen.getByRole<HTMLInputElement>('combobox', { name: 'Find a block or part' });
+    const search = screen.getByRole<HTMLInputElement>('combobox', { name: 'Find a block' });
     fireEvent.change(search, { target: { value: 'zzz' } });
     const clearing = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
     act(() => { search.dispatchEvent(clearing); });

@@ -1,4 +1,6 @@
-import { bindsFieldType, canContain, createBlock, isAuthorableBlockType, type AuthorableBlockType } from './blockCatalogue';
+import {
+  bindsFieldType, blockSpec, canContain, createBlock, isAuthorableBlockType, PRIMITIVE_IDS, PRIMITIVES, type AuthorableBlockType, type PrimitiveId,
+} from './blockCatalogue';
 import { fieldByKey } from './fieldKeys';
 import { done, parentTypeOf, refuse, spliced, withChildren, type TreeEdit } from './treeEdit';
 import { boundField, findBlock } from './treeQueries';
@@ -27,6 +29,36 @@ const CARRIED: ReadonlyArray<readonly [key: string, types: readonly BlockType[]]
 ];
 const PATTERN_TYPES: readonly BlockType[] = ['title', 'line', 'stat'];
 
+/** The words a List writes over its items: a list of words or labels has a label, the others a heading. */
+const LIST_LABEL_KEY: Partial<Record<BlockType, 'label' | 'heading'>> = { tags: 'label', pairs: 'label', entries: 'heading', spells: 'heading' };
+
+/** A typed heading's text as the property it names, where the template has one a title can show. */
+function fieldNamed(fields: readonly TemplateField[], text: string): string | undefined {
+  const wanted = text.trim().toLowerCase();
+  return fields.find((field) => field.label.trim().toLowerCase() === wanted && bindsFieldType('title', field.type))?.key;
+}
+
+/** What a Heading keeps when its text changes between typed and from a property: its words, and its size. */
+function turnedHeading(block: TemplateBlock, turned: Record<string, unknown>, fields: readonly TemplateField[]): void {
+  if (block.type === 'heading' && turned.type === 'title') {
+    turned.field = fieldNamed(fields, block.text) ?? '';
+    turned.level = block.level === 'minor' ? 3 : 2;
+  }
+  if (block.type === 'title' && turned.type === 'heading') {
+    turned.text = fieldByKey(fields, block.field)?.label || block.field || turned.text;
+    turned.level = block.level === 3 ? 'minor' : 'section';
+  }
+}
+
+/** A List keeps the words over its items when its items change kind. */
+function turnedListLabel(source: Readonly<Record<string, unknown>>, turned: Record<string, unknown>): void {
+  const from = LIST_LABEL_KEY[source.type as BlockType];
+  const to = LIST_LABEL_KEY[turned.type as BlockType];
+  if (!from || !to || from === to) return;
+  const words = source[from];
+  if (typeof words === 'string' && words.trim()) turned[to] = words;
+}
+
 function turnedLeaf(block: TemplateBlock, type: AuthorableBlockType, fields: readonly TemplateField[]): TemplateBlock {
   const field = boundField(block);
   const fieldType = field ? fieldByKey(fields, field)?.type : undefined;
@@ -42,7 +74,32 @@ function turnedLeaf(block: TemplateBlock, type: AuthorableBlockType, fields: rea
     turned.text = block.text;
   }
   if (block.type === 'text' && type === 'heading') turned.text = block.text ?? block.heading ?? turned.text;
+  turnedHeading(block, turned, fields);
+  turnedListLabel(source, turned);
   return turned as unknown as TemplateBlock;
+}
+
+/**
+ * The type a block becomes as `primitive`: the primitive's kind that can show
+ * the block's field (a Value of a text property becomes a Heading from that
+ * property), else the kind a new one gets.
+ */
+export function typeForPrimitive(block: TemplateBlock, primitive: PrimitiveId, fields: readonly TemplateField[]): AuthorableBlockType {
+  const spec = PRIMITIVES[primitive];
+  const field = boundField(block);
+  const fieldType = field ? fieldByKey(fields, field)?.type : undefined;
+  const fitting = fieldType ? spec.kinds.find((kind) => bindsFieldType(kind, fieldType)) : undefined;
+  return fitting ?? spec.inserts;
+}
+
+/** The primitives a block may turn into: every other one of its sort, a container into the other container. */
+export function turnIntoPrimitives(type: BlockType): PrimitiveId[] {
+  const own = blockSpec(type).primitive;
+  const container = type === 'section' || type === 'row';
+  return PRIMITIVE_IDS.filter((id) => {
+    const kind = PRIMITIVES[id].inserts;
+    return id !== own && (kind === 'section' || kind === 'row') === container;
+  });
 }
 
 /**

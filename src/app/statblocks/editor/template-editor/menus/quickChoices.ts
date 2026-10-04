@@ -5,9 +5,11 @@
  * also opens Settings at the text it shows.
  */
 
+import { fieldByKey } from '../../../model/fieldKeys';
 import type { BlockType, TemplateBlock } from '../../../model/templateTypes';
 import type { SurfaceAction } from '../../interaction/surfaceActions';
 import { editBlock } from '../inspector/blockEdits';
+import { TAG_LOOK_OPTIONS } from '../inspector/lookControls';
 import type { EditorSession } from '../sessionTypes';
 
 interface Choice<V extends string> {
@@ -77,9 +79,7 @@ export function quickChoices(session: EditorSession, block: TemplateBlock, openS
         { value: 'row', label: 'One row' }, { value: 'table', label: 'Table' },
       ], (orientation) => editBlock(session, id, 'scores', { orientation })), ...empty];
     case 'tags':
-      return [choices('style', 'Style', 'paintbrush', block.look, [
-        { value: 'comma', label: 'Comma list' }, { value: 'chips', label: 'Chips' },
-      ], (look) => editBlock(session, id, 'tags', { look })), ...empty];
+      return [choices('style', 'Style', 'paintbrush', block.look, TAG_LOOK_OPTIONS, (look) => editBlock(session, id, 'tags', { look })), ...empty];
     case 'text':
       return empty;
     case 'entries':
@@ -100,10 +100,12 @@ export function quickChoices(session: EditorSession, block: TemplateBlock, openS
     case 'image':
       return [choices('shape', 'Shape', 'circle', block.shape, [{ value: 'token', label: 'Token' }, { value: 'portrait', label: 'Portrait' }],
         (shape) => editBlock(session, id, 'image', { shape }))];
-    case 'spells':
+    case 'spells': {
+      const named = fieldByKey(session.getSnapshot().template.fields, block.field)?.label.trim();
       return [choices('heading', 'Heading', 'heading', block.heading?.trim() ? 'shown' : 'none', [
-        { value: 'shown', label: 'Spellcasting' }, { value: 'none', label: 'None' },
-      ], (shown) => editBlock(session, id, 'spells', { heading: shown === 'none' ? undefined : block.heading?.trim() || 'Spellcasting' })), ...empty];
+        { value: 'shown', label: 'Shown' }, { value: 'none', label: 'None' },
+      ], (shown) => editBlock(session, id, 'spells', { heading: shown === 'none' ? undefined : block.heading?.trim() || named || 'Heading' })), ...empty];
+    }
     case 'heading':
       return [choices('size', 'Size', 'type', block.level, [{ value: 'section', label: 'Section' }, { value: 'minor', label: 'Minor' }],
         (level) => editBlock(session, id, 'heading', { level }))];

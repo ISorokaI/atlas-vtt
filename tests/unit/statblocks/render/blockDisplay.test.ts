@@ -63,6 +63,6 @@ describe('blockDisplay', () => {
   it('prompts for a block that is not bound to a field yet, only while editing', () => {
     const unbound: TemplateBlock = { id: 'u', type: 'stat', field: '', look: 'run-in' };
     expect(blockDisplay(unbound, state({}))).toBeNull();
-    expect(blockDisplay(unbound, state({}, 'editing'))).toEqual({ state: 'prompt', prompt: 'Stat' });
+    expect(blockDisplay(unbound, state({}, 'editing'))).toEqual({ state: 'prompt', prompt: 'Value' });
   });
 });

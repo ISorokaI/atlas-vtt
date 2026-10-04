@@ -4,7 +4,7 @@ import { Button } from '../../../../packages/components/primitives/button';
 import { ToolButton } from '../../../../packages/components/primitives/ToolButton';
 import { isExpressionError } from '../../../expressions/errors';
 import { parseFormula } from '../../../expressions/parse';
-import { MODIFIER_FORMULA } from '../../../model/blockRecipes';
+import { MODIFIER_FORMULA } from '../../../model/scoreFormulas';
 import { findBlock } from '../../../model/treeQueries';
 import type { ScoreColumn, ScoresBlock, StatblockTemplate } from '../../../model/templateTypes';
 import { withBlockChanges } from './blockEdits';
@@ -23,7 +23,7 @@ const KINDS: Array<{ value: ColumnKind; label: string }> = [
 
 /** What is wrong with a typed formula, in plain words. */
 function formulaProblem(text: string): string | null {
-  if (!text.trim()) return 'Type a formula, like floor((value - 10) / 2).';
+  if (!text.trim()) return `Type a formula, like ${MODIFIER_FORMULA}.`;
   const parsed = parseFormula(text);
   return isExpressionError(parsed) ? parsed.message : null;
 }

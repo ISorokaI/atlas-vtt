@@ -8,7 +8,7 @@ import { switchTemplates } from '../../../../src/app/statblocks/notes/templateSw
 import { bestMatch, findItems, groupItems, insertItems, previewTemplate } from '../../../../src/app/statblocks/editor/template-editor/insertItems';
 import { InsertMenu } from '../../../../src/app/statblocks/editor/template-editor/InsertMenu';
 import { handleTemplateKey, type KeyboardTarget } from '../../../../src/app/statblocks/editor/template-editor/useTemplateKeyboard';
-import { turnIntoTypes } from '../../../../src/app/statblocks/editor/template-editor/menus/blockMenu';
+import { turnIntoPrimitives } from '../../../../src/app/statblocks/model/turnInto';
 import { FakeSession, sampleTemplate } from './editorKit';
 
 vi.mock('../../../../src/app/statblocks/notes/templateSwitch', () => ({ switchTemplates: vi.fn(async () => undefined) }));
@@ -16,33 +16,37 @@ vi.mock('../../../../src/app/statblocks/notes/templateSwitch', () => ({ switchTe
 afterEach(cleanup);
 
 describe('the insert menu\'s items', () => {
-  it('lists the parts of a statblock by book part, then the catalogue by group, in plain words', () => {
+  it('lists each primitive once, by group, in plain words', () => {
     const groups = groupItems(insertItems());
-    expect(groups.map((group) => group.label)).toEqual([
-      'Common parts', 'Tracks', 'Dense lines', 'Tags and costs', 'Text and stats', 'Lists', 'Numbers', 'Layout', 'Pictures',
+    expect(groups.map((group) => group.label)).toEqual(['Text and values', 'Lists and tables', 'Layout', 'Pictures']);
+    expect(groups.map((group) => group.items.map((item) => item.label))).toEqual([
+      ['Heading', 'Text', 'Value', 'Line'], ['List', 'Table', 'Track'], ['Section', 'Side by side', 'Divider'], ['Picture'],
     ]);
-    expect(groups[0]?.items.map((item) => item.label)).toContain('Spellcasting');
-    expect(groups.flatMap((group) => group.items).some((item) => item.kind === 'block' && (item.type as string) === 'script')).toBe(false);
+    expect(insertItems().find((item) => item.label === 'List')?.type).toBe('entries');
+    expect(insertItems().find((item) => item.label === 'Heading')?.type).toBe('heading');
     for (const item of insertItems()) expect(item.example, item.label).not.toBe('');
   });
 
   it('finds items by every word typed, in their name, their line or other words', () => {
-    expect(findItems(insertItems(), 'ab sc').map((item) => item.label)).toEqual(['Ability scores', 'Score table']);
-    expect(findItems(insertItems(), 'magic').map((item) => item.label)).toEqual(['Spellcasting', 'Spells']);
+    expect(findItems(insertItems(), 'ability scores').map((item) => item.label)).toEqual(['Table']);
+    expect(findItems(insertItems(), 'abilities').map((item) => item.label)).toEqual(['List']);
     expect(findItems(insertItems(), 'zzz')).toEqual([]);
   });
 
   it('starts the keys on the item named exactly what was typed, else on one whose name starts with it', () => {
-    const items = findItems(insertItems(), 'stat');
-    expect(items[bestMatch(items, 'stat')]?.label).toBe('Stat');
-    const spell = findItems(insertItems(), 'spell');
-    expect(spell[bestMatch(spell, 'spell')]?.label).toBe('Spellcasting');
+    const items = findItems(insertItems(), 'text');
+    expect(items.length).toBeGreaterThan(1);
+    expect(items[bestMatch(items, 'text')]?.label).toBe('Text');
+    const values = findItems(insertItems(), 'val');
+    expect(values[bestMatch(values, 'val')]?.label).toBe('Value');
   });
 
-  it('turns blocks only into blocks of their kind', () => {
-    expect(turnIntoTypes('row')).toEqual(['section']);
-    expect(turnIntoTypes('stat')).not.toContain('row');
-    expect(turnIntoTypes('stat')).toContain('track');
+  it('turns blocks only into other primitives of their sort, each primitive once', () => {
+    expect(turnIntoPrimitives('row')).toEqual(['section']);
+    expect(turnIntoPrimitives('stat')).not.toContain('side-by-side');
+    expect(turnIntoPrimitives('stat')).toContain('track');
+    expect(turnIntoPrimitives('tags')).toEqual(['heading', 'text', 'value', 'line', 'table', 'track', 'divider', 'picture']);
+    expect(turnIntoPrimitives('title')).not.toContain('heading');
   });
 });
 

@@ -2,7 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { sampleRecord } from '../../model/sampleValues';
 import { StatblockSheet } from '../../render/StatblockSheet';
 import { usePaletteDrag } from '../dnd/useDragSources';
-import { insertItemGlyph } from './editorGlyphs';
+import { blockGlyph } from './editorGlyphs';
 import { itemKey, previewTemplate, type InsertItem } from './insertItems';
 
 /** An item drawn by the real renderer with samples, at a card's width: the hover preview and what a drag carries. */
@@ -37,7 +37,7 @@ export interface PaletteRowProps {
  */
 export const PaletteRow = memo(function PaletteRow({ item, index, tabStop, active, onInsert, onFocusIndex, onPreview }: PaletteRowProps): React.JSX.Element {
   const drag = usePaletteDrag(item, false);
-  const Glyph = insertItemGlyph(item);
+  const Glyph = blockGlyph(item.type);
   return (
     <div
       ref={drag.ref}

@@ -3,7 +3,7 @@
 import { blockSpec } from '../../model/blockCatalogue';
 import { fieldByKey } from '../../model/fieldKeys';
 import { boundField } from '../../model/treeQueries';
-import type { FieldKey, TemplateBlock, TemplateField } from '../../model/templateTypes';
+import type { BlockType, FieldKey, TemplateBlock, TemplateField } from '../../model/templateTypes';
 
 function fieldLabel(fields: readonly TemplateField[], key: FieldKey | undefined): string | undefined {
   if (!key) return undefined;
@@ -22,6 +22,12 @@ export function blockTitle(block: TemplateBlock, fields: readonly TemplateField[
     case 'line': return block.fields.map((key) => fieldLabel(fields, key)).filter(Boolean).join(', ');
     default: return fieldLabel(fields, boundField(block)) ?? '';
   }
+}
+
+/** A block type as people know it: its primitive, and its kind where the primitive has several ("List (a word)"). */
+export function typeName(type: BlockType): string {
+  const { label, kind } = blockSpec(type);
+  return kind ? `${label} (${kind.toLowerCase()})` : label;
 }
 
 /** "Armor class", or the type's name where the block says nothing ("Divider", "Side by side"). */

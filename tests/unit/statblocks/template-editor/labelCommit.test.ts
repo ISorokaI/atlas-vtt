@@ -23,7 +23,7 @@ describe('labelTargetOf', () => {
     expect(labelTargetOf(blockOf(source, 'section1'), source.fields)).toEqual({ kind: 'heading', text: 'Defenses' });
     expect(labelTargetOf(blockOf(source, 'row00001'), source.fields)).toBeNull();
     expect(labelTargetOf(blockOf(source, 'title001'), source.fields)).toBeNull();
-    expect(labelTargetOf(blockOf(unbound(), 'newstat1'), [])).toEqual({ kind: 'new-field', text: 'Stat' });
+    expect(labelTargetOf(blockOf(unbound(), 'newstat1'), [])).toEqual({ kind: 'new-field', text: 'Value' });
   });
 });
 

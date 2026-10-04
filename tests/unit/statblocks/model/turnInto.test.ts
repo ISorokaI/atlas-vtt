@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findBlock } from '../../../../src/app/statblocks/model/treeQueries';
-import { turnInto } from '../../../../src/app/statblocks/model/turnInto';
+import { turnInto, typeForPrimitive } from '../../../../src/app/statblocks/model/turnInto';
 import type { TemplateBlock, TemplateField, TemplateLayout } from '../../../../src/app/statblocks/model/templateTypes';
 import { deepFreeze } from './treeFixtures';
 
@@ -11,6 +11,7 @@ const fields: TemplateField[] = [
   { key: 'languages', label: 'Languages', type: 'list' },
   { key: 'description', label: 'Description', type: 'markdown' },
   { key: 'hp', label: 'HP', type: 'number', formerKeys: ['hit_points'] },
+  { key: 'actions', label: 'Actions', type: 'entries' },
 ];
 
 function layoutOf(...blocks: TemplateBlock[]): TemplateLayout {
@@ -56,6 +57,32 @@ describe('turnInto', () => {
     const text = layoutOf({ id: 't', type: 'text', field: 'description', heading: 'About' });
     expect(turned(turnInto(text, 't', 'heading', fields).layout, 't')).toStrictEqual({ id: 't', type: 'heading', text: 'About', level: 'section' });
     expect(turned(turnInto(text, 't', 'entries', fields).layout, 't')).toStrictEqual({ id: 't', type: 'entries', field: '', heading: 'About' });
+  });
+
+  it('switches a Heading between typed and from a property, keeping its words and its size', () => {
+    const typed = layoutOf({ id: 'h', type: 'heading', text: 'Speed', level: 'minor' });
+    expect(turned(turnInto(typed, 'h', 'title', fields).layout, 'h')).toStrictEqual({ id: 'h', type: 'title', field: 'speed', level: 3 });
+    const unnamed = layoutOf({ id: 'h', type: 'heading', text: 'Lair', level: 'section' });
+    expect(turned(turnInto(unnamed, 'h', 'title', fields).layout, 'h')).toStrictEqual({ id: 'h', type: 'title', field: '', level: 2 });
+    const bound = layoutOf({ id: 't', type: 'title', field: 'name', level: 1 });
+    expect(turned(turnInto(bound, 't', 'heading', fields).layout, 't')).toStrictEqual({ id: 't', type: 'heading', text: 'Name', level: 'section' });
+  });
+
+  it('changes what a List\'s items are, keeping the words over them and leaving a property the new kind cannot show', () => {
+    const entries = layoutOf({ id: 'l', type: 'entries', field: 'actions', heading: 'Actions', whenEmpty: 'hide' });
+    expect(turned(turnInto(entries, 'l', 'tags', fields).layout, 'l')).toStrictEqual({ id: 'l', type: 'tags', field: '', look: 'comma', label: 'Actions', whenEmpty: 'hide' });
+    const words = layoutOf({ id: 'w', type: 'tags', field: 'languages', look: 'chips', label: 'Tongues' });
+    expect(turned(turnInto(words, 'w', 'spells', fields).layout, 'w')).toStrictEqual({ id: 'w', type: 'spells', field: '', heading: 'Tongues' });
+    expect(turned(turnInto(words, 'w', 'pairs', fields).layout, 'w')).toStrictEqual({ id: 'w', type: 'pairs', field: '', label: 'Tongues' });
+  });
+
+  it('picks the kind of a primitive that can show the block\'s property, else the one a new block gets', () => {
+    const block = (field: string): TemplateBlock => ({ id: 's', type: 'stat', field, look: 'run-in' });
+    expect(typeForPrimitive(block('speed'), 'heading', fields)).toBe('title');
+    expect(typeForPrimitive(block('ac'), 'heading', fields)).toBe('heading');
+    expect(typeForPrimitive(block('languages'), 'list', fields)).toBe('tags');
+    expect(typeForPrimitive(block('ac'), 'list', fields)).toBe('entries');
+    expect(typeForPrimitive(block('ac'), 'track', fields)).toBe('track');
   });
 
   it('turns Sections and Rows into each other with their children', () => {

@@ -10,14 +10,14 @@ import { EntriesContent, LineFields, ScriptContent, SectionHeading, TextSource, 
 import { FieldSetting, withOwnField } from './FieldSetting';
 import { isLabelled, type GroupProps } from './groupProps';
 import { ChoiceSetting, SettingNote, TextSetting } from './InspectorControls';
-import { OwnLook, ShowLabel, SizeInRow } from './lookControls';
+import { KindSetting, OwnLook, ShowLabel, SizeInRow } from './lookControls';
 
 /** The label, heading or text the block writes, as the card edits it in place. */
 function LabelSetting({ block, template, session, readOnly }: GroupProps): React.JSX.Element | null {
   const { collectionKeys } = useTemplateEditor();
   const target = labelTargetOf(block, template.fields);
   if (!target || block.type === 'section' || block.type === 'text') return null;
-  const label = target.kind === 'heading' ? 'Heading' : target.kind === 'text' ? 'Text' : 'Label';
+  const label = target.kind === 'heading' || target.kind === 'text' ? 'Heading' : 'Label';
   return (
     <TextSetting
       label={label}
@@ -88,6 +88,7 @@ export function BasicsGroup(props: GroupProps): React.JSX.Element {
   const meaning = boundFieldOf(template, block)?.meaning;
   return (
     <section className="atlas-te-group atlas-te-group--basics" aria-label="Basics">
+      <KindSetting {...props} />
       <LabelSetting {...props} />
       {block.type === 'section' && <SectionHeading {...props} block={block} />}
       {block.type === 'text' && <TextSource {...props} block={block} />}

@@ -32,7 +32,7 @@ describe('the template editor as the note view', () => {
     mountEditor();
     expect(document.querySelector('.atlas-te-floating')).toBeNull();
     const add = openDock('Add');
-    expect(within(add).getByRole('combobox', { name: 'Find a block or part' })).toBeTruthy();
+    expect(within(add).getByRole('combobox', { name: 'Find a block' })).toBeTruthy();
     openDock('Structure');
     expect(document.querySelectorAll('.atlas-te-dock-panel')).toHaveLength(1);
     expect(screen.getByRole('tree')).toBeTruthy();
