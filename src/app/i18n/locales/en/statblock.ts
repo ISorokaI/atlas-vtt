@@ -14,5 +14,7 @@ export const statblock = {
   'statblock.pipDamage': '{label} damage {n} of {max}',
   'statblock.pluginMissing': 'Install and enable the Fantasy Statblocks plugin to preview statblocks.',
   'statblock.spellcasting': 'Spellcasting',
+  'statblock.traitDescription': 'trait description',
+  'statblock.traitName': 'trait name',
   'statblock.valueN': 'value {n}',
 } as const satisfies Record<string, Message>;

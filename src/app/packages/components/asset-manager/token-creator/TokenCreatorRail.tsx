@@ -6,8 +6,6 @@ import { Button } from '../../primitives/button';
 import { Slider } from '../../primitives/slider';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { CollectionSelect } from './CollectionSelect';
-import { StatblockRoleSelect } from './StatblockRoleSelect';
-import type { StatblockRow } from './useStatblockRow';
 import { TagPicker } from './TagPicker';
 import { UploadDropzone } from './UploadDropzone';
 import { cropReset } from './cropMath';
@@ -36,8 +34,6 @@ interface TokenCreatorRailProps {
   onToggleTag: (tag: string) => void;
   onCreateTag: (tag: string) => Promise<string>;
   tagsDisabled: boolean;
-  /** The Statblocks row; offered only while creating tokens with the statblock editor on. */
-  statblocks?: StatblockRow | undefined;
 }
 
 /** Left column of the creator: intake, selection, metadata and batch tools. */
@@ -66,7 +62,7 @@ export function TokenCreatorRail(props: TokenCreatorRailProps): React.JSX.Elemen
       {mode === 'token' && !isEditing && <section className="atlas-token-creator__section">
         <div className="atlas-token-creator__section-title">{t('creator.imageSource')}</div>
         <Button variant={props.source === 'images' ? 'secondary' : 'outline'} disabled={props.sourceDisabled} onClick={() => props.onSourceChange('images')}>{t('creator.importPreviews')}</Button>
-        <Button variant={props.source === 'statblocks' ? 'secondary' : 'outline'} disabled={props.sourceDisabled} onClick={() => props.onSourceChange('statblocks')}>Statblock notes</Button>
+        <Button variant={props.source === 'statblocks' ? 'secondary' : 'outline'} disabled={props.sourceDisabled} onClick={() => props.onSourceChange('statblocks')}>Fantasy Statblocks</Button>
       </section>}
       {props.source === 'statblocks' && mode === 'token' && !isEditing ? <p>{t('creator.statblocksHint')}</p> : <>
       {mode === 'token' && <TokenRingToggle label={t('creator.toggleAllRings')} mixed={previews.previews.some(p => p.showRing !== false) && previews.previews.some(p => p.showRing === false)} value={count ? previews.previews.every(p => p.showRing !== false) : previews.defaultRing} onChange={previews.setAllRings} />}
@@ -113,8 +109,6 @@ export function TokenCreatorRail(props: TokenCreatorRailProps): React.JSX.Elemen
         <div className="atlas-token-creator__section-title">{t('creator.collection')}</div>
         <CollectionSelect value={collection} options={collections} onChange={onCollectionChange} />
       </section>
-
-      {props.statblocks?.offered && <StatblockRoleSelect row={props.statblocks} />}
 
       <p className="atlas-token-creator__empty-note">Tags apply to {selectedCount} selected {selectedCount === 1 ? 'preview' : 'previews'}.</p>
       <TagPicker available={availableTags} selected={selectedTags} onToggle={onToggleTag} onCreate={props.onCreateTag} disabled={props.tagsDisabled} />

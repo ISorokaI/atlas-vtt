@@ -16,8 +16,6 @@ export interface ToggleSwitchProps extends Omit<React.HTMLAttributes<HTMLDivElem
   iconOff?: ToggleIcon
   /** Id of the visible label that names the switch. */
   labelledBy?: string
-  /** Shown but not switchable: it keeps its place and its focus, so a tooltip can say why. */
-  disabled?: boolean
 }
 
 /**
@@ -30,7 +28,6 @@ export const ToggleSwitch = React.forwardRef<HTMLDivElement, ToggleSwitchProps>(
   iconOn: IconOn = Check,
   iconOff: IconOff = X,
   labelledBy,
-  disabled = false,
   className,
   onClick,
   onKeyDown,
@@ -42,21 +39,20 @@ export const ToggleSwitch = React.forwardRef<HTMLDivElement, ToggleSwitchProps>(
     <div
       {...rest}
       ref={ref}
-      className={cn("atlas-toggle", disabled && "atlas-toggle--disabled", className)}
+      className={cn("atlas-toggle", className)}
       role="switch"
       aria-checked={value}
       aria-labelledby={labelledBy}
-      aria-disabled={disabled || undefined}
       tabIndex={0}
       onClick={(event) => {
         onClick?.(event)
-        if (!disabled) onChange()
+        onChange()
       }}
       onKeyDown={(event) => {
         onKeyDown?.(event)
         if (event.key !== "Enter" && event.key !== " ") return
         event.preventDefault()
-        if (!disabled) onChange()
+        onChange()
       }}
     >
       <div className={`atlas-toggle__switch atlas-toggle__switch--${state}`}>

@@ -9,10 +9,10 @@ import { useFrameProgress } from '../../primitives/useFrameProgress';
 import { StatblockTokenImportService } from '../../../../services/StatblockTokenImportService';
 import { statblockPreviewImages } from '../token-creator/statblockPreviewImages';
 import type { PreviewImage } from '../token-creator/types';
-import { t } from '../../../../i18n';
 import type { StatblockImportCandidate } from '../../../../services/statblockImportCandidates';
 import { StatblockList } from './StatblockList';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../primitives/Skeleton';
+import { t } from '../../../../i18n';
 
 const SCAN_SKELETON_ROWS = 6;
 

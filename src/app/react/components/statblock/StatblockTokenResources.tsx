@@ -1,9 +1,8 @@
-import React, { useId, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useId, useLayoutEffect, useRef } from 'react';
 import { LocateFixed, Minus, Plus } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { resourceUpdate, withCurrent } from '../../../resources/resourceValues';
-import { fsQuantityLook, PLAIN_QUANTITY_LOOK, type QuantityLook } from '../../../resources/quantityLooks';
 import { tokenQuantities, type TokenQuantity } from '../../../resources/statblockQuantities';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
 import type { StatblockLayout, StatblockMonster } from './statblockTypes';
@@ -17,16 +16,11 @@ export interface StatblockTokenActions {
   onHoverToken?: (id: string) => void;
   onUpdateToken: (id: string, updates: ReturnType<typeof resourceUpdate>) => void;
 }
-/**
- * What the statblock draws of its quantities: a native template's look (`templateQuantityLook`),
- * or a Fantasy Statblocks layout, which is read with `fsQuantityLook`.
- */
-type QuantitySource = { look: QuantityLook; layout?: never } | { layout: StatblockLayout; look?: never };
-
-export type StatblockTokenResourcesProps = StatblockTokenActions & QuantitySource & {
+export interface StatblockTokenResourcesProps extends StatblockTokenActions {
   monster: StatblockMonster;
+  layout: StatblockLayout;
   tokens: TokenVitals[];
-};
+}
 function ResourceControl({ quantity, onChange }: {
   quantity: TokenQuantity;
   onChange: (value: number) => void;
@@ -74,8 +68,7 @@ function ResourceControl({ quantity, onChange }: {
   );
 }
 
-export function StatblockTokenResources({ monster, layout, look, definitions, tokens, onLocateToken, onHoverToken, onUpdateToken }: StatblockTokenResourcesProps): React.JSX.Element {
-  const quantityLook = useMemo(() => look ?? (layout ? fsQuantityLook(layout) : PLAIN_QUANTITY_LOOK), [look, layout]);
+export function StatblockTokenResources({ monster, layout, definitions, tokens, onLocateToken, onHoverToken, onUpdateToken }: StatblockTokenResourcesProps): React.JSX.Element {
   const listRef = useRef<HTMLDivElement>(null);
   const entryLabelId = useId();
   const identified = tokens.filter((token): token is TokenVitals & { id: string } => Boolean(token.id));
@@ -110,7 +103,7 @@ export function StatblockTokenResources({ monster, layout, look, definitions, to
     observer?.observe(list);
     Array.from(list.children).slice(0, 3).forEach((child) => observer?.observe(child));
     return () => observer?.disconnect();
-  }, [scrollable, tokens, definitions, monster, quantityLook]);
+  }, [scrollable, tokens, definitions, monster, layout]);
 
   return (
     <div ref={listRef} className="atlas-sb-token-list" data-scrollable={scrollable}
@@ -124,7 +117,7 @@ export function StatblockTokenResources({ monster, layout, look, definitions, to
               <span id={`${entryLabelId}-${token.id}`}>{label}</span><LocateFixed aria-hidden="true" />
             </Button>
           </LabelTooltip>
-          {tokenQuantities(monster, quantityLook, token, definitions).map((quantity) => (
+          {tokenQuantities(monster, layout, token, definitions).map((quantity) => (
             <ResourceControl key={quantity.key} quantity={quantity}
               onChange={(current) => onUpdateToken(token.id, resourceUpdate(token, quantity.key, withCurrent(quantity.value, current), false))} />
           ))}

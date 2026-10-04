@@ -22,8 +22,6 @@ export interface StackedRoll {
   style: ThrowStyle;
   /** Fading out; it no longer holds one of the places. */
   leaving?: true;
-  /** Thrown without sound: another display shows the same roll and plays it. */
-  muted?: true;
 }
 
 /**

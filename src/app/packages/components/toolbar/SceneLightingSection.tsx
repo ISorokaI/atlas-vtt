@@ -8,7 +8,7 @@ import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { SegmentedControl } from "../primitives/SegmentedControl"
 import { LabelTooltip } from "../primitives/tooltip"
-import { t } from "../../../i18n"
+import { t } from '../../../i18n';
 
 
 interface SceneLightingSectionProps {
@@ -22,8 +22,9 @@ interface SceneLightingSectionProps {
 }
 
 /**
- * Scene-wide lighting in the lighting tool's menu: a section with the switch and how dark the
- * scene is, and one with its actions. The players' view of it is session view, not shown here.
+ * Scene-wide lighting in the lighting tool's menu: a section with how dark the scene is, one
+ * with its actions, and the switch last, at the menu's foot. The players' view of it is session
+ * view, not shown here.
  * While lighting is off everything but the switch is shown disabled, so the menu keeps its
  * shape and the switch its place.
  */
@@ -33,7 +34,6 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
   return (
     <>
       <div className="atlas-dropdown-section atlas-scene-lighting">
-        <DropdownToggleRow label={t('sceneLight.dynamic')} value={lighting.enabled} onChange={() => onChange({ enabled: !lighting.enabled })} />
         <SegmentedControl<TimeOfDay | 'custom'>
           value={time}
           options={TIMES_OF_DAY}
@@ -69,6 +69,9 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
         {onRevealExplored && <DropdownMenuItem icon={Eye} label="Mark all areas explored" disabled={disabled} onClick={onRevealExplored} />}
         <DropdownMenuItem icon={RotateCcw} label={t('sceneLight.forgetExplored')} disabled={disabled} onClick={onResetExplored} />
         <DropdownMenuItem icon={SlidersHorizontal} label={t('sceneLight.openSettings')} disabled={disabled} onClick={onOpenSettings} />
+      </div>
+      <div className="atlas-dropdown-section">
+        <DropdownToggleRow label={t('sceneLight.dynamic')} value={lighting.enabled} onChange={() => onChange({ enabled: !lighting.enabled })} />
       </div>
     </>
   )

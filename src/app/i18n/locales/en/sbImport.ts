@@ -18,7 +18,7 @@ export const sbImport = {
   'sbImport.list': 'Statblocks',
   'sbImport.added': 'Added to import',
   'sbImport.noMatch': 'No statblocks match your search.',
-  'sbImport.noneFound': 'No statblock notes found in your vault.',
+  'sbImport.noneFound': 'No statblock notes found. Enable frontmatter parsing in Fantasy Statblocks, or add a statblock code block to a note.',
   'sbImport.scanAgain': 'Scan again',
   'sbImport.back': 'Back to previews',
   'sbImport.loadingImages': 'Loading images…',

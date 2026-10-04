@@ -26,7 +26,6 @@ import { tokenSizeSubmenu } from '../../../../react/components/context-menu/toke
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
 import { scenePrefillFromMap } from '../utils/sceneCreation';
-import { createStatblockEntry } from '../../../../statblocks/editor/create/entryPoints';
 import { t } from '../../../../i18n';
 
 export interface AssetContextMenuDeps {
@@ -57,8 +56,6 @@ export interface AssetContextMenuDeps {
   availableTags: TagType[];
   /** Collections the assets can be moved or copied to. */
   transferTargets: CollectionOption[];
-  /** The collection shown, whose roles a new statblock is made with. */
-  collectionId: string;
 }
 
 export function buildAssetContextMenuEntries(
@@ -220,10 +217,6 @@ export function buildAssetContextMenuEntries(
         icon: 'unlink',
         onClick: () => deps.unlinkStatblock(asset),
       });
-    } else {
-      const token = { imagePath: asset.imagePath ?? asset.imageUrl, name: asset.name };
-      const create = createStatblockEntry(deps.app, { collectionId: deps.collectionId, from: 'asset-manager', token, onStart: deps.onClose });
-      if (create) entries.push(create);
     }
   }
 

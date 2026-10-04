@@ -39,6 +39,5 @@ export const CYBERPUNK_RED: SystemPreset = {
     ]),
     resources: [{ ...HP_RESOURCE }],
     senses: CYBERPUNK_RED_SENSES,
-    statblockRoles: [{ id: 'npc', name: 'NPC', templateId: 'builtin:generic-npc' }],
   },
 };

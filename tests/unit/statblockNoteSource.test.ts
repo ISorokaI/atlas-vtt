@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseStatblockFence } from '../../src/app/statblocks/notes/statblockSource';
+import { parseStatblockFence } from '../../src/app/services/statblockNoteSource';
 
 describe('parseStatblockFence', () => {
   it('finds a fence that names a bestiary creature', () => {

@@ -14,5 +14,7 @@ export const statblock: Translation = {
   'statblock.pipDamage': '{label}, урон: {n} из {max}',
   'statblock.pluginMissing': 'Установите и включите плагин Fantasy Statblocks, чтобы видеть статблоки.',
   'statblock.spellcasting': 'Колдовство',
+  'statblock.traitDescription': 'описание черты',
+  'statblock.traitName': 'название черты',
   'statblock.valueN': 'значение {n}',
 };

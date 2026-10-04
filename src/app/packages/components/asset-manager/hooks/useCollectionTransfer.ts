@@ -7,7 +7,6 @@ import { openCollectionImport, type CollectionImportResult, type ImportDecision,
 import type { BundleFileReader } from '../../../../services/collectionBundle/bundleReader';
 import type { ImportReview } from '../../../../services/collectionBundle/importReview';
 import { describeError } from '../../../../utils/errors';
-import { plural } from '../../../../utils/plural';
 import { t } from '../../../../i18n';
 
 /** Where an export or import stands; the asset manager blocks while one is set. */
@@ -39,12 +38,11 @@ const IMPORTING = t('bundle.importing');
 
 function describeImport(result: CollectionImportResult): string {
   const name = t('bundle.nameVersion', { name: result.collectionName, version: result.version });
-  const switched = result.switchedNotes > 0 ? ` ${plural(result.switchedNotes, 'statblock')} now use the template copies.` : '';
-  if (result.created) return `${t('bundle.imported', { name })}${switched}`;
+  if (result.created) return t('bundle.imported', { name });
   const parts = [t('bundle.filesWritten', { count: result.written }), t('bundle.filesRemoved', { count: result.removed })];
   if (result.keptLocal > 0) parts.push(t('bundle.keptLocal', { count: result.keptLocal }));
   const backup = result.backupCount > 0 ? t('bundle.backedUp', { folder: result.backupFolder }) : '';
-  return t('bundle.updated', { name, parts: parts.join(', '), backup: `${switched}${backup}` });
+  return t('bundle.updated', { name, parts: parts.join(', '), backup });
 }
 
 function downloadBlob(blob: Blob, fileName: string): void {

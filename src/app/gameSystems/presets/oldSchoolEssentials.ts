@@ -39,6 +39,5 @@ export const OLD_SCHOOL_ESSENTIALS: SystemPreset = {
     resources: [{ ...HP_RESOURCE }],
     senses: OLD_SCHOOL_ESSENTIALS_SENSES,
     lightPresets: OLD_SCHOOL_ESSENTIALS_LIGHTS,
-    statblockRoles: [{ id: 'monster', name: 'Monster', templateId: 'builtin:bx-creature' }],
   },
 };

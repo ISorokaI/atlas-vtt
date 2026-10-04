@@ -9,7 +9,6 @@ import { CollectionHero } from './CollectionHero';
 import { ConflictList } from './ConflictList';
 import type { ContentMedia } from './contentMedia';
 import { ContentsList } from './ContentsList';
-import { TemplateCopies } from './TemplateCopies';
 import { TransferDialog } from './TransferDialog';
 import { useObjectUrl } from './useObjectUrl';
 import { t } from '../../../../i18n';
@@ -54,7 +53,6 @@ export function ImportReviewDialog({ review, media, onConfirm, onCancel }: Impor
   const [name, setName] = useState(review.suggestedName ?? review.collectionName);
   const [resolutions, setResolutions] = useState<Map<string, Resolution>>(new Map());
   const [restore, setRestore] = useState(false);
-  const [switchNotes, setSwitchNotes] = useState(false);
   const coverUrl = useObjectUrl(review.cover);
   const notesId = useId();
 
@@ -66,7 +64,7 @@ export function ImportReviewDialog({ review, media, onConfirm, onCancel }: Impor
 
   const confirm = (): void => {
     if (review.suggestedName !== undefined && !name.trim()) return;
-    onConfirm({ name: review.suggestedName !== undefined ? name.trim() : undefined, resolutions, restore, ...(switchNotes && { switchReusedNotes: true }) });
+    onConfirm({ name: review.suggestedName !== undefined ? name.trim() : undefined, resolutions, restore });
   };
 
   return (
@@ -144,7 +142,6 @@ export function ImportReviewDialog({ review, media, onConfirm, onCancel }: Impor
       {review.relation !== 'new' && counts.length > 0 && <p className="atlas-transfer-text">{counts.join(' · ')}</p>}
       {review.upToDate && !restore && <p className="atlas-transfer-text">{t('importReview.upToDate')}</p>}
       <ContentsList groups={review.contents} media={media} />
-      {review.templates && <TemplateCopies templates={review.templates} switchNotes={switchNotes} onSwitchNotesChange={setSwitchNotes} />}
       {review.conflicts.length > 0 && !restore && (
         <ConflictList conflicts={review.conflicts} resolutions={resolutions} onChange={setResolutions} />
       )}

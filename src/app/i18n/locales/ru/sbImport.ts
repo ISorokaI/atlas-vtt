@@ -18,7 +18,7 @@ export const sbImport: Translation = {
   'sbImport.list': 'Статблоки',
   'sbImport.added': 'Добавлен в импорт',
   'sbImport.noMatch': 'Статблоков по запросу нет.',
-  'sbImport.noneFound': 'В хранилище не найдено заметок со статблоками.',
+  'sbImport.noneFound': 'Заметок со статблоками не найдено. Включите разбор frontmatter в Fantasy Statblocks или добавьте в заметку блок statblock.',
   'sbImport.scanAgain': 'Сканировать снова',
   'sbImport.back': 'Назад к карточкам',
   'sbImport.loadingImages': 'Загрузка изображений…',

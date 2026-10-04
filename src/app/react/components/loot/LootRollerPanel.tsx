@@ -25,7 +25,6 @@ import { LootHistory, LootResults } from './LootLists';
 import { LootEmptyState } from './LootEmptyState';
 import { LootRollerTutorials } from './LootRollerTutorials';
 import { CollectionSettingsModal } from '../CollectionSettingsModal';
-import { openTemplateEditor } from '../../../statblocks/editor/openTemplateEditor';
 import { t } from '../../../i18n';
 
 const MARGIN = 12;
@@ -184,13 +183,7 @@ function LootRollerPanel(): React.ReactElement {
 
       <AnimatePresence>
         {settingsOpen && collectionId && (
-          <CollectionSettingsModal
-            isOpen
-            collectionId={collectionId}
-            initialTab="loot"
-            onClose={() => setSettingsOpen(false)}
-            onEditTemplate={(templateId, id) => { void openTemplateEditor(app, { templateId, collectionId: id }); }}
-          />
+          <CollectionSettingsModal isOpen collectionId={collectionId} initialTab="loot" onClose={() => setSettingsOpen(false)} />
         )}
       </AnimatePresence>
 
