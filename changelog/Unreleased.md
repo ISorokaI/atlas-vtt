@@ -21,6 +21,7 @@
 ## Fixed
 
 - Hovering a token whose note holds its statblock in a code block shows the statblock, not the plain note
+- Grid lines no longer break up or vanish at some zoom levels after the grid size was changed. Zoomed out, a line thinner than a screen pixel is drawn one pixel wide and fainter instead. Contributed by ISorokaI
 - Links in Fantasy Statblocks bestiary statblocks show as links instead of raw text such as `rules/skills.md#Perception|Perception`, and a click opens the note in a new tab. Contributed by ISorokaI
 - The asset manager opens and scrolls faster with many tokens: every token card used to make the browser read the token ring image anew, which on slower computers froze the Characters tab with a few dozen tokens. Contributed by ISorokaI
 - Zooming a map whose grid is switched off no longer folds the map into a grey wedge pointing at one of its pins
