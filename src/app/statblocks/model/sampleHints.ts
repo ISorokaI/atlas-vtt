@@ -95,7 +95,7 @@ function samplePairsByWords(field: TemplateField): Record<string, FieldValue> | 
 export function samplePairs(field: TemplateField): Record<string, FieldValue> {
   const slots = field.slotKeys ?? field.slots?.map((slot) => slot.toLowerCase());
   if (slots?.length) return Object.fromEntries(slots.map((key) => [key, 1]));
-  return samplePairsByWords(field) ?? { perception: 3, stealth: 4 };
+  return samplePairsByWords(field) ?? { first: 3, second: 4 };
 }
 
 /** A one-line text sample; null where nothing fits, so the caller shows a neutral dash. */

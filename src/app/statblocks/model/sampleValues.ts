@@ -16,6 +16,7 @@ const SAMPLE_SPELLS: FieldValue = [
   { 'At will': 'light, mage hand' },
   { '1/day each': 'cure wounds, sleep' },
 ];
+const SAMPLE_GROUPS: FieldValue = [{ 'First group': 'one, two' }, { 'Second group': 'three' }];
 
 function extraSample(type: 'text' | 'number' | 'list' | 'dice', label: string): FieldValue {
   switch (type) {
@@ -68,7 +69,7 @@ export function sampleValueFor(field: TemplateField): FieldValue {
     case 'pairs': return samplePairs(field);
     // The renderer shows a neutral silhouette for a missing image.
     case 'image': return null;
-    case 'spells': return SAMPLE_SPELLS;
+    case 'spells': return /spell|magic|cast/i.test(`${field.key} ${field.label}`) ? SAMPLE_SPELLS : SAMPLE_GROUPS;
   }
 }
 
