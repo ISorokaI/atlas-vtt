@@ -104,7 +104,7 @@ describe('the template editor by keyboard', () => {
     expect(document.activeElement?.getAttribute('data-block-id')).toBe('stat-hp1');
   });
 
-  it('builds a stat strip and ability scores from a blank template by keyboard alone', async () => {
+  it('builds a table and a list from a blank template by keyboard alone', async () => {
     const session = new FakeSession(template([]));
     mount(session);
     page.getByRole('button', { name: 'Before' }).element().focus();
@@ -112,19 +112,20 @@ describe('the template editor by keyboard', () => {
     expect(document.activeElement?.textContent).toBe('Name');
 
     await userEvent.keyboard('/');
-    await userEvent.keyboard('Stat strip');
+    await userEvent.keyboard('Table');
     await userEvent.keyboard('{Enter}');
-    const [row] = session.template.layout.blocks;
-    expect(row).toMatchObject({ type: 'row', blocks: [{ type: 'stat', look: 'stacked' }, { type: 'stat', look: 'stacked' }, { type: 'stat', look: 'stacked' }] });
-    expect(document.activeElement?.getAttribute('data-block-id')).toBe(row?.id);
+    const [table] = session.template.layout.blocks;
+    expect(table).toMatchObject({ type: 'scores', field: '' });
+    expect(document.activeElement?.getAttribute('data-block-id')).toBe(table?.id);
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard('Abilities{Enter}');
+    expect(session.template.fields).toEqual([{ key: 'stats', label: 'Abilities', type: 'scores' }]);
 
     await userEvent.keyboard('/');
-    await userEvent.keyboard('Ability');
+    await userEvent.keyboard('List');
     await userEvent.keyboard('{Enter}');
-    expect(session.template.layout.blocks.map((block) => block.type)).toEqual(['row', 'scores']);
-    expect(session.template.fields.map((field) => field.key)).toEqual(['ac', 'hp', 'speed', 'stats']);
-    expect(session.template.fields.at(-1)?.slots).toEqual(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']);
-    expect(session.steps).toBe(2);
+    expect(session.template.layout.blocks.map((block) => block.type)).toEqual(['scores', 'entries']);
+    expect(session.steps).toBe(3);
   });
 
   it('moves blocks into and out of containers with Alt+arrows', async () => {
