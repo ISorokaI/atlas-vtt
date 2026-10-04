@@ -17,6 +17,7 @@ import {
   collectionStatblockRoles, editedStatblockRoles, GENERIC_ROLE_TEMPLATE_ID, roleFolder, roleTemplate,
 } from '../roles/collectionStatblockRoles';
 import { draftRoleId, roleNameProblem, statblockRolesAreValid } from '../roles/roleValidation';
+import { LayoutAdoptionList } from '../editor/fs-import/LayoutAdoptionList';
 import { RoleRow } from './RoleRow';
 import { TemplateList } from './TemplateList';
 import { templateState } from './TemplatePicker';
@@ -24,6 +25,8 @@ import './statblocks-tab.scss';
 
 export interface StatblocksTabProps {
   app: App;
+  /** The collection the dialog edits: the tab lists the Fantasy Statblocks layouts of its statblocks. */
+  collectionId?: string | undefined;
   /** The collection's own roles; undefined while it takes its game system's. */
   ownRoles: readonly StatblockRole[] | undefined;
   onOwnRolesChange: (roles: readonly StatblockRole[] | undefined) => void;
@@ -51,7 +54,7 @@ function inheritedLabel(own: boolean, preset: SystemPreset | undefined): string 
 }
 
 export function StatblocksTab({
-  app, ownRoles, onOwnRolesChange, folders, onFoldersChange, systemPresetId, presets, canSave, onEditTemplate,
+  app, collectionId, ownRoles, onOwnRolesChange, folders, onFoldersChange, systemPresetId, presets, canSave, onEditTemplate,
 }: StatblocksTabProps): React.ReactElement {
   const library = useTemplateLibrary(app);
   /** The role just added, whose name field takes the focus. */
@@ -136,6 +139,8 @@ export function StatblocksTab({
         // Inherited roles followed their system, which the deletion already moved.
         onReplaceTemplate={(from, to) => { if (own) edit(roles.map((role) => (role.templateId === from ? { ...role, templateId: to } : role))); }}
       />
+
+      {collectionId && <LayoutAdoptionList app={app} collectionId={collectionId} />}
     </>
   );
 }

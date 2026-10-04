@@ -9,8 +9,8 @@ import type { FieldKey, FieldValue, TemplateField } from '../../model/templateTy
 import { deepEqual } from '../../notes/listIdentity';
 import type { NotePatch } from '../../notes/patchTypes';
 import { coerce } from '../../values/valueCoercion';
-import { isEmptyValue } from '../../values/emptyValue';
 import type { FieldRead } from '../../values/fieldValues';
+import { textProblem } from '../../values/valueFit';
 import { valueText } from '../../values/valueText';
 
 /** The value typed text stores in a field: coerced by its type, else the text as typed. Blank clears the key. */
@@ -19,12 +19,9 @@ export function valueForText(field: TemplateField, text: string): FieldValue | u
   return result.ok ? result.value : result.raw;
 }
 
-/** Why a stored value does not fit its field's type ("“1/4” isn't a number."); null where it fits. */
+/** Why typed text does not fit its field's type ("“1/4” isn't a number."); null where it fits. */
 export function valueProblem(field: TemplateField, value: FieldValue | undefined): string | null {
-  if (typeof value !== 'string' || isEmptyValue(value)) return null;
-  if (field.type !== 'number' && field.type !== 'rating' && field.type !== 'dice' && field.type !== 'choice') return null;
-  const result = coerce(field.type, value, field);
-  return result.ok ? null : result.problem;
+  return typeof value === 'string' ? textProblem(field, value) : null;
 }
 
 /** A value as the pane's text input starts with it. */

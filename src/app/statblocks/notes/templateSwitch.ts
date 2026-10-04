@@ -6,24 +6,23 @@
  */
 
 import type { App } from 'obsidian';
-import { workSlices } from '../../utils/workSlices';
-import type { TemplateId } from '../model/templateTypes';
+import type { FieldValue, TemplateId } from '../model/templateTypes';
 import { NoteFieldWriter, type WriteOutcome } from './NoteFieldWriter';
+import { eachNote, type NoteBatchOptions } from './noteBatch';
 import type { NotePatch } from './patchTypes';
 import { TEMPLATE_KEY } from './statblockSource';
 
 export interface TemplateSwitchNote {
   path: string;
-  /** The template the note was listed with: it switches only while it still names this one. */
-  from: TemplateId;
+  /**
+   * The template the note was listed with: it switches only while it still names this one.
+   * Null for a statblock of Fantasy Statblocks, which switches only while it names none
+   * (no `atlas-template`, or an empty one).
+   */
+  from: TemplateId | null;
 }
 
-export interface TemplateSwitchOptions {
-  /** After each note: how many are done of how many. */
-  onProgress?: (done: number, total: number) => void;
-  /** Cancels the notes not written yet. */
-  signal?: AbortSignal;
-}
+export type TemplateSwitchOptions = NoteBatchOptions;
 
 export interface TemplateSwitchResult {
   switched: string[];
@@ -41,26 +40,31 @@ export async function switchTemplates(
 ): Promise<TemplateSwitchResult> {
   const writer = NoteFieldWriter.forApp(app);
   const result: TemplateSwitchResult = { switched: [], skipped: [], notReached: [] };
-  const pause = workSlices();
-  for (const [index, note] of notes.entries()) {
-    if (options.signal?.aborted) {
-      result.notReached.push(...notes.slice(index).map(({ path }) => path));
-      break;
-    }
-    const patch: NotePatch = { op: 'set', path: [TEMPLATE_KEY], base: note.from, next: to };
-    const outcome = await writeAtOnce(writer, note.path, [patch]);
+  const rest = await eachNote(notes, async (note) => {
+    const outcome = await switchNote(writer, note, to);
     if (outcome.applied.length > 0) result.switched.push(note.path);
     else result.skipped.push({ path: note.path, reason: skipReason(outcome) });
-    options.onProgress?.(index + 1, notes.length);
-    await pause();
-  }
+  }, options);
+  result.notReached.push(...rest.map(({ path }) => path));
   return result;
 }
 
-/** A batch does not wait out the disk coalescing: each note is written before the next. */
-async function writeAtOnce(writer: NoteFieldWriter, path: string, patches: readonly NotePatch[]): Promise<WriteOutcome> {
-  const outcome = writer.write(path, patches);
-  await writer.flush(path);
+/** Whether a value of `atlas-template` names no template: absent, empty or blank, as the predicate reads it. */
+function namesNone(value: FieldValue | undefined): boolean {
+  return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+}
+
+/**
+ * Writes one note's switch. A note listed with no template is patched from what it holds when
+ * the write finds it, so an empty `atlas-template` is switched as well. A batch does not wait
+ * out the disk coalescing: each note is written before the next.
+ */
+async function switchNote(writer: NoteFieldWriter, note: TemplateSwitchNote, to: TemplateId): Promise<WriteOutcome> {
+  const set = (base: FieldValue | undefined): NotePatch => ({ op: 'set', path: [TEMPLATE_KEY], base, next: to });
+  const outcome = note.from === null
+    ? writer.patchNow(note.path, (frontmatter) => (frontmatter && namesNone(frontmatter[TEMPLATE_KEY]) ? [set(frontmatter[TEMPLATE_KEY])] : []))
+    : writer.write(note.path, [set(note.from)]);
+  await writer.flush(note.path);
   return outcome;
 }
 

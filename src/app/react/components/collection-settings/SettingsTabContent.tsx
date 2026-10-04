@@ -37,6 +37,7 @@ export interface DraftRules {
 interface SettingsTabContentProps {
   tab: CollectionSettingsTab;
   app: App | undefined;
+  collectionId: string;
   draft: CollectionSettingsDraft;
   systemPresets: ReturnType<typeof useSystemPresets>;
   rules: DraftRules;
@@ -56,7 +57,7 @@ function isSameAsTyped(typed: InitiativeRules, system: InitiativeRules): boolean
 
 /** The open tab of the collection settings dialog, editing the dialog's draft. */
 export function SettingsTabContent({
-  tab, app, draft, systemPresets, rules, features, creatures, roleTemplates, canSave, onDeletePreset, onEditTemplate,
+  tab, app, collectionId, draft, systemPresets, rules, features, creatures, roleTemplates, canSave, onDeletePreset, onEditTemplate,
 }: SettingsTabContentProps): React.ReactElement | null {
   const { presets, service } = systemPresets;
   const { gridDefaults, conditions } = draft;
@@ -130,6 +131,7 @@ export function SettingsTabContent({
       return app ? (
         <StatblocksTab
           app={app}
+          collectionId={collectionId}
           ownRoles={draft.statblockRoles}
           onOwnRolesChange={draft.setStatblockRoles}
           folders={draft.statblockRoleFolders}

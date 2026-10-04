@@ -7,6 +7,7 @@
 
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike
 - The creature filter Layout is now called Template. Type `template:` in the search; `layout:` still works
+- The token creator finds statblock notes without the Fantasy Statblocks plugin too. Its image source is now called Statblock notes
 - An open map uses much less graphics memory: 3D dice share one drawing context per window, and with dynamic lighting on the map no longer keeps antialiasing buffers it does not draw into
 
 ## Fixed

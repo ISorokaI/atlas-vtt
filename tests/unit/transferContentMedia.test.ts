@@ -2,6 +2,7 @@ import type { App } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { bundleMedia } from '../../src/app/packages/components/asset-manager/collection-transfer/contentMedia';
 import { statblockSourceFromText } from '../../src/app/statblocks/notes/statblockSource';
+import { MARSH_CREATURE } from '../fixtures/statblockTemplateFixtures';
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -24,6 +25,12 @@ describe('bundle media', () => {
 
     media.dispose();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:1');
+  });
+
+  it('hands on the bundle\'s own templates, which previews of its notes look up first', () => {
+    const templates = [{ template: MARSH_CREATURE, name: 'Marsh creature', status: 'ok', builtIn: false, path: 'atlas-vtt/statblock-templates/Marsh creature.atlastemplate' }] as const;
+    const media = bundleMedia({} as App, { blob: vi.fn(async () => null), text: vi.fn(async () => null), templates });
+    expect(media.templates).toBe(templates);
   });
 });
 

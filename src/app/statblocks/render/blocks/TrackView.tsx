@@ -3,10 +3,12 @@ import { resourceColor } from '../../../resources/resourceColors';
 import type { ResourceValue } from '../../../resources/resourceTypes';
 import type { TrackBlock } from '../../model/templateTypes';
 import { numericValue } from '../../values/numberText';
+import { valueMisfit } from '../../values/valueFit';
+import { valueText } from '../../values/valueText';
 import { useSheet } from '../sheetContext';
 import type { SheetState } from '../sheetState';
 import { LabelledLine } from '../values/LabelledLine';
-import { StandIn } from '../values/ValueText';
+import { StandIn, ValueText } from '../values/ValueText';
 import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
@@ -70,18 +72,24 @@ export function TrackView({ block, display }: BlockViewProps<TrackBlock>): React
   const labelId = useId();
   const label = block.label ?? state.fields.get(block.field)?.label ?? block.field;
   const track = display.state === 'value' ? trackState(block, state) : null;
-  if (display.state === 'value' && !track) return null;
+  // A value that is no count (its field's type changed) shows as it is written; nothing to count hides the block.
+  const field = state.fields.get(block.field);
+  const value = state.reader(block.field);
+  const raw = display.state === 'value' && !track && field !== undefined && valueMisfit(field, value) !== null;
+  if (display.state === 'value' && !track && !raw) return null;
 
   const style: TrackStyle | undefined = track?.color ? { '--atlas-sb-track-color': track.color } : undefined;
   const boxes = block.look === 'boxes' && (track?.value.max ?? 0) <= MAX_TRACK_BOXES;
   return (
     <LabelledLine label={label} className="atlas-sb-track" labelId={labelId}>
       <ValueSlot block={block}>
-        {track ? (
+        {track && (
           <span className="atlas-sb-track-value" style={style}>
             {boxes ? <Boxes value={track.value} labelId={labelId} /> : <Gauge value={track.value} labelId={labelId} />}
           </span>
-        ) : display.state !== 'value' && <StandIn display={display} />}
+        )}
+        {raw && <ValueText shown={{ text: valueText(value), problems: [] }} />}
+        {display.state !== 'value' && <StandIn display={display} />}
       </ValueSlot>
     </LabelledLine>
   );

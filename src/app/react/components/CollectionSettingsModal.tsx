@@ -203,6 +203,7 @@ export function CollectionSettingsModal({
             <SettingsTabContent
               tab={activeTab}
               app={app}
+              collectionId={collectionId}
               draft={draft}
               systemPresets={systemPresets}
               rules={{ dice, initiative, systemInitiative, senses, systemSenses }}

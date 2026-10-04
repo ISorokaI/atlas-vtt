@@ -93,15 +93,23 @@ describe('the card\'s statblock button (D9)', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('opens the note as before for Fantasy Statblocks, and while the switch is off', () => {
+  it('opens the note as before while the switch is off', () => {
     const { open, onClose } = handlers();
     open(NATIVE);
-    withStatblockEditor(app());
     open(FANTASY);
     expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', NATIVE, true);
     expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', FANTASY, true);
     expect(openStatblockEditor).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('opens the pair for a Fantasy Statblocks statblock too, whose pane offers to adopt it (D9, M6)', () => {
+    withStatblockEditor(app());
+    const { open, onClose } = handlers();
+    open(FANTASY);
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: FANTASY, collectionId: null, from: 'asset-manager' });
+    expect(harness.app.workspace.openLinkText).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 });
 

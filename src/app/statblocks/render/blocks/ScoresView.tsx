@@ -1,10 +1,12 @@
 import React from 'react';
 import type { ScoreColumn, ScoresBlock } from '../../model/templateTypes';
+import { valueMisfit } from '../../values/valueFit';
+import { valueText } from '../../values/valueText';
 import { useSheet } from '../sheetContext';
 import { ProblemMarker } from '../values/ProblemMarker';
 import { scoreGroups, scoreSlots, type ScoreSlot } from '../values/scoreSlots';
 import type { ShownText } from '../values/shownText';
-import { StandIn } from '../values/ValueText';
+import { StandIn, ValueText } from '../values/ValueText';
 import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 
@@ -73,6 +75,10 @@ function ScoreGroup({ slots, columns }: { slots: readonly ScoreSlot[]; columns: 
 function ScoresContent({ block, display }: BlockViewProps<ScoresBlock>): React.JSX.Element {
   const { state } = useSheet();
   if (display.state !== 'value') return <StandIn display={display} />;
+  // A value that holds no scores (its field's type changed) shows as it is written.
+  const field = state.fields.get(block.field);
+  const value = state.reader(block.field);
+  if (field && valueMisfit(field, value)) return <ValueText shown={{ text: valueText(value), problems: [] }} />;
 
   const slots = scoreSlots(block, state);
   if (!slots.length) return <></>;

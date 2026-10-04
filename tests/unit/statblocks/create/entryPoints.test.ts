@@ -22,6 +22,7 @@ vi.mock('../../../../src/app/statblocks/editor/create/createFlow', () => ({
 
 const NATIVE = 'Bestiary/Marsh Warden.md';
 const FANTASY = 'Bestiary/Goblin.md';
+const PLAIN = 'Notes/Marsh.md';
 const TOKEN = { imagePath: 'art/warden.webp', name: 'Marsh Warden' };
 
 let harness: NoteHarness;
@@ -31,6 +32,7 @@ beforeEach(() => {
   harness = noteHarness({
     [NATIVE]: '---\nstatblock: true\natlas-template: builtin:generic-creature\nname: Marsh Warden\n---\n',
     [FANTASY]: '---\nstatblock: true\nname: Goblin\n---\n',
+    [PLAIN]: '---\ntags: marsh\n---\nThe marsh.\n',
   });
   vi.spyOn(AssetService, 'getInstance').mockReturnValue({
     getDefaultCollectionId: () => 'default',
@@ -84,10 +86,17 @@ describe('Edit statblock (D9)', () => {
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: NATIVE, collectionId: 'marsh', from: 'map' });
   });
 
-  it('leaves Fantasy Statblocks\' statblocks, and everything while the switch is off, to the note', () => {
-    expect(editInStatblockPane(app(), NATIVE, { collectionId: null, from: 'map' })).toBe(false);
+  it('opens the pair for a Fantasy Statblocks statblock too, which the pane offers to adopt (M6)', () => {
     withStatblockEditor(app());
+    expect(editInStatblockPane(app(), FANTASY, { collectionId: 'marsh', from: 'map' })).toBe(true);
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: FANTASY, collectionId: 'marsh', from: 'map' });
+  });
+
+  it('leaves other notes, and everything while the switch is off, to the note', () => {
+    expect(editInStatblockPane(app(), NATIVE, { collectionId: null, from: 'map' })).toBe(false);
     expect(editInStatblockPane(app(), FANTASY, { collectionId: null, from: 'map' })).toBe(false);
+    withStatblockEditor(app());
+    expect(editInStatblockPane(app(), PLAIN, { collectionId: null, from: 'map' })).toBe(false);
     expect(editInStatblockPane(app(), 'Bestiary/Missing.md', { collectionId: null, from: 'map' })).toBe(false);
     expect(openStatblockEditor).not.toHaveBeenCalled();
   });
@@ -149,13 +158,15 @@ describe('commands and the file menu', () => {
     expect(startStatblockCreation).toHaveBeenCalledWith(app(), { collectionId: null, folder: undefined, from: 'command' });
   });
 
-  it('Edit statblock is there only on a native statblock note', () => {
+  it('Edit statblock is there only on a statblock note, native or Fantasy Statblocks\'', () => {
     withStatblockEditor(app());
     const { commands } = registered();
     const command = commands.find((candidate) => candidate.id === 'edit-statblock')!;
-    const active = vi.fn(() => new TFile(FANTASY));
+    const active = vi.fn(() => new TFile(PLAIN));
     Object.assign(harness.app.workspace, { getActiveFile: active });
     expect(command.checkCallback?.(true)).toBe(false);
+    active.mockReturnValue(new TFile(FANTASY));
+    expect(command.checkCallback?.(true)).toBe(true);
 
     active.mockReturnValue(new TFile(NATIVE));
     expect(command.checkCallback?.(true)).toBe(true);
@@ -163,7 +174,7 @@ describe('commands and the file menu', () => {
     expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: NATIVE, collectionId: null, from: 'command' });
   });
 
-  it('adds New statblock here to folders and Edit statblock in Atlas to native statblock notes', () => {
+  it('adds New statblock here to folders and Edit statblock in Atlas to statblock notes', () => {
     withStatblockEditor(app());
     const { fileMenu } = registered();
     const folder = recordingMenu();
@@ -172,9 +183,13 @@ describe('commands and the file menu', () => {
     folder.click('New statblock here');
     expect(startStatblockCreation).toHaveBeenCalledWith(app(), { collectionId: null, folder: 'World/Swamp', from: 'command' });
 
+    const plain = recordingMenu();
+    fileMenu(plain.menu, new TFile(PLAIN));
+    expect(plain.titles).toEqual([]);
+
     const fantasy = recordingMenu();
     fileMenu(fantasy.menu, new TFile(FANTASY));
-    expect(fantasy.titles).toEqual([]);
+    expect(fantasy.titles).toEqual(['Edit statblock in Atlas']);
 
     const native = recordingMenu();
     fileMenu(native.menu, new TFile(NATIVE));

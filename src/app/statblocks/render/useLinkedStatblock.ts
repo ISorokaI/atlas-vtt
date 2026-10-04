@@ -3,7 +3,7 @@ import { TFile, type App } from 'obsidian';
 import { TemplateLibrary } from '../library/TemplateLibrary';
 import type { LibraryTemplate, ResolvedStatblock, StatblockSource } from '../model/resolvedTypes';
 import type { TemplateId } from '../model/templateTypes';
-import { cachedFrontmatter, frontmatterSource, statblockSourceFromText, statblockSourceOf } from '../notes/statblockSource';
+import { cachedTemplateId, statblockSourceFromText, statblockSourceOf } from '../notes/statblockSource';
 import { libraryTemplates } from '../resolve/readStatblock';
 import { resolveStatblock } from '../resolve/resolveStatblock';
 import { resolveStatblockText } from '../resolve/resolveStatblockText';
@@ -45,7 +45,7 @@ export function useNativeTemplateId(app: App, path: string, text: string | undef
   const fromText = useMemo(() => (text === undefined ? undefined : templateIdOf(statblockSourceFromText(text))), [text]);
   if (fromText !== undefined) return fromText;
   const file = app.vault.getAbstractFileByPath(path);
-  return file instanceof TFile ? templateIdOf(frontmatterSource(cachedFrontmatter(app, file))) : null;
+  return file instanceof TFile ? cachedTemplateId(app, file) : null;
 }
 
 async function readLinked(app: App, note: LinkedNote): Promise<LinkedStatblockResult> {

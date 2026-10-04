@@ -14,6 +14,18 @@ const MAX_NODES = 1_000_000;
 const UNWRITABLE: unique symbol = Symbol('unwritable');
 type Copied = FieldValue | undefined | typeof UNWRITABLE;
 
+const BYTE_ORDER_MARK = 0xfeff;
+
+/** JSON text as a file holds it, a leading byte order mark skipped; the parser's message when it is no JSON. */
+export function parseJsonText(text: string): { value: unknown } | { error: string } {
+  try {
+    const value: unknown = JSON.parse(text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text);
+    return { value };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'unreadable' };
+  }
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

@@ -7,7 +7,10 @@
 import { Notice, type App } from 'obsidian';
 import { AssetService } from '../../../services/AssetService';
 import { systemPresetsOf } from '../../../services/mapCollectionRules';
+import { identityOf, importFsLayout, type FsLayoutImport, type LayoutIdentity } from '../../fs/fsImport';
+import type { FsLayout } from '../../fs/fsLayoutTypes';
 import { copyTemplate, createTemplateFile } from '../../library/templateActions';
+import { TemplateLibrary } from '../../library/TemplateLibrary';
 import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { StatblockTemplate, TemplateId } from '../../model/templateTypes';
 import type { FrontmatterRecord } from '../../notes/statblockSource';
@@ -21,6 +24,7 @@ import { statblockTemplate } from './statblockNotes';
 export type GalleryPick =
   | { kind: 'template'; entry: LibraryTemplate }
   | { kind: 'statblock'; path: string; template: StatblockTemplate }
+  | { kind: 'fs-layout'; layout: FsLayout }
   | { kind: 'blank' };
 
 /** A template the gallery made, and what the editor needs to open it. */
@@ -31,6 +35,8 @@ export interface CreatedTemplate {
   firstBlock: string | null;
   /** The built-in it was copied from: the editor asks whether what used it moves to the copy (§7.4). */
   copiedFrom: TemplateId | null;
+  /** A Fantasy Statblocks layout's template, imported now or before: the gallery shows the report as it closes. */
+  fsImport?: { layout: LayoutIdentity; imported: FsLayoutImport } | undefined;
 }
 
 const BLANK_NAME = 'New template';
@@ -46,6 +52,15 @@ export async function createFromPick(app: App, pick: GalleryPick): Promise<Creat
     case 'statblock': {
       const created = await createTemplateFile(app, noteName(pick.path), pick.template);
       return { ...created, firstBlock: firstBlockId(pick.template), copiedFrom: null };
+    }
+    case 'fs-layout': {
+      // A layout is imported once: picked again, it opens the template it gave.
+      const imported = await importFsLayout(app, pick.layout);
+      const template = TemplateLibrary.forApp(app).get(imported.id)?.template;
+      return {
+        id: imported.id, path: imported.path, firstBlock: template ? firstBlockId(template) : null, copiedFrom: null,
+        fsImport: { layout: identityOf(pick.layout), imported },
+      };
     }
     case 'blank': {
       const created = await createTemplateFile(app, BLANK_NAME, blankTemplate());

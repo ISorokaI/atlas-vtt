@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
+import { useBestiaryRevision } from '../../../react/hooks/useBestiaryRevision';
 import { SettingsService } from '../../../services/SettingsService';
 import { StatblockSkeleton } from '../../../react/components/statblock/StatblockSkeleton';
 import { isFantasyStatblocksAvailable } from '../../../services/FantasyStatblocksService';
@@ -16,6 +17,7 @@ import { MorePropertiesTray } from './MorePropertiesTray';
 import { PaneCanvas } from './PaneCanvas';
 import { PaneHeader } from './PaneHeader';
 import { headerTemplate } from './paneHeaderTemplate';
+import { FsStatblockBar } from './FsStatblockBar';
 import {
   FantasyState, NewerTemplateBar, NoStatblockState, NoteDeletedBar, PartnerClosedBar, TemplateMissingBar, UnreadableState, WriteProblemBar,
 } from './PaneStates';
@@ -39,6 +41,8 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
   const paneTemplate = usePaneTemplate(app, note.templateId, note.record);
   const library = useTemplateLibrary(app);
   const settings = useAtlasSettings(SettingsService.forApp(app));
+  // Draws again once Fantasy Statblocks loads, which decides how its statblocks are edited here.
+  useBestiaryRevision(app);
   const [choosing, setChoosing] = useState(false);
   const [writeProblem, setWriteProblem] = useState<string | null>(null);
   // The view's announcements (undo, redo) and the pane's own (a deleted entry), the latest one said.
@@ -66,13 +70,22 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     if (settings && !statblockPaneSettings(settings).hintDismissed) setStatblockPaneSettings(settings, { hintDismissed: true });
   }, [settings]);
 
-  const writable = paired && note.kind === 'atlas' && paneTemplate.status !== 'loading';
+  // A Fantasy Statblocks statblock: a frontmatter one is edited right here while the plugin is missing (§6.4).
+  const fsKind = note.kind === 'fantasy' ? frontmatterSource(note.record)?.kind ?? 'fs-fence' : null;
+  const editsDirectly = paired && fsKind === 'fs-frontmatter' && !isFantasyStatblocksAvailable();
+  const writable = paired && (note.kind === 'atlas' || editsDirectly) && paneTemplate.status !== 'loading';
   const adder = useAddField({
     app, notePath, record: note.record, collectionId, writer: services.writer, announce: setSaid, openTemplate: actions.openTemplateAt,
     entry: writable && paneTemplate.status === 'ok' ? paneTemplate.entry : null,
   });
   // Without Fantasy Statblocks its statblocks show with the auto template, which can become a template of their own (§6.4).
-  const savable = paired && note.kind === 'fantasy' && frontmatterSource(note.record)?.kind === 'fs-frontmatter' && !isFantasyStatblocksAvailable();
+  const savable = editsDirectly;
+  const fsBar = fsKind !== null && (paired ? (
+    <FsStatblockBar
+      app={app} notePath={notePath} record={note.record} fence={fsKind === 'fs-fence'} collectionId={collectionId}
+      writer={services.writer} onWriteProblem={setWriteProblem}
+    />
+  ) : <PartnerClosedBar onOpenNote={actions.openNote} />);
   const header = headerTemplate({
     note, paneTemplate, roles: collection.roles, collectionId, actions, app,
     choose: paired ? () => setChoosing(true) : undefined,
@@ -82,7 +95,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     switch (note.kind) {
       case 'loading': return <StatblockSkeleton className="atlas-sb-pane-card" />;
       case 'unreadable': return <UnreadableState line={note.snapshot.problem?.line ?? null} onOpenNote={actions.openNote} />;
-      case 'fantasy': return <FantasyState app={app} notePath={notePath} onOpenNote={actions.openNote} />;
+      case 'fantasy': if (!editsDirectly) return <FantasyState app={app} notePath={notePath} bar={fsBar} />; break;
       case 'none': {
         const create = actions.createStatblock;
         return <NoStatblockState roles={collection.roles} onCreate={create && collectionId ? (roleId) => create(notePath, roleId, collectionId) : undefined} />;
@@ -93,6 +106,7 @@ export function StatblockPane(props: StatblockPaneProps): React.JSX.Element {
     const bars = (
       <>
         {note.kind === 'deleted' && <NoteDeletedBar />}
+        {editsDirectly && fsBar}
         {note.kind === 'atlas' && !paired && <PartnerClosedBar onOpenNote={actions.openNote} />}
         {paneTemplate.status === 'missing' && note.templateId && <TemplateMissingBar templateId={note.templateId} onChoose={paired ? () => setChoosing(true) : undefined} />}
         {paneTemplate.status === 'newer' && <NewerTemplateBar />}

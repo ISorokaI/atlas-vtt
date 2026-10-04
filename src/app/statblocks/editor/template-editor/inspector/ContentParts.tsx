@@ -1,8 +1,10 @@
 /** The Content group's settings that only some blocks have (§7.5, the Inspector column). */
 
 import React, { useMemo, useState } from 'react';
+import { Button } from '../../../../packages/components/primitives/button';
 import { collectionResources } from '../../../../resources/collectionResources';
 import { AssetService } from '../../../../services/AssetService';
+import { trackScripts, withTrackBlocks } from '../../../fs/fsTrackReplacement';
 import { AUTHORABLE_BLOCK_TYPES, blockSpec, createBlock, type AuthorableBlockType } from '../../../model/blockCatalogue';
 import { blockIdSource } from '../../../model/templateIds';
 import { refuse } from '../../../model/treeEdit';
@@ -10,7 +12,7 @@ import { insertBlock, removeBlock } from '../../../model/treeOps';
 import { collectBlockIds, findBlock } from '../../../model/treeQueries';
 import type { EntriesBlock, OpaqueBlock, ScriptBlock, SectionBlock, TextBlock, TrackBlock } from '../../../model/templateTypes';
 import { useTemplateEditor } from '../editorContext';
-import { applyTree, chainTree } from '../sessionEdit';
+import { applyEdit, applyTree, chainTree } from '../sessionEdit';
 import { boundFieldOf, editBlock, withBlockChanges } from './blockEdits';
 import { EntryParts } from './EntryParts';
 import { FieldSetting, withOwnField } from './FieldSetting';
@@ -114,8 +116,18 @@ export function TrackResource({ block, session, readOnly }: PartProps<TrackBlock
 const CHOOSE = '';
 
 /** A preserved Fantasy Statblocks script, or a block of a newer Atlas: what it is, and a block to put in its place. */
-export function ScriptContent({ block, session, readOnly }: PartProps<ScriptBlock | OpaqueBlock>): React.JSX.Element {
+export function ScriptContent({ block, template, session, readOnly }: PartProps<ScriptBlock | OpaqueBlock>): React.JSX.Element {
   const { select } = useTemplateEditor();
+  const drawsTracks = useMemo(() => trackScripts(template).some((script) => script.id === block.id), [template, block.id]);
+  // The Track blocks the import report offers for this one script, with the fields they show; one step.
+  const replaceWithTracks = (): void => {
+    const inserted = applyEdit(session, (current) => {
+      const next = withTrackBlocks(current, [block.id]);
+      const before = collectBlockIds(current.layout.blocks);
+      return { template: next, result: [...collectBlockIds(next.layout.blocks)].filter((id) => !before.has(id)) };
+    });
+    if (inserted && inserted.length > 0) select(inserted, false);
+  };
   const replace = (type: AuthorableBlockType): void => {
     const out: { inserted: string | null } = { inserted: null };
     applyTree(session, (layout) => {
@@ -137,6 +149,11 @@ export function ScriptContent({ block, session, readOnly }: PartProps<ScriptBloc
           ? `${block.summary || 'A script from Fantasy Statblocks'}. Atlas keeps it for Fantasy Statblocks and shows a placeholder.`
           : 'This block comes from a newer Atlas. It is kept as it is.'}
       </SettingNote>
+      {drawsTracks && (
+        <Button type="button" variant="outline" size="sm" disabled={readOnly} onClick={replaceWithTracks}>
+          Replace with Track blocks
+        </Button>
+      )}
       {block.type === 'script' && (
         <SelectSetting<string>
           label="Replace with"

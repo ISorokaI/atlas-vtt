@@ -6,16 +6,18 @@ import type { StatblockRole } from '../../model/roleTypes';
 import { LinkedStatblock } from '../../render/LinkedStatblock';
 import { PaneMenuButton } from './PaneMenuButton';
 
-/** A line about the statblock, with at most one action: one step down the radius scale inside the pane. */
-export function PaneBar({ text, action, onAction }: {
+/** A line about the statblock, with at most one action (a button, or a `control` such as a menu): one step down the radius scale inside the pane. */
+export function PaneBar({ text, action, onAction, control }: {
   text: React.ReactNode;
   action?: string | undefined;
   onAction?: (() => void) | undefined;
+  control?: React.ReactNode;
 }): React.JSX.Element {
   return (
     <div className="atlas-sb-pane-bar" role="status">
       <span className="atlas-sb-pane-bar__text">{text}</span>
       {action && onAction && <Button type="button" variant="ghost" size="sm" onClick={onAction}>{action}</Button>}
+      {control}
     </div>
   );
 }
@@ -52,11 +54,11 @@ export function UnreadableState({ line, onOpenNote }: { line: number | null; onO
   );
 }
 
-/** A Fantasy Statblocks statblock, read-only in its own look; editing it with an Atlas template comes later (§6.4). */
-export function FantasyState({ app, notePath, onOpenNote }: { app: App; notePath: string; onOpenNote: () => void }): React.JSX.Element {
+/** A Fantasy Statblocks statblock, read-only in its own look, under the bar that offers to adopt or copy it (§6.4). */
+export function FantasyState({ app, notePath, bar }: { app: App; notePath: string; bar: React.ReactNode }): React.JSX.Element {
   return (
     <div className="atlas-sb-pane-state">
-      <PaneBar text="Made with Fantasy Statblocks. Edit it in its note." action="Open note" onAction={onOpenNote} />
+      {bar}
       <div className="atlas-sb-pane-card">
         <LinkedStatblock app={app} path={notePath} variant="full" />
       </div>

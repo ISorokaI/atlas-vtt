@@ -55,9 +55,14 @@ export function localImage(app: App, reference: string, sourcePath: string): TFi
   return resolved instanceof TFile && /^(png|jpe?g|webp|gif|bmp|svg|avif)$/i.test(resolved.extension) ? resolved : null;
 }
 
+/**
+ * The bestiary a scan reads besides the notes: Fantasy Statblocks' once it
+ * has resolved, and none without the plugin, when native statblocks and
+ * Fantasy Statblocks' notes are read from the notes alone.
+ */
 export function requireResolvedBestiary(): FantasyStatblocksCreature[] {
   const api = getFantasyStatblocksApi();
-  if (!api) throw new Error('Enable Fantasy Statblocks to import creatures.');
+  if (!api) return [];
   if (!api.isResolved()) throw new Error('Fantasy Statblocks is still loading. Try scanning again in a moment.');
   return api.getBestiaryCreatures();
 }

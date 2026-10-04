@@ -19,9 +19,9 @@ interface StatblockFeedMenuProps {
 
 /**
  * The DM screen's menu on a statblock (right-click): **Edit statblock**, which
- * opens the pair for a native statblock and the note for one of Fantasy
- * Statblocks (D9). Without the statblock editor the feed is drawn as before,
- * with no menu and no element of its own.
+ * opens the pair, for a statblock of Fantasy Statblocks too (D9). Without the
+ * statblock editor the feed is drawn as before, with no menu and no element
+ * of its own.
  */
 export function StatblockFeedMenu({ app, path, onOpened, children }: StatblockFeedMenuProps): React.JSX.Element {
   const editorOn = useExperimentalFeature('statblockEditor', SettingsService.forApp(app));

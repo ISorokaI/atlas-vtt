@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldFingerprint } from '../../src/app/services/collectionBundle/fingerprints';
-import { comparableSettings, settingsFromBundle, withPresetRoles, withRoleFolders } from '../../src/app/services/collectionBundle/bundleSettings';
+import { comparableSettings, exportedSettings, folderBelow, importedSettings, settingsFromBundle, withPresetRoles, withRoleFolders } from '../../src/app/services/collectionBundle/bundleSettings';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { GENERIC_STATBLOCK_ROLES } from '../../src/app/statblocks/roles/collectionStatblockRoles';
 import type { SystemPreset } from '../../src/app/types/systemPresetTypes';
@@ -78,5 +78,27 @@ describe('statblock roles in a bundle', () => {
     expect(withRoleFolders(settings, () => undefined)).not.toHaveProperty('statblockRoleFolders');
     const without = { conditions: [] };
     expect(withRoleFolders(without, () => 'x')).toBe(without);
+  });
+});
+
+describe('statblock roles moving between vaults', () => {
+  const hag = { id: 'hag', name: 'Hag', templateId: 'marsh-hag-k7m2qa' };
+  const folders = { hag: 'atlas-vtt/collections/Marsh/Hags', npc: 'People' };
+
+  it('take their folders along only from inside the collection\'s folder', () => {
+    expect(folderBelow('atlas-vtt/collections/Marsh/Hags', 'atlas-vtt/collections/Marsh', 'atlas-vtt/collections/Fen')).toBe('atlas-vtt/collections/Fen/Hags');
+    expect(folderBelow('atlas-vtt/collections/Marsh', 'atlas-vtt/collections/Marsh', 'atlas-vtt/collections/Fen')).toBe('atlas-vtt/collections/Fen');
+    expect(folderBelow('atlas-vtt/collections/Marshland/Hags', 'atlas-vtt/collections/Marsh', 'atlas-vtt/collections/Fen')).toBeUndefined();
+    const exported = exportedSettings({ conditions: [], statblockRoles: [hag], statblockRoleFolders: folders, lootBases: ['Loot.base'] }, BUILT_IN_SYSTEM_PRESETS, {
+      file: () => undefined,
+      folder: (folder) => folderBelow(folder, 'atlas-vtt/collections/Marsh', 'atlas-vtt/collections/Marsh'),
+    });
+    expect(exported).toEqual({ conditions: [], statblockRoles: [hag], statblockRoleFolders: { hag: 'atlas-vtt/collections/Marsh/Hags' }, lootBases: [] });
+  });
+
+  it('arrive in the importing collection\'s folder, starting from the templates\' ids there', () => {
+    const settings = { conditions: [], statblockRoles: [hag], statblockRoleFolders: folders };
+    const imported = importedSettings({ ...collection(settings), id: 'Marsh' }, { collectionId: 'Fen', paths: new Map(), templateIds: new Map([[hag.templateId, 'marsh-hag-c0py01']]) });
+    expect(imported).toEqual({ conditions: [], statblockRoles: [{ ...hag, templateId: 'marsh-hag-c0py01' }], statblockRoleFolders: { hag: 'atlas-vtt/collections/Fen/Hags' } });
   });
 });

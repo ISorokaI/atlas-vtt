@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUNDLE_FORMAT, isSafeBundlePath, manifestProblem } from '../../src/app/services/collectionBundle/bundleFormat';
+import { BUNDLE_FORMAT, bundleFormatFor, isSafeBundlePath, manifestProblem } from '../../src/app/services/collectionBundle/bundleFormat';
 
 function manifest(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -61,5 +61,15 @@ describe('manifest checks', () => {
   it('names the file it refuses to write', () => {
     expect(manifestProblem(manifest({ files: [{ vaultPath: 'atlas-vtt/../.obsidian/app.json', role: 'asset-file' }] })))
       .toBe('This collection export contains a file Atlas will not write: atlas-vtt/../.obsidian/app.json');
+  });
+});
+
+describe('statblock templates', () => {
+  const template = { vaultPath: 'atlas-vtt/statblock-templates/Marsh creature.atlastemplate', role: 'statblock-template', sha256: 'b'.repeat(64) } as const;
+
+  it('travel in format 7, which a bundle says only when it packs one', () => {
+    expect(manifestProblem(manifest({ format: 7, files: [template] }))).toBeNull();
+    expect(bundleFormatFor([template])).toBe(7);
+    expect(bundleFormatFor([{ vaultPath: 'atlas-vtt/assets/goblin.webp', role: 'token-image' }])).toBe(6);
   });
 });

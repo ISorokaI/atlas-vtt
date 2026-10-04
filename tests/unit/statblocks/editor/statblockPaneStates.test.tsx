@@ -69,12 +69,19 @@ describe('the statblock pane\'s edge states', () => {
     expect(editableBlocks(result.container)).toBeGreaterThan(0);
   });
 
-  it('shows a Fantasy Statblocks statblock read-only, with Open note', async () => {
-    const { result, actions } = await pane({ frontmatter: { statblock: true, name: 'Goblin' } });
-    expect(screen.getByTestId('fs-statblock').textContent).toBe(NOTE_PATH);
-    expect(editableBlocks(result.container)).toBe(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Open note' }));
-    expect(actions.openNote).toHaveBeenCalled();
+  it('shows a Fantasy Statblocks statblock read-only while the plugin is on, offering an Atlas template, and Open note once unpaired', async () => {
+    Object.assign(window, { FantasyStatblocks: {} });
+    try {
+      const { result, actions, rerender } = await pane({ frontmatter: { statblock: true, name: 'Goblin' } });
+      expect(screen.getByTestId('fs-statblock').textContent).toBe(NOTE_PATH);
+      expect(editableBlocks(result.container)).toBe(0);
+      expect(screen.getByRole('button', { name: 'Edit with an Atlas template' })).toBeTruthy();
+      rerender({ paired: false });
+      fireEvent.click(screen.getByRole('button', { name: 'Open note' }));
+      expect(actions.openNote).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(window, 'FantasyStatblocks');
+    }
   });
 
   it('offers to create a statblock in a note without one', async () => {

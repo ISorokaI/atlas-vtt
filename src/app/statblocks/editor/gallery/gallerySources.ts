@@ -10,7 +10,7 @@ import {
   TEMPLATE_FORMAT, TEMPLATE_VERSION, isBuiltInTemplateId, type StatblockTemplate, type TemplateId,
 } from '../../model/templateTypes';
 
-export type GallerySourceId = 'system' | 'built-ins' | 'simple' | 'statblock' | 'blank';
+export type GallerySourceId = 'system' | 'built-ins' | 'simple' | 'statblock' | 'fantasy-statblocks' | 'blank';
 
 export interface GallerySource {
   id: GallerySourceId;
@@ -20,13 +20,18 @@ export interface GallerySource {
 /** Atlas' own generic tier, for homebrew and systems without a template of their own. */
 const SIMPLE_TEMPLATE_IDS: readonly TemplateId[] = [GENERIC_CREATURE.id, GENERIC_NPC.id, GENERIC_HAZARD.id];
 
-/** The sources in the order the gallery lists them; "This system" only where the system names templates. */
-export function gallerySources(systemTemplateIds: readonly TemplateId[]): GallerySource[] {
+/**
+ * The sources in the order the gallery lists them; "This system" only where
+ * the system names templates, "From Fantasy Statblocks" only while that
+ * plugin's layouts can be read.
+ */
+export function gallerySources(systemTemplateIds: readonly TemplateId[], fantasyStatblocks = false): GallerySource[] {
   return [
     ...(systemTemplateIds.length > 0 ? [{ id: 'system' as const, label: 'This system' }] : []),
     { id: 'built-ins', label: 'All built-ins' },
     { id: 'simple', label: 'Simple' },
     { id: 'statblock', label: 'From a statblock' },
+    ...(fantasyStatblocks ? [{ id: 'fantasy-statblocks' as const, label: 'From Fantasy Statblocks' }] : []),
     { id: 'blank', label: 'Blank' },
   ];
 }
@@ -47,7 +52,7 @@ export function sourceTemplates(
     case 'system': return found(systemIds);
     case 'built-ins': return [...builtIns];
     case 'simple': return found(SIMPLE_TEMPLATE_IDS);
-    case 'statblock': case 'blank': return [];
+    case 'statblock': case 'fantasy-statblocks': case 'blank': return [];
   }
 }
 

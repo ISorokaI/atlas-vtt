@@ -1,16 +1,18 @@
 import { TFile, normalizePath, type App } from 'obsidian';
 import { AssetService, ATLAS_VTT_DIR, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
 import { linkedFilePath } from '../sceneLinks';
 import type { OpenedBundle } from './bundleReader';
-import { mayRewrite, rewriteContent } from './bundleContent';
-import { withLootBases } from './bundleSettings';
+import { hashHere, mayRewrite, rewriteContent } from './bundleContent';
+import { importedSettings } from './bundleSettings';
 import { assetFingerprint, fieldFingerprint } from './fingerprints';
 import { sha256 } from './hashing';
 import { COLLECTION_FIELDS, type InstallRecord } from './installRecord';
 import type { PlanItemInput } from './importPlan';
 import { planImportPaths, remapPaths } from './pathRemap';
 import { listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
+import { systemPresetsOf } from '../mapCollectionRules';
+import { templateIdMap, withRoleTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 
 /** Where the bundle's files and records go in this vault. */
 export interface ImportTargets {
@@ -29,6 +31,10 @@ export interface ImportTargets {
   shared: Set<string>;
   /** Assets left out because deleting them would trash a file outside Atlas's folder the collection does not own. */
   skipped: SkippedAsset[];
+  /** The bundle's statblock templates, placed by template id (never in `paths`). */
+  templates: readonly PlannedTemplate[];
+  /** Bundle template id → id here, for the bundle's own notes and roles. */
+  templateIds: TemplateIdMap;
 }
 
 export interface SkippedAsset {
@@ -102,6 +108,7 @@ export async function planTargets(
   { manifest, sourceHashes }: OpenedBundle,
   collectionId: string,
   record: InstallRecord | null,
+  templates: readonly PlannedTemplate[] = [],
 ): Promise<ImportTargets> {
   const hiddenFiles = await listHiddenFiles(app, `${COLLECTIONS_DIR}/${collectionId}`);
   const exists = (path: string): boolean => app.vault.getAbstractFileByPath(normalizePath(path)) instanceof TFile || hiddenFiles.has(path);
@@ -163,7 +170,7 @@ export async function planTargets(
     if (source !== target) rewrites.set(source, target);
   }
   const targets: ImportTargets = {
-    collectionId, paths, assetIds, rewrites, shared, skipped: [],
+    collectionId, paths, assetIds, rewrites, shared, skipped: [], templates, templateIds: templateIdMap(templates),
     targetOf: (bundlePath) => paths.get(bundlePath) ?? record?.files[bundlePath]?.target,
     localIdOf: (bundleId) => assetIds.get(bundleId) ?? record?.assets[bundleId]?.localId ?? bundleId,
   };
@@ -178,11 +185,6 @@ export async function planTargets(
 function fileUnit(file: BundleFile): string {
   if (file.owners?.length === 1) return `asset:${file.owners[0]}`;
   return `file:${file.role === 'loot-item' && file.linkedFrom?.length === 1 ? file.linkedFrom[0] : file.vaultPath}`;
-}
-
-/** The bundle's settings as the import stores them: its loot bases at the paths they get in this vault. */
-export function installedSettings(collection: CollectionMetadata, targets: ImportTargets): CollectionMetadata['settings'] {
-  return withLootBases(collection.settings, (path) => targets.paths.get(path) ?? path);
 }
 
 /** Gathers base, mine and theirs for every file, asset record and collection field. */
@@ -209,15 +211,17 @@ export async function gatherImportInputs(
   const moved = new Set<string>();
 
   for (const file of manifest.files) {
-    if (targets.shared.has(file.vaultPath) || onlyUsedBySkipped(file)) continue;
+    // Templates are compared by template id (`planTemplates`), not as files.
+    if (file.role === TEMPLATE_ROLE || targets.shared.has(file.vaultPath) || onlyUsedBySkipped(file)) continue;
     const target = targets.paths.get(file.vaultPath)!;
     const previousPath = record?.files[file.vaultPath] ? undefined : movedFrom.get(target);
     if (previousPath) moved.add(previousPath);
-    const theirs = sourceHashes.get(file.vaultPath) ?? null;
-    let theirsInstalled = theirs ?? undefined;
     const entry = zip.file(zipPathFor(file.vaultPath));
-    if (theirs !== null && entry && mayRewrite(file, targets.rewrites)) {
-      theirsInstalled = await sha256(rewriteContent(file, await entry.async('arraybuffer'), targets.rewrites));
+    const hash = sourceHashes.get(file.vaultPath);
+    const theirs = entry && hash !== undefined ? await hashHere(file, hash, () => entry.async('arraybuffer'), targets.templateIds) : hash ?? null;
+    let theirsInstalled = theirs ?? undefined;
+    if (theirs !== null && entry && mayRewrite(file, targets.rewrites, targets.templateIds)) {
+      theirsInstalled = await sha256(rewriteContent(file, await entry.async('arraybuffer'), targets.rewrites, targets.templateIds));
     }
     items.push({
       key: `file:${file.vaultPath}`, kind: 'file', unit: fileUnit(file),
@@ -252,12 +256,15 @@ export async function gatherImportInputs(
     items.push({ key: `asset:${bundleId}`, kind: 'asset', unit: `asset:${bundleId}`, theirs: null, base: installed, mine: local ? await assetFingerprint(local) : null });
   }
 
+  const presets = systemPresetsOf(app);
+  // Like a note, the settings' roles follow a template that comes in as a copy.
+  const theirsHereCollection = { ...manifest.collection, settings: withRoleTemplates(manifest.collection.settings, targets.templateIds) };
   for (const field of COLLECTION_FIELDS) {
-    const theirs = await fieldFingerprint(manifest.collection, field);
+    const theirs = await fieldFingerprint(theirsHereCollection, field, presets);
     items.push({
       key: `field:${field}`, kind: 'field', unit: `field:${field}`,
-      theirs, base: record?.fields[field] ?? null, mine: existing ? await fieldFingerprint(existing, field) : null,
-      theirsInstalled: field === 'settings' ? await fieldFingerprint({ ...manifest.collection, settings: installedSettings(manifest.collection, targets) }, field) : theirs,
+      theirs, base: record?.fields[field] ?? null, mine: existing ? await fieldFingerprint(existing, field, presets) : null,
+      theirsInstalled: field === 'settings' ? await fieldFingerprint({ ...manifest.collection, settings: importedSettings(manifest.collection, targets) }, field, presets) : theirs,
     });
   }
   return { items, unitAssets };

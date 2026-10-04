@@ -49,9 +49,10 @@ export default defineConfig([
     },
   },
   // Statblocks: only the drag-and-drop wrapper may import dnd-kit, and the pure
-  // core (model, format, expressions, values, the patcher) imports neither
-  // Obsidian nor React. The core rule is used because the obsidianmd preset
-  // owns the TypeScript variant, and overriding it would drop its options.
+  // core (model, format, expressions, values, the patcher, the FS layout
+  // converter) imports neither Obsidian nor React. The core rule is used
+  // because the obsidianmd preset owns the TypeScript variant, and overriding
+  // it would drop its options.
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/app/statblocks/editor/dnd/**"],
@@ -65,6 +66,7 @@ export default defineConfig([
     files: [
       "src/app/statblocks/{model,format,expressions,values}/**/*.{ts,tsx}",
       "src/app/statblocks/notes/{frontmatterPatch,frontmatterBounds,frontmatterModel,yamlSplice,yamlDocument,yamlValueText,listIdentity,patchTypes}.ts",
+      "src/app/statblocks/fs/{fsLayoutToTemplate,fsBlocks,fsBlockParts,fsLeafBlocks,fsCallbackPatterns,fsCallbackSyntax,fsCallbackLexer,fsImportState,fsScripts,fsLayoutTypes,fsTrackReplacement}.ts",
     ],
     rules: {
       "no-restricted-imports": ["error", {

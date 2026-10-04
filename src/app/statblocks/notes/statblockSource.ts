@@ -14,6 +14,7 @@
 
 import { parseYaml, type App, type TFile } from 'obsidian';
 import type { StatblockSource } from '../model/resolvedTypes';
+import type { TemplateId } from '../model/templateTypes';
 import { isPlainRecord } from '../values/fieldValueOf';
 import { cacheFrontmatter } from './frontmatterBounds';
 
@@ -76,6 +77,12 @@ export function statblockSourceFromText(text: string): StatblockSource | null {
 /** The frontmatter the metadata cache holds for a note; never Fantasy Statblocks' bestiary copy. */
 export function cachedFrontmatter(app: App, file: TFile): FrontmatterRecord | undefined {
   return app.metadataCache.getFileCache(file)?.frontmatter;
+}
+
+/** The template a native statblock names, from the metadata cache; null for every other note. */
+export function cachedTemplateId(app: App, file: TFile): TemplateId | null {
+  const source = frontmatterSource(cachedFrontmatter(app, file));
+  return source?.kind === 'atlas' ? source.templateId : null;
 }
 
 /**

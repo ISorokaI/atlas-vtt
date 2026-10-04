@@ -7,8 +7,8 @@ import { blockOf, renderPane } from '../unit/statblocks/editor/paneKit';
 import { pointer, pointIn } from './dragHarness';
 import { frames, useEditorStyles, wait } from './sidePanesHarness';
 
-// Dice links and the template editor's file actions reach the map view and the token link service, whose
-// Node `events` has no browser build; nothing here rolls dice or writes files.
+// Dice links, the template editor's file actions and the creation flow (the fence bar's copy) reach the map
+// view and the token link service, whose Node `events` has no browser build; nothing here rolls dice or writes files.
 vi.mock('../../src/app/services/statblockDiceLinks', () => ({
   attachDiceRolling: () => () => undefined,
   diceLinkProps: () => ({}),
@@ -19,6 +19,10 @@ vi.mock('../../src/app/statblocks/render/shared/useStatblockDiceRolling', () => 
 vi.mock('../../src/app/statblocks/editor/template-editor/templateEditorActions', () => ({
   duplicateTemplate: async () => null,
   newStatblockFromTemplate: async () => undefined,
+}));
+vi.mock('../../src/app/statblocks/editor/create/createFlow', () => ({
+  createStatblock: async () => null,
+  startStatblockCreation: async () => null,
 }));
 vi.mock('../../src/app/services/AssetService', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/app/services/AssetService')>();

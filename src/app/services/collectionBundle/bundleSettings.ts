@@ -2,8 +2,11 @@ import { BUILT_IN_SYSTEM_PRESETS } from '../../gameSystems/builtInPresets';
 import { legacyCollectionResources } from '../../resources/collectionResources';
 import { sameResourceDefinitions } from '../../resources/resourceDefinitions';
 import { collectionStatblockRoles, sameStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
+import { withRoleTemplates, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import type { SystemPreset } from '../../types/systemPresetTypes';
+import type { CollectionMetadata } from '../AssetService';
+import { collectionFolderPath } from '../assetPaths';
 
 /**
  * A collection's settings as bundles compare them. Resources that only restate what the
@@ -63,4 +66,49 @@ export function withPresetRoles(settings: CollectionSettings, presets: readonly 
 /** The settings an import takes from a bundle. One written by an older Atlas names no resources: the vault keeps its own. */
 export function settingsFromBundle(theirs: CollectionSettings, mine: CollectionSettings | undefined): CollectionSettings {
   return theirs.resources || !mine?.resources ? theirs : { ...theirs, resources: mine.resources };
+}
+
+/** `folder` at the same place below `to` when it lies below `from` (or is it); undefined otherwise. */
+export function folderBelow(folder: string, from: string, to: string): string | undefined {
+  if (folder === from) return to;
+  return folder.startsWith(`${from}/`) ? `${to}${folder.slice(from.length)}` : undefined;
+}
+
+/** How a bundle names what the settings point at: a packed file's path, and a folder of the collection's. */
+export interface BundledPaths {
+  /** The bundle's path of a file it packs; undefined for one it leaves behind. */
+  file: (path: string) => string | undefined;
+  /** The bundle's path of a folder inside the collection's; undefined for a folder outside it. */
+  folder: (folder: string) => string | undefined;
+}
+
+/**
+ * The settings an export carries: only the loot bases that travel, roles read from a user
+ * preset written out (`withPresetRoles`), and role folders inside the collection's folder.
+ * A role folder outside it is left out: the recipient's vault may not have it, and new
+ * statblocks of that role then go where Obsidian puts new notes.
+ */
+export function exportedSettings(settings: CollectionSettings, presets: readonly SystemPreset[], paths: BundledPaths): CollectionSettings {
+  return withRoleFolders(withPresetRoles(withLootBases(settings, paths.file), presets), paths.folder);
+}
+
+/** Where an import puts what the bundle's settings point at. */
+export interface ImportedPlaces {
+  collectionId: string;
+  /** Bundle path → vault path. */
+  paths: ReadonlyMap<string, string>;
+  /** Bundle template id → id here. */
+  templateIds: TemplateIdMap;
+}
+
+/**
+ * The bundle's settings as the import stores them: its loot bases at the paths they get in this
+ * vault, its roles starting from the templates' ids here, its role folders in the collection's
+ * folder here (a folder outside the collection is left out).
+ */
+export function importedSettings(collection: CollectionMetadata, places: ImportedPlaces): CollectionSettings {
+  const withPaths = withLootBases(collection.settings, (path) => places.paths.get(path) ?? path);
+  const from = collectionFolderPath(collection.id);
+  const to = collectionFolderPath(places.collectionId);
+  return withRoleFolders(withRoleTemplates(withPaths, places.templateIds), (folder) => folderBelow(folder, from, to));
 }

@@ -10,7 +10,7 @@
 import { Notice, type App } from 'obsidian';
 import { experimentalFeatureOn } from '../../../experimental/experimentalFeatures';
 import { AssetService } from '../../../services/AssetService';
-import { createStatblockNote } from '../../notes/createStatblockNote';
+import { createStatblockNote, type NewStatblockNote } from '../../notes/createStatblockNote';
 import { roleFolder } from '../../roles/collectionStatblockRoles';
 import { openStatblockEditor, type StatblockEditorEntry } from '../openStatblockEditor';
 import { chosenRole, roleChoicesFor, roleTemplateId } from './collectionRoles';
@@ -28,6 +28,8 @@ export interface StatblockCreation {
   from: StatblockEditorEntry;
   /** Called once the token is linked, with the new note's path. */
   onLinked?: ((notePath: string) => void) | undefined;
+  /** Values the statblock starts with (Copy into a new statblock). */
+  values?: NewStatblockNote['values'];
 }
 
 export interface StatblockCreationRequest {
@@ -55,6 +57,7 @@ export async function createStatblock(app: App, creation: StatblockCreation): Pr
       templateId: await roleTemplateId(app, role),
       folder: creation.folder ?? roleFolder(settings, role.id),
       tokenImagePath: creation.tokenImagePath,
+      values: creation.values,
     });
     notePath = file.path;
     if (linked) creation.onLinked?.(notePath);

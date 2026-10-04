@@ -120,9 +120,18 @@ describe('the map token menu and statblocks', () => {
     expect(app.workspace.openLinkText).not.toHaveBeenCalled();
   });
 
-  it('keeps opening the note for a Fantasy Statblocks statblock, and for every statblock while the switch is off', async () => {
-    for (const [path, on] of [[FANTASY, true], [NATIVE, false]] as const) {
-      const { app, rightClick } = setup(path, on);
+  it('opens the pair from Edit Statblock for a Fantasy Statblocks statblock too (D9, M6)', () => {
+    const { app, rightClick } = setup(FANTASY);
+    rightClick();
+    const edit = entryNamed('Edit Statblock');
+    if (edit?.type === 'item') void edit.onClick();
+    expect(openStatblockEditor).toHaveBeenCalledWith(app, { notePath: FANTASY, collectionId: 'marsh', from: 'map' });
+    expect(app.workspace.openLinkText).not.toHaveBeenCalled();
+  });
+
+  it('keeps opening the note for every statblock while the switch is off', async () => {
+    for (const path of [FANTASY, NATIVE]) {
+      const { app, rightClick } = setup(path, false);
       rightClick();
       const edit = entryNamed('Edit Statblock');
       if (edit?.type === 'item') await edit.onClick();

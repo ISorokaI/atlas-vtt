@@ -1,5 +1,8 @@
 import React, { createContext, useContext } from 'react';
 import type { TemplateBlock } from '../model/templateTypes';
+import { useSheet } from './sheetContext';
+import { blockMisfits } from './values/blockMisfits';
+import { MisfitChip } from './values/MisfitChip';
 
 /**
  * How the statblock pane edits values in place (§7.6). Each block view puts
@@ -19,8 +22,20 @@ interface ValueSlotProps {
   children: React.ReactNode;
 }
 
-/** A block's values. The runtime card has no editing context: the values render exactly as they are. */
+/**
+ * A block's values, each one that does not fit its field's type followed by a
+ * chip saying so (§8.8). The runtime card has no editing context: the values
+ * render exactly as they are.
+ */
 export function ValueSlot({ block, children }: ValueSlotProps): React.ReactNode {
   const editing = useContext(ValueEditingContext);
-  return editing ? editing.slot(block, children) : children;
+  const { state } = useSheet();
+  const misfits = blockMisfits(block, state);
+  const values = misfits.length === 0 ? children : (
+    <>
+      {children}
+      {misfits.map((misfit) => <MisfitChip key={misfit.key} misfit={misfit} />)}
+    </>
+  );
+  return editing ? editing.slot(block, values) : values;
 }

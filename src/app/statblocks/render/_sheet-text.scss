@@ -161,6 +161,30 @@
     }
   }
 
+  // A value that does not fit its field's type: "Not a number", in the
+  // chip shape of the card's lists, tinted as a warning.
+  .atlas-sb-misfit {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    margin-left: $spacing-xs;
+    padding: 0 $spacing-s;
+    vertical-align: middle;
+    border-radius: $radius-full;
+    background: color-mix(in oklch, var(--text-warning) 14%, transparent);
+    color: var(--text-normal);
+    font-size: $font-ui-smaller;
+    font-style: normal;
+    font-weight: $font-weight-normal;
+    white-space: nowrap;
+    cursor: help;
+
+    &:focus-visible {
+      outline: 2px solid var(--interactive-accent);
+      outline-offset: 1px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .atlas-sb-chevron {
       transition: none;

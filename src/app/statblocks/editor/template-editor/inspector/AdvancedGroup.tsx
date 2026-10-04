@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '../../../../packages/components/primitives/button';
-import { renameFieldKey } from '../../../model/fieldOps';
 import { FIELD_MEANINGS, type FieldMeaning, type TemplateField } from '../../../model/templateTypes';
 import { useTemplateEditor } from '../editorContext';
 import { MEANING_LABELS } from '../editorGlyphs';
@@ -45,13 +44,11 @@ function KeySetting({ field, readOnly }: { field: TemplateField; readOnly: boole
           anchor={opener}
           field={field}
           template={snapshot.template}
-          statblocks={usage.notes.length}
+          app={app}
+          notes={usage.notes}
+          session={session}
+          announce={announce}
           onClose={close}
-          onRename={(to) => {
-            session.apply((template) => renameFieldKey(template, field.key, to));
-            announce(`Renamed the key ${field.key} to ${to}.`);
-            close();
-          }}
         />
       )}
     </>

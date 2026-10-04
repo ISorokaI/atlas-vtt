@@ -72,12 +72,12 @@ describe('the DM screen\'s statblock menu', () => {
     expect(onOpened).toHaveBeenCalled();
   });
 
-  it('opens the note of a Fantasy Statblocks statblock', () => {
+  it('opens the pair of a Fantasy Statblocks statblock too (D9, M6)', () => {
     withStatblockEditor(app());
     const { onOpened } = feed(FANTASY);
     chooseEdit();
-    expect(harness.app.workspace.openLinkText).toHaveBeenCalledWith('', FANTASY, true);
-    expect(openStatblockEditor).not.toHaveBeenCalled();
+    expect(openStatblockEditor).toHaveBeenCalledWith(app(), { notePath: FANTASY, collectionId: 'marsh', from: 'map' });
+    expect(harness.app.workspace.openLinkText).not.toHaveBeenCalled();
     expect(onOpened).toHaveBeenCalled();
   });
 });

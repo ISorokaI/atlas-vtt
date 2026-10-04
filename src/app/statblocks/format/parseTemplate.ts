@@ -17,7 +17,7 @@ import { isValidTemplateId } from '../model/templateIds';
 import { BlockIdAllocator } from './blockIds';
 import { danglingFieldProblems } from './fieldReferences';
 import { TEMPLATE_KEYS } from './formatKeys';
-import { describeValue, isRecord, own } from './jsonValues';
+import { describeValue, isRecord, own, parseJsonText } from './jsonValues';
 import { ObjectReader } from './objectReader';
 import { parseLayout, type BlockContext } from './parseBlocks';
 import { parseField } from './parseFields';
@@ -39,7 +39,6 @@ export interface ParseTemplateOptions {
   allowBuiltIn?: boolean;
 }
 
-const BYTE_ORDER_MARK = 0xfeff;
 
 /** Reads a template from its file text, or from a value already parsed (built-ins, bundles). */
 export function parseTemplate(input: unknown, options: ParseTemplateOptions = {}): TemplateParseResult {
@@ -56,17 +55,8 @@ function invalid(problem: string): TemplateParseResult {
   return { template: null, status: 'invalid', problems: [problem] };
 }
 
-function parseJson(text: string): { value: unknown } | { error: string } {
-  try {
-    const value: unknown = JSON.parse(text.charCodeAt(0) === BYTE_ORDER_MARK ? text.slice(1) : text);
-    return { value };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : 'unreadable' };
-  }
-}
-
 function readTemplate(input: unknown, allowBuiltIn: boolean, problems: string[]): TemplateParseResult {
-  const parsed = typeof input === 'string' ? parseJson(input) : { value: input };
+  const parsed = typeof input === 'string' ? parseJsonText(input) : { value: input };
   if ('error' in parsed) return invalid(`The file is not valid JSON: ${parsed.error}.`);
   const file = parsed.value;
   if (!isRecord(file)) return invalid(`The file holds ${describeValue(file)}, not a template.`);

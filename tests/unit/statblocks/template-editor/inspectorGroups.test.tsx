@@ -201,6 +201,24 @@ describe('the inspector', () => {
     expect(session.template.layout.blocks.map((block) => block.type)).toEqual(['stat']);
     expect(session.steps).toBe(1);
   });
+
+  it('puts Track blocks in place of a script that drew tracks, in one step', () => {
+    const code = 'for (let i = 0; i < monster.hp; i++) el.createEl("input", { type: "checkbox" });';
+    const session = new FakeSession(template([{ id: 'script01', type: 'script', summary: 'Hp tracks drawn with JavaScript', fs: { type: 'javascript', code } }]));
+    const { frame } = mountEditor(session);
+    fireEvent.click(frame('script01'));
+    fireEvent.click(within(group('Content')).getByRole('button', { name: 'Replace with Track blocks' }));
+    expect(session.template.layout.blocks).toEqual([expect.objectContaining({ type: 'track', field: 'hp', look: 'boxes' })]);
+    expect(fieldOf(session, 'hp')).toMatchObject({ type: 'number' });
+    expect(session.steps).toBe(1);
+  });
+
+  it('offers no Track blocks for a script that draws no tracks', () => {
+    const session = new FakeSession(template([{ id: 'script01', type: 'script', summary: 'Rolls a d20', fs: { type: 'javascript' } }]));
+    const { frame } = mountEditor(session);
+    fireEvent.click(frame('script01'));
+    expect(within(group('Content')).queryByRole('button', { name: 'Replace with Track blocks' })).toBeNull();
+  });
 });
 
 describe('the Rename key dialog', () => {

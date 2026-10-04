@@ -10,8 +10,6 @@ import { ListValueInput } from './ListValueInput';
 import { MarkdownValueInput } from './MarkdownValueInput';
 import { usePaneEdit, type EditTarget, type PaneEditController } from './paneEditContext';
 import { TextValueInput } from './TextValueInput';
-import { WarningDot } from './ValueMarks';
-import { valueProblem } from './valuePatches';
 
 /** The input for one field, by its type group (§7.6). */
 function FieldInput({ field, autoFocus }: { field: TemplateField; autoFocus: boolean }): React.JSX.Element {
@@ -64,16 +62,15 @@ function derivedWords(block: TemplateBlock, pane: PaneEditController): string | 
   return patternInWords(block.fallback, pane.sheet.context.labelOf);
 }
 
-/** A block's values at rest, with what the pane has to say about them: a conflict, or a value kept as typed. */
+/** A block's values at rest, with what the pane has to say about them: a conflict, or how a value is worked out. */
 function PaneSlot({ block, values }: { block: TemplateBlock; values: React.ReactNode }): React.ReactNode {
   const pane = usePaneEdit();
   const fields = pane.spots.byBlock.get(block.id) ?? [];
   if (pane.editing?.blockId === block.id && fields.length) return <BlockEditor block={block} fields={fields} target={pane.editing} />;
+  // A value that does not fit its type has its chip from the renderer, inside `values`.
   const marks = fields.flatMap((field) => {
     const conflict = pane.conflicts.get(field.key);
-    if (conflict) return [<ConflictChip key={field.key} field={field} conflict={conflict} />];
-    const problem = valueProblem(field, pane.read(field).value);
-    return problem ? [<WarningDot key={field.key} problem={problem} />] : [];
+    return conflict ? [<ConflictChip key={field.key} field={field} conflict={conflict} />] : [];
   });
   const words = derivedWords(block, pane);
   if (words) marks.push(<DerivedMark key="derived" words={words} />);

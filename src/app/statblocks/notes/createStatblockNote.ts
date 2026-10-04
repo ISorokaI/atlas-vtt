@@ -9,7 +9,7 @@ import { ensureFolder } from '../../plugin/vaultFolders';
 import { SettingsService } from '../../services/SettingsService';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
-import type { TemplateId } from '../model/templateTypes';
+import type { FieldValue, TemplateId } from '../model/templateTypes';
 import { applyFrontmatterPatches } from './frontmatterPatch';
 import type { NotePatch } from './patchTypes';
 import { STATBLOCK_FENCE_LANGUAGE, TEMPLATE_KEY } from './statblockSource';
@@ -21,6 +21,8 @@ export interface NewStatblockNote {
   folder?: string | undefined;
   /** The token the statblock is for: its art becomes the note's `image`, and the token is linked to the note. */
   tokenImagePath?: string | undefined;
+  /** Values the statblock starts with (a fence copied into a native note); the markers, `name` and a token's `image` win. */
+  values?: Readonly<Record<string, FieldValue>> | undefined;
 }
 
 export interface CreatedStatblockNote {
@@ -51,13 +53,15 @@ async function targetFolder(app: App, folder: string | undefined): Promise<TFold
 }
 
 /** The text of a new statblock note: its frontmatter, written by the patcher, and the note fence when asked for. */
-export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templateId' | 'tokenImagePath'>, withFence: boolean): string {
-  const set = (key: string, next: string | boolean): NotePatch => ({ op: 'set', path: [key], base: undefined, next });
+export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templateId' | 'tokenImagePath' | 'values'>, withFence: boolean): string {
+  const set = (key: string, next: FieldValue): NotePatch => ({ op: 'set', path: [key], base: undefined, next });
+  const own = ['statblock', TEMPLATE_KEY, 'name', ...(note.tokenImagePath ? ['image'] : [])];
   const patches = [
     set('statblock', true),
     set(TEMPLATE_KEY, note.templateId),
     set('name', note.name.trim() || FALLBACK_NAME),
     ...(note.tokenImagePath ? [set('image', note.tokenImagePath)] : []),
+    ...Object.entries(note.values ?? {}).filter(([key]) => !own.includes(key)).map(([key, value]) => set(key, value)),
   ];
   const body = withFence ? `\`\`\`${STATBLOCK_FENCE_LANGUAGE}\n\`\`\`\n` : '';
   const result = applyFrontmatterPatches(body, patches);

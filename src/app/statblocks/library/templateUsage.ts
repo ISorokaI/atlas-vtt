@@ -8,7 +8,7 @@ import type { App } from 'obsidian';
 import { AssetService } from '../../services/AssetService';
 import { systemPresetsOf } from '../../services/mapCollectionRules';
 import type { TemplateId } from '../model/templateTypes';
-import { cachedFrontmatter, frontmatterSource } from '../notes/statblockSource';
+import { cachedTemplateId } from '../notes/statblockSource';
 import { collectionStatblockRoles } from '../roles/collectionStatblockRoles';
 
 export interface TemplateUsage {
@@ -21,8 +21,8 @@ export interface TemplateUsage {
 /** The template each native statblock names, by note path; from the metadata cache. */
 function nativeTemplates(app: App): Array<{ path: string; templateId: TemplateId }> {
   return app.vault.getMarkdownFiles().flatMap((file) => {
-    const source = frontmatterSource(cachedFrontmatter(app, file));
-    return source?.kind === 'atlas' ? [{ path: file.path, templateId: source.templateId }] : [];
+    const templateId = cachedTemplateId(app, file);
+    return templateId === null ? [] : [{ path: file.path, templateId }];
   });
 }
 

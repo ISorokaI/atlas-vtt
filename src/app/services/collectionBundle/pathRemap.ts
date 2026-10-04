@@ -1,9 +1,10 @@
 import { COLLECTIONS_DIR, ATLAS_VTT_DIR, GLOBAL_ASSETS_DIR } from '../AssetService';
-import { REUSABLE_FILE_ROLES, type BundleFile, type BundleFileRole } from './bundleFormat';
+import { REUSABLE_FILE_ROLES, TEMPLATE_ROLE, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { sceneThumbnailPath } from './collectionReferences';
 import { baseName, parentPath } from '../../utils/pathUtils';
 import { snapshotFolderFor } from '../../snapshots/snapshotPaths';
 import { mapStrings } from '../../utils/mapStrings';
+import { TEMPLATE_FOLDER, templateFileName, templatePathIn } from '../../statblocks/library/templatePaths';
 
 const GLOBAL_ASSETS_PREFIX = `${GLOBAL_ASSETS_DIR}/`;
 
@@ -81,6 +82,26 @@ export function freePathIn(folder: string, name: string, isTaken: (path: string)
   return path;
 }
 
+/**
+ * Where an import puts statblock templates (§4.3): in the library folder, never in the
+ * collection, under their own name; a name another file has takes the collection's name in
+ * brackets ("Marsh creature (Fen)"), then a number. `isTaken` answers for the vault in any
+ * letter case; every path given out is taken from then on.
+ */
+export function templatePlacer(collectionName: string, isTaken: (path: string) => boolean): (name: string) => string {
+  const claimed = new Set<string>();
+  const taken = (path: string): boolean => claimed.has(path.toLowerCase()) || isTaken(path);
+  return (name) => {
+    const stem = templateFileName(name);
+    const marked = `${stem} (${templateFileName(collectionName)})`;
+    let path = templatePathIn(TEMPLATE_FOLDER, stem);
+    if (taken(path)) path = templatePathIn(TEMPLATE_FOLDER, marked);
+    for (let n = 2; taken(path); n++) path = templatePathIn(TEMPLATE_FOLDER, `${marked} ${n}`);
+    claimed.add(path.toLowerCase());
+    return path;
+  };
+}
+
 /** The scene map among `mapPaths` that a scene thumbnail or snapshot file belongs to, found by where it lies. */
 export function sceneMapOf(file: BundleFile, mapPaths: readonly string[]): string | undefined {
   switch (file.role) {
@@ -122,7 +143,8 @@ export interface ImportPathRules {
  * the target collection's folder, shared artwork in `atlas-vtt/assets/` keeps
  * its path when that is free or holds the same content, and statblock notes
  * and artwork the vault already has are reused where they are. Everything else
- * is copied into the collection under a free name.
+ * is copied into the collection under a free name. Statblock templates are left
+ * out: they are matched by template id, not by path.
  */
 export function planImportPaths(files: readonly BundleFile[], rules: ImportPathRules): PathMap {
   const plan = new Map<string, string>();
@@ -143,6 +165,8 @@ export function planImportPaths(files: readonly BundleFile[], rules: ImportPathR
   const unplaced: Array<{ file: BundleFile; folder: string }> = [];
   const besideMaps: Array<{ file: BundleFile; map: string }> = [];
   for (const file of files) {
+    // Templates are placed by their id (`templatePlacer`), not by their path.
+    if (file.role === TEMPLATE_ROLE) continue;
     const path = file.vaultPath;
     const map = sceneMapOf(file, mapPaths);
     if (map) besideMaps.push({ file, map });

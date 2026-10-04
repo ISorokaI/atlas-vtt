@@ -3,8 +3,10 @@ import { isRecord } from '../assetMetadataGuards';
 import { SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from '../statblockImageKeys';
 
-/** Bumped when the zip layout or manifest shape changes. */
-export const BUNDLE_FORMAT = 6;
+/** Bumped when the zip layout or manifest shape changes: the newest format this version reads and writes. */
+export const BUNDLE_FORMAT = 7;
+/** What a bundle without statblock templates says, so Atlas versions that stop at format 6 still import it. */
+const FORMAT_WITHOUT_TEMPLATES = 6;
 /** Oldest format this version still imports. */
 const OLDEST_BUNDLE_FORMAT = 2;
 export const BUNDLE_MANIFEST = 'manifest.json';
@@ -16,13 +18,25 @@ export const BUNDLE_FILES_DIR = 'files';
  * `linked-note` is a note a scene's pins or characters open, or one such a note links to, however far along;
  * `note-attachment` is an image or PDF one of those notes shows (format 5); `cover` is the collection's cover image (format 4).
  * `loot-base` is a `.base` file the collection's settings pick as a loot source and `loot-item` a file the base
- * holds (format 6).
+ * holds (format 6). `statblock-template` is a statblock template the collection's roles or its notes name
+ * (format 7): it is placed by its template id in the library folder, never at its path.
  */
 const BUNDLE_FILE_ROLES = [
   'asset-file', 'thumbnail', 'scene-map', 'scene-thumbnail', 'scene-snapshot', 'scene-snapshot-thumbnail', 'background', 'token-image', 'statblock-note', 'statblock-image',
-  'linked-note', 'note-attachment', 'cover', 'loot-base', 'loot-item',
+  'linked-note', 'note-attachment', 'cover', 'loot-base', 'loot-item', 'statblock-template',
 ] as const;
 export type BundleFileRole = typeof BUNDLE_FILE_ROLES[number];
+
+/** Markdown notes, whatever brought them along: any of them may be a native statblock naming its template. */
+export const NOTE_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['statblock-note', 'linked-note', 'loot-item']);
+
+/** Statblock templates, which are matched by their template id and not by their path. */
+export const TEMPLATE_ROLE = 'statblock-template' satisfies BundleFileRole;
+
+/** The format a manifest says: 7 only when the bundle packs a statblock template. */
+export function bundleFormatFor(files: readonly BundleFile[]): number {
+  return files.some((file) => file.role === TEMPLATE_ROLE) ? BUNDLE_FORMAT : FORMAT_WITHOUT_TEMPLATES;
+}
 
 /** Statblock notes and their artwork: files an importing vault may already have, and then reuses in place. */
 export const REUSABLE_FILE_ROLES: ReadonlySet<BundleFileRole> = new Set<BundleFileRole>(['statblock-note', 'statblock-image']);

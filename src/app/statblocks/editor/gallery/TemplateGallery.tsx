@@ -10,6 +10,8 @@ import { TemplateLibrary } from '../../library/TemplateLibrary';
 import { useTemplateLibrary } from '../../library/useTemplateLibrary';
 import type { StatblockRole } from '../../model/roleTypes';
 import type { TemplateId } from '../../model/templateTypes';
+import { fsLayoutItems, offersFsLayouts } from '../fs-import/fsGalleryItems';
+import { showImportOutcome } from '../fs-import/layoutImportFlow';
 import { createFromPick, type CreatedTemplate, type GalleryPick } from './galleryActions';
 import { GallerySourceNav } from './GallerySourceNav';
 import { UseForField } from './UseForField';
@@ -44,7 +46,7 @@ type Chosen = Partial<Record<GallerySourceId, string>>;
  */
 export function TemplateGallery({ app, doc, roles, systemTemplateIds, onCreated, onClose }: TemplateGalleryProps): React.JSX.Element {
   const library = useTemplateLibrary(app);
-  const sources = useMemo(() => gallerySources(systemTemplateIds), [systemTemplateIds]);
+  const sources = useMemo(() => gallerySources(systemTemplateIds, offersFsLayouts(app)), [app, systemTemplateIds]);
   const [source, setSource] = useState<GallerySourceId>(() => firstSource(sources));
   const [chosen, setChosen] = useState<Chosen>({});
   const [useFor, setUseFor] = useState<string | null | undefined>(undefined);
@@ -56,11 +58,13 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onCreated,
   const windowVariants = useDialogWindowVariants();
 
   const builtIns = useMemo(() => (library?.templates ?? []).filter((entry) => entry.builtIn), [library]);
+  const fsItems = useMemo(() => (source === 'fantasy-statblocks' ? fsLayoutItems(app) : []), [app, source]);
   const items = useMemo(() => {
     if (source === 'blank') return [BLANK_ITEM];
+    if (source === 'fantasy-statblocks') return fsItems;
     const lookup = (id: TemplateId): ReturnType<TemplateLibrary['get']> => TemplateLibrary.forApp(app).get(id);
     return sourceTemplates(source, builtIns, systemTemplateIds, lookup).map(templateItem);
-  }, [app, source, builtIns, systemTemplateIds]);
+  }, [app, source, builtIns, systemTemplateIds, fsItems]);
   const notes = useMemo(() => (source === 'statblock' ? statblockNoteChoices(app) : []), [app, source]);
   const selected = chosen[source] ?? items[0]?.id ?? null;
 
@@ -71,6 +75,10 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onCreated,
     if (source === 'statblock') {
       const template = statblockTemplate(noteValues(app, id));
       return template ? { kind: 'statblock', path: id, template } : null;
+    }
+    if (source === 'fantasy-statblocks') {
+      const layout = fsItems.find((item) => item.id === id)?.layout;
+      return layout ? { kind: 'fs-layout', layout } : null;
     }
     const entry = TemplateLibrary.forApp(app).get(id);
     return entry ? { kind: 'template', entry } : null;
@@ -96,6 +104,8 @@ export function TemplateGallery({ app, doc, roles, systemTemplateIds, onCreated,
       .then(async (created) => {
         await onCreated(created, roleOf(target));
         onClose();
+        // The import's report, and the batch for the statblocks its layout draws (§6.2).
+        if (created.fsImport) showImportOutcome(app, doc, created.fsImport.layout, created.fsImport.imported);
       })
       .catch((error: unknown) => {
         console.error('[Atlas] Creating a template from the gallery failed:', error);
