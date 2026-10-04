@@ -75,9 +75,25 @@ export const TOOLBAR_CONTROLS = [
 
 export type ToolbarControlId = (typeof TOOLBAR_CONTROLS)[number]['id'];
 
+/**
+ * The undo/redo bar, which the editor hides and shows as one unit like a
+ * control. It is a bar of its own left of the main toolbar, never part of the
+ * main bar's order. Never rename its id: stored layouts use it.
+ */
+export const UNDO_BAR = {
+  id: 'undo', label: 'Undo and redo', hotkey: 'undo', dmOnly: true, hideable: true,
+  description: 'Step back through your changes on the map, or forward again.',
+} as const satisfies ToolbarControlDefinition;
+
+export const UNDO_BAR_ID = UNDO_BAR.id;
+
+/** What the editor can hide and show: the main toolbar's controls and the undo/redo bar. */
+export type ToolbarUnitId = ToolbarControlId | typeof UNDO_BAR_ID;
+
 export const DEFAULT_TOOLBAR_ORDER: readonly ToolbarControlId[] = TOOLBAR_CONTROLS.map(control => control.id);
 
 const CONTROLS_BY_ID = new Map<string, ToolbarControlDefinition>(TOOLBAR_CONTROLS.map(control => [control.id, control]));
+const UNITS_BY_ID = new Map<string, ToolbarControlDefinition>([...CONTROLS_BY_ID, [UNDO_BAR_ID, UNDO_BAR]]);
 
 export function isToolbarControlId(id: string): id is ToolbarControlId {
   return CONTROLS_BY_ID.has(id);
@@ -89,9 +105,23 @@ export function toolbarControl(id: ToolbarControlId): ToolbarControlDefinition {
   return control;
 }
 
-/** Whether the user may hide the control; false for the Command palette and for ids this version does not know. */
+export function isToolbarUnitId(id: string): id is ToolbarUnitId {
+  return UNITS_BY_ID.has(id);
+}
+
+/** A control of the main toolbar, or the undo/redo bar. */
+export function toolbarUnit(id: ToolbarUnitId): ToolbarControlDefinition {
+  const unit = UNITS_BY_ID.get(id);
+  if (!unit) throw new Error(`Unknown toolbar unit: ${id}`);
+  return unit;
+}
+
+/**
+ * Whether the user may hide the control or the undo/redo bar; false for the
+ * Command palette and for ids this version does not know.
+ */
 export function isHideableToolbarControl(id: string): boolean {
-  return CONTROLS_BY_ID.get(id)?.hideable ?? false;
+  return UNITS_BY_ID.get(id)?.hideable ?? false;
 }
 
 /** The controls a view offers, gated like its hotkeys (`availableHotkeys`). */
