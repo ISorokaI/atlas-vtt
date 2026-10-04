@@ -1,5 +1,5 @@
 import { COLLECTIONS_DIR, ATLAS_VTT_DIR, GLOBAL_ASSETS_DIR } from '../AssetService';
-import { ID_MATCHED_ROLES, REUSABLE_FILE_ROLES, SNAPSHOT_FILE_ROLES, TEMPLATE_ROLE, type BundleFile, type BundleFileRole } from './bundleFormat';
+import { ID_MATCHED_ROLES, REUSABLE_FILE_ROLES, SNAPSHOT_FILE_ROLES, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { sceneThumbnailPath } from './collectionReferences';
 import { baseName, parentPath } from '../../utils/pathUtils';
 import { sceneSnapshotFolder } from '../../snapshots/snapshotPaths';

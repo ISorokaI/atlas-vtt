@@ -3,6 +3,12 @@
 - Statblocks show without the Fantasy Statblocks plugin: Atlas draws them itself on token hovers, in the DM screen and in the asset manager
 - Statblock templates for 5E (2014 and 2024), Cairn, Draw Steel and Fate, and general ones for creatures, NPCs and hazards
 
+## Important changes
+
+- Your library now syncs between devices with Obsidian Sync, Remotely Save and Self-hosted LiveSync. Tokens, encounters, collection settings, game system presets, scene snapshots and loot history used to sit in a hidden folder these tools skip. Each device moves its own once when Atlas starts, so update Atlas on every device before editing your library there
+- With Obsidian Sync, turn on "Sync all other types" in its settings: Atlas keeps its library in JSON files, which Obsidian Sync leaves out otherwise
+- Atlas' own settings (dice, hotkeys, experimental features) now live with the plugin's settings and sync whenever you sync plugin settings
+
 ## Improved
 
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike

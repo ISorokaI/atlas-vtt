@@ -1,7 +1,7 @@
 import { TFile, normalizePath, type App } from 'obsidian';
 import { payloadBytes } from './recordPayload';
 import { AssetService, ATLAS_VTT_DIR, COLLECTIONS_DIR, GLOBAL_ASSETS_DIR, type Asset, type CollectionMetadata } from '../AssetService';
-import { ID_MATCHED_ROLES, SNAPSHOT_FILE_ROLES, TEMPLATE_ROLE, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
+import { ID_MATCHED_ROLES, SNAPSHOT_FILE_ROLES, isSafeBundlePath, zipPathFor, type BundleFile } from './bundleFormat';
 import { sceneOfSnapshot } from './bundleSnapshots';
 import { linkedFilePath } from '../sceneLinks';
 import type { OpenedBundle } from './bundleReader';
