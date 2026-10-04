@@ -135,7 +135,7 @@ export function GridMeasurementTab({
       <div className="atlas-csm-field">
         <label className="atlas-csm-label">{t('csm.grid.mode')}</label>
         <SegmentedControl
-          ariaLabel={t('csm.grid.mode')}
+          ariaLabel={t('csm.grid.modeAria')}
           value={gridDefaults.measurementMode}
           options={MEASUREMENT_MODES}
           onChange={(mode) => updateField('measurementMode', mode)}

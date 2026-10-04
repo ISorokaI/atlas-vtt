@@ -24,6 +24,7 @@ export const am: Translation = {
   'am.menu.deleteItemTitle': 'Удаление элемента',
   'am.menu.deleteItems': { one: 'Удалить {count} элемент', few: 'Удалить {count} элемента', many: 'Удалить {count} элементов', other: 'Удалить {count} элемента' },
   'am.menu.deleteItemsTitle': 'Удаление элементов',
+  'am.manage.deleteItems': { one: 'Удалить {count} элемент', few: 'Удалить {count} элемента', many: 'Удалить {count} элементов', other: 'Удалить {count} элемента' },
   'am.menu.descending': 'По убыванию',
   'am.menu.editToken': 'Изменить токен',
   'am.menu.linkStatblock': 'Привязать статблок',

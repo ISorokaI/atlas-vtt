@@ -48,6 +48,7 @@ export const csm: Translation = {
   'csm.grid.max': 'Макс.',
   'csm.grid.metric': 'Расстояние',
   'csm.grid.mode': 'Режим измерения',
+  'csm.grid.modeAria': 'Режим измерения',
   'csm.grid.noBands': 'Дистанций нет',
   'csm.grid.removeBand': 'Удалить дистанцию',
   'csm.grid.unit.custom': 'Свои',

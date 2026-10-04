@@ -3,6 +3,7 @@ import type { Translation } from '../../types';
 export const image: Translation = {
   'image.copy': 'Копировать изображение',
   'image.openDefault': 'Открыть в приложении по умолчанию',
+  'image.openDefaultMenu': 'Открыть в приложении по умолчанию',
   'image.display': 'Показать игрокам',
   'image.copied': 'Изображение скопировано',
   'image.copyFailed': 'Не удалось скопировать изображение',

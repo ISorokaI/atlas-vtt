@@ -3,6 +3,7 @@ import type { Message } from '../../types';
 export const image = {
   'image.copy': 'Copy image',
   'image.openDefault': 'Open in default app',
+  'image.openDefaultMenu': 'Open in Default App',
   'image.display': 'Display on player view',
   'image.copied': 'Image copied to clipboard',
   'image.copyFailed': 'Failed to copy image',

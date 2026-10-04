@@ -167,7 +167,7 @@ const TagManager: React.FC<TagManagerProps> = ({
       { type: 'item', label: t('common.edit'), icon: 'edit', onClick: () => handleEdit(item) },
       {
         type: 'item',
-        label: targets.length > 1 ? t('am.menu.deleteItems', { count: targets.length }) : t('common.delete'),
+        label: targets.length > 1 ? t('am.manage.deleteItems', { count: targets.length }) : t('common.delete'),
         icon: 'trash',
         destructive: true,
         onClick: () => { void deleteItems(targets); },

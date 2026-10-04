@@ -188,7 +188,7 @@ export class ImageDisplayService {
       const entries: ContextMenuEntry[] = [
         { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
         { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
-        { type: 'item', label: t('image.openDefault'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
+        { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
       ];
 
       openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });

@@ -33,7 +33,7 @@ export function LootRollBar({ rarityCounts, excluded, onExcludedChange, count, a
           {RARITY_TONES.map((tone) => {
             const on = !excluded.has(tone);
             const toneCount = rarityCounts.get(tone) ?? 0;
-            const values = { count: toneCount, rarity: RARITY_LABELS[tone] };
+            const values = { count: toneCount, rarity: RARITY_LABELS[tone].toLowerCase() };
             return (
               <LabelTooltip key={tone} describe label={on ? t('loot.rarityOn', values) : t('loot.rarityOff', values)}>
                 <button

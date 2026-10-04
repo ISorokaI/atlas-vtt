@@ -48,6 +48,7 @@ export const csm = {
   'csm.grid.max': 'Max',
   'csm.grid.metric': 'Metric',
   'csm.grid.mode': 'Measurement Mode',
+  'csm.grid.modeAria': 'Measurement mode',
   'csm.grid.noBands': 'No range bands defined',
   'csm.grid.removeBand': 'Remove band',
   'csm.grid.unit.custom': 'Custom',
