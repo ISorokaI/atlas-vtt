@@ -4,7 +4,8 @@
  * into an empty Section or Row. There are no edge zones: a drop never makes
  * a Side by side block ("Put side by side" is a menu row and a key). Every
  * target is checked with the catalogue's `canContain` and never lies inside
- * the block being moved. Pure: the boxes are measured elsewhere.
+ * the block being moved; a closed tab draws nothing, so it takes no drop.
+ * Pure: the boxes are measured elsewhere.
  */
 
 import { canContain, type ParentType } from '../../model/blockCatalogue';
@@ -111,6 +112,8 @@ function candidatesIn(scene: DropScene, subject: DragSubject, block: TemplateBlo
   const box = scene.boxes.get(block.id);
   const found = findBlock(scene.layout.blocks, block.id);
   if (!box || !found) return [];
+  // Over a tab strip: Tabs take Sections only, and only the open tab's Section is drawn to drop into.
+  if (block.type === 'tabs' && !subject.types.every((type) => canContain('tabs', type))) return [{ kind: 'refused' }];
   if (isContainerBlock(block)) {
     const inside = drawnOf(scene, block.blocks).filter((entry) => entry.block.id !== subject.movingId);
     if (inside.length === 0 && block.blocks.every((child) => child.id === subject.movingId)) {

@@ -40,7 +40,7 @@ describe('the insert menu\'s items', () => {
   });
 
   it('turns blocks only into blocks of their kind', () => {
-    expect(turnIntoTypes('row')).toEqual(['section']);
+    expect(turnIntoTypes('row')).toEqual(['section', 'tabs']);
     expect(turnIntoTypes('stat')).not.toContain('row');
     expect(turnIntoTypes('stat')).toContain('track');
   });

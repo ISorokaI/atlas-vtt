@@ -108,6 +108,7 @@ export function PaneCanvas(props: PaneCanvasProps): React.JSX.Element {
         app={app}
         sourcePath={notePath}
         folded={editor.controller.foldedSet}
+        reveal={editor.controller.editing?.blockId ?? null}
       />
       {writable && <FoldedChips folded={folded} onUnfold={(blockId) => setUnfolded(blockId, true)}>{footer}</FoldedChips>}
       {props.children}

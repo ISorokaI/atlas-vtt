@@ -11,6 +11,7 @@ function context(blocks: TemplateBlock[], blockId: string, extra: Partial<BlockM
   return {
     session: new FakeSession(shown), template: shown, selection: [blockId], blockId, editable: true, canPaste: true,
     run: vi.fn(), turnInto: vi.fn(), openInsert: vi.fn(), moveInto: vi.fn(), openSettings: vi.fn(), copyText: vi.fn(),
+    addTab: vi.fn(), splitIntoTabs: vi.fn(),
     ...extra,
   };
 }
@@ -88,5 +89,34 @@ describe('blockMenu', () => {
     expect(moveInto).toHaveBeenCalledWith('section1');
     expect(findAction(blockMenu(context(layout.blocks, 'title001')), 'ungroup')).toBeNull();
     expect(findAction(blockMenu(context(layout.blocks, 'section1')), 'ungroup')).not.toBeNull();
+  });
+
+  it('offers Add tab on a Tabs block, and Split into tabs on a list wherever Tabs may stand', () => {
+    const blocks: TemplateBlock[] = [
+      { id: 'tabs0001', type: 'tabs', blocks: [{ id: 'tab00001', type: 'section', heading: 'Tab 1', blocks: [] }] },
+      { id: 'entries1', type: 'entries', field: 'actions' },
+      { id: 'row00001', type: 'row', blocks: [{ id: 'tags0001', type: 'tags', field: 'traits', look: 'comma' }] },
+      { id: 'stat0001', type: 'stat', field: 'ac', look: 'run-in' },
+    ];
+    const addTab = vi.fn();
+    const tabsMenu = blockMenu(context(blocks, 'tabs0001', { addTab }));
+    findAction(tabsMenu, 'add-tab')?.run();
+    expect(addTab).toHaveBeenCalledOnce();
+    expect(findAction(tabsMenu, 'split-into-tabs')).toBeNull();
+
+    const splitIntoTabs = vi.fn();
+    const listMenu = blockMenu(context(blocks, 'entries1', { splitIntoTabs }));
+    expect(labels(submenu(listMenu, 'arrange'))).toContain('Split into tabs');
+    findAction(listMenu, 'split-into-tabs')?.run();
+    expect(splitIntoTabs).toHaveBeenCalledOnce();
+    expect(findAction(blockMenu(context(blocks, 'tags0001')), 'split-into-tabs')).toMatchObject({ disabled: true });
+    expect(findAction(blockMenu(context(blocks, 'stat0001')), 'split-into-tabs')).toBeNull();
+    expect(findAction(blockMenu(context(blocks, 'stat0001')), 'add-tab')).toBeNull();
+  });
+
+  it('turns a tab\'s Section into nothing a Tabs block does not take', () => {
+    const blocks: TemplateBlock[] = [{ id: 'tabs0001', type: 'tabs', blocks: [{ id: 'tab00001', type: 'section', blocks: [] }] }];
+    expect(labels(submenu(blockMenu(context(blocks, 'tab00001')), 'turn-into'))).toEqual([]);
+    expect(labels(submenu(blockMenu(context(blocks, 'tabs0001')), 'turn-into'))).toEqual(['Section', 'Side by side']);
   });
 });

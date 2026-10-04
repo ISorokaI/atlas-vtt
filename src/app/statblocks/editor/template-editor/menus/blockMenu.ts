@@ -7,10 +7,14 @@
  * twelve rows: quick choices give way first.
  */
 
-import { AUTHORABLE_BLOCK_TYPES, blockSpec, type AuthorableBlockType } from '../../../model/blockCatalogue';
-import { childrenOf } from '../../../model/treeEdit';
+import { AUTHORABLE_BLOCK_TYPES, blockSpec, canContain, type AuthorableBlockType } from '../../../model/blockCatalogue';
+import { childrenOf, parentTypeOf } from '../../../model/treeEdit';
 import { boundField, findBlock } from '../../../model/treeQueries';
-import { isContainerBlock, type BlockType, type StatblockTemplate, type TemplateBlock } from '../../../model/templateTypes';
+import { isListBlockType } from '../../../model/treeTabs';
+import { turnInto } from '../../../model/turnInto';
+import {
+  isContainerBlock, isContainerType, type BlockType, type StatblockTemplate, type TemplateBlock,
+} from '../../../model/templateTypes';
 import { MAX_MENU_ROWS, rowCount, SEPARATOR, tidy, type SurfaceAction } from '../../interaction/surfaceActions';
 import type { InsertPlace } from '../blockActions';
 import { blockName, placeName } from '../blockNames';
@@ -21,11 +25,17 @@ import type { EditorSession } from '../sessionTypes';
 import { shortcutText } from '../shortcutText';
 import { quickChoices } from './quickChoices';
 
-/** What a block may turn into: a container into the other container, any other block into another such block. */
+/** What a block may turn into: a container into another container, any other block into another such block. */
 export function turnIntoTypes(type: BlockType): AuthorableBlockType[] {
-  const container = type === 'section' || type === 'row';
-  return AUTHORABLE_BLOCK_TYPES.filter((candidate) =>
-    candidate !== type && (candidate === 'section' || candidate === 'row') === container);
+  const container = isContainerType(type);
+  return AUTHORABLE_BLOCK_TYPES.filter((candidate) => candidate !== type && isContainerType(candidate) === container);
+}
+
+/** The types a block turns into where it stands: a container only into one its place and its children allow. */
+function turnableTypes(template: StatblockTemplate, block: TemplateBlock): AuthorableBlockType[] {
+  const types = turnIntoTypes(block.type);
+  if (!isContainerBlock(block)) return types;
+  return types.filter((type) => turnInto(template.layout, block.id, type, template.fields).ok);
 }
 
 export interface BlockMenuContext {
@@ -43,6 +53,20 @@ export interface BlockMenuContext {
   moveInto: (containerId: string) => void;
   openSettings?: (() => void) | undefined;
   copyText: (text: string) => void;
+  /** A Tabs block's Add tab. */
+  addTab?: (() => void) | undefined;
+  /** A list's Split into tabs. */
+  splitIntoTabs?: (() => void) | undefined;
+}
+
+/** Add tab on a Tabs block, Split into tabs (in Arrange) on a list. */
+function tabRows(ctx: BlockMenuContext, block: TemplateBlock, parentId: string | null): { head: SurfaceAction[]; arrange: SurfaceAction[] } {
+  const { addTab, splitIntoTabs, editable } = ctx;
+  if (block.type === 'tabs' && addTab) return { head: [item('add-tab', 'Add tab', addTab, { icon: 'plus', disabled: !editable })], arrange: [] };
+  if (!isListBlockType(block.type) || !splitIntoTabs) return { head: [], arrange: [] };
+  const parentType = parentTypeOf(ctx.template.layout, parentId);
+  const fits = parentType !== null && canContain(parentType, 'tabs');
+  return { head: [], arrange: [item('split-into-tabs', 'Split into tabs', splitIntoTabs, { disabled: !editable || !fits })] };
 }
 
 function item(id: string, label: string, run: () => void, extra: Partial<Extract<SurfaceAction, { kind: 'item' }>> = {}): SurfaceAction {
@@ -85,10 +109,12 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   const what = many ? `${ctx.selection.length} blocks` : blockName(block, template.fields);
   const ordered = inSiblingOrder(template.layout, ctx.selection);
   const last = ordered.at(-1) ?? ctx.blockId;
-  const turnable = editable && !many ? turnIntoTypes(block.type) : [];
+  const turnable = editable && !many ? turnableTypes(template, block) : [];
+  const tabs = many ? { head: [], arrange: [] } : tabRows(ctx, block, found.parentId);
   const head: SurfaceAction[] = [
     ...(ctx.openSettings && !many ? [item('settings', 'Settings…', ctx.openSettings, { icon: 'settings-2', hint: shortcutText(['Shift'], '⏎') })] : []),
     ...(editable && !many && labelTargetOf(block, template.fields) ? [item('rename', 'Rename', () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
+    ...tabs.head,
   ];
   const body: SurfaceAction[] = [
     SEPARATOR,
@@ -110,6 +136,7 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
         item('group', 'Group into section', () => ctx.run('group'), { hint: shortcutText(['Mod'], 'G'), disabled: !editable }),
         item('side-by-side', 'Put side by side', () => ctx.run('side-by-side'), { hint: shortcutText(['Mod', 'Alt'], 'R'), disabled: !editable }),
         ...(isContainerBlock(block) ? [item('ungroup', 'Ungroup', () => ctx.run('ungroup'), { hint: shortcutText(['Mod', 'Shift'], 'G'), disabled: !editable })] : []),
+        ...tabs.arrange,
       ],
     },
     SEPARATOR,

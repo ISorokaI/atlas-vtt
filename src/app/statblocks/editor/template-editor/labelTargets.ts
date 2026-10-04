@@ -7,6 +7,7 @@
 import { blockSpec } from '../../model/blockCatalogue';
 import { fieldByKey } from '../../model/fieldKeys';
 import { boundField } from '../../model/treeQueries';
+import { TAB_FOR_ATTRIBUTE } from '../../render/tabs/TabStrip';
 import type { TemplateBlock, TemplateField } from '../../model/templateTypes';
 
 export type LabelKind =
@@ -61,11 +62,22 @@ function ownElement(frame: HTMLElement, selector: string): HTMLElement | null {
   return null;
 }
 
+/** The tab a tab's Section is headed with: its heading stands there, not in the panel. */
+function tabOf(frame: HTMLElement): HTMLElement | null {
+  const id = frame.getAttribute('data-block-id');
+  const strip = frame.parentElement?.closest('[data-block="tabs"]');
+  if (!id || !strip) return null;
+  for (const tab of strip.querySelectorAll<HTMLElement>(`[${TAB_FOR_ATTRIBUTE}]`)) {
+    if (tab.getAttribute(TAB_FOR_ATTRIBUTE) === id && tab.closest('[data-block-id]') === strip) return tab;
+  }
+  return null;
+}
+
 /** The element the label input stands over; the frame itself where the label is not drawn (an empty heading). */
 export function labelElement(frame: HTMLElement, kind: LabelKind): HTMLElement {
   for (const selector of LABEL_SELECTORS[kind]) {
     const element = ownElement(frame, selector);
     if (element) return element;
   }
-  return frame;
+  return (kind === 'heading' ? tabOf(frame) : null) ?? frame;
 }

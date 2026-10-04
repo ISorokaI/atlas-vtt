@@ -74,6 +74,10 @@ export function OwnLook(props: GroupProps): React.JSX.Element | null {
       return <ChoiceSetting label="Names" value={block.nameStyle ?? 'run-in'} disabled={disabled}
         options={[{ value: 'run-in', label: 'Run-in' }, { value: 'heading', label: 'As headings' }]}
         onChange={(nameStyle) => editBlock(session, block.id, 'entries', { nameStyle: nameStyle === 'run-in' ? undefined : nameStyle })} />;
+    case 'spells':
+      return <ChoiceSetting label="Levels" value={block.look ?? 'lines'} disabled={disabled}
+        options={[{ value: 'lines', label: 'Lines' }, { value: 'tabs', label: 'Tabs' }]}
+        onChange={(look) => editBlock(session, block.id, 'spells', { look: look === 'lines' ? undefined : look })} />;
     case 'image':
       return <ChoiceSetting label="Shape" value={block.shape} disabled={disabled}
         options={[{ value: 'token', label: 'Token' }, { value: 'portrait', label: 'Portrait' }]}
