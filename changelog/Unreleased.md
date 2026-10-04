@@ -26,3 +26,4 @@
 - Reloading Atlas no longer leaves the previous 3D dice in graphics memory
 - A d100 rolled in 3D shows its tens die on the right number: a 19 lands on 1 and 9, not 2 and 9
 - Loading a scene with explored areas no longer keeps a copy of them in graphics memory
+- The brush ring of the fog tool, the drawing eraser and the explored memory brush stays under the pointer when you scroll the map with a trackpad. With a contribution by Lobby444
