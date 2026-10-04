@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { create } from 'zustand';
 import { GridSettingsPanel } from '../../src/app/react/components/command-palette/GridSettingsPanel';
@@ -74,13 +74,31 @@ describe('GridSettingsPanel distance per cell', () => {
     expect(view.atlasStore.getState().grid).not.toHaveProperty('unitDistanceOverride');
   });
 
-  it('keeps no override that is no positive number', () => {
-    const view = fakeView(metricGrid);
+  it('puts the stored distance back for text that is no positive number', () => {
+    const view = fakeView({ ...metricGrid, unitDistanceOverride: 50 });
     renderPanel(view);
-    fireEvent.change(field(), { target: { value: '-3' } });
-    fireEvent.blur(field());
-    expect(view.atlasStore.getState().grid).not.toHaveProperty('unitDistanceOverride');
+    for (const typed of ['-3', '0', '10 ft', '1 mile', 'abc']) {
+      fireEvent.focus(field());
+      fireEvent.change(field(), { target: { value: typed } });
+      fireEvent.blur(field());
+      expect(view.atlasStore.getState().grid?.unitDistanceOverride).toBe(50);
+      expect(field().value).toBe('50');
+    }
+  });
+
+  it('follows the stored distance when it changes elsewhere (undo, another view) while the field is not edited', () => {
+    const view = fakeView({ ...metricGrid, unitDistanceOverride: 50 });
+    renderPanel(view);
+    expect(field().value).toBe('50');
+    act(() => view.atlasStore.getState().setGrid(metricGrid));
     expect(field().value).toBe('');
+    act(() => view.atlasStore.getState().setGrid({ ...metricGrid, unitDistanceOverride: 20 }));
+    expect(field().value).toBe('20');
+  });
+
+  it("names the grid's distance, not a collection's, on a map outside every collection", () => {
+    renderPanel(fakeView(metricGrid));
+    expect(screen.getByText("Empty uses the grid's 5 ft")).toBeTruthy();
   });
 
   it('is not offered where distances are range bands', () => {

@@ -4,7 +4,7 @@
 
 ## Improved
 
-- A scene can measure at its own scale: Distance per cell in the command palette's Grid Settings overrides the collection's distance for that map alone, for the ruler, light ranges and senses. Leave it empty to follow the collection. Contributed by ISorokaI
+- A scene can measure at its own scale: Distance per cell in the command palette's Grid Settings sets how far one cell of that map reaches, in place of the collection's, for the ruler and for how far lights and senses reach on it. Leave it empty to follow the collection. Contributed by ISorokaI
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike
 - An open map uses much less graphics memory: 3D dice share one drawing context per window, and with dynamic lighting on the map no longer keeps antialiasing buffers it does not draw into
 - On narrow windows, tools move into More tools from the right; the command palette always stays
