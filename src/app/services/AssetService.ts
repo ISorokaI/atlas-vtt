@@ -21,6 +21,7 @@ import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import { isLegacyTokenRecord, isRecord, type LegacyAssetMetadata } from './assetMetadataGuards';
 import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from './tagGroups';
 import { trashVaultItem } from '../utils/trashVaultItem';
+import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 
 export interface BaseAsset {
   id: string;
@@ -1121,6 +1122,11 @@ export class AssetService {
         } catch (error) {
           console.error('[AssetService] Error deleting scene map file:', error);
         }
+      }
+      try {
+        await trashSceneSnapshots(this.app, asset);
+      } catch (error) {
+        console.error('[AssetService] Error deleting scene snapshots:', error);
       }
     }
 

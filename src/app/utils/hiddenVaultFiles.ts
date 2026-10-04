@@ -12,11 +12,6 @@ export function isHiddenVaultPath(path: string): boolean {
   return path.split('/').some((segment) => segment.startsWith('.'));
 }
 
-/** Creates the folder at `path` (and its parents) unless it exists. */
-export async function ensureHiddenFolder(app: App, path: string): Promise<void> {
-  if (!(await app.vault.adapter.exists(path))) await app.vault.adapter.mkdir(path);
-}
-
 /** Moves a file or folder to the system trash, or the vault's `.trash` when there is none. */
 export async function trashHiddenPath(app: App, path: string): Promise<void> {
   const { adapter } = app.vault;

@@ -4,7 +4,7 @@ import { FileReferenceService } from '../services/FileReferenceService';
 import { MapThumbnailService } from '../services/MapThumbnailService';
 import type { PathMove } from '../services/renamedPaths';
 import { stemOf } from '../services/vault-sync/recoveredIds';
-import { moveSceneSnapshots, trashSceneSnapshots } from '../snapshots/snapshotFolderSync';
+import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { runInBackground } from '../utils/backgroundTask';
 import { EXTENSION_ATLASMAP, isScenePath } from '../utils/sceneFiles';
 import { closeMapTab, getLoadedAtlasView } from './atlasLeaves';
@@ -38,12 +38,7 @@ export function registerVaultSync(plugin: Plugin): void {
 
   /** Moves that reach the rest of the vault's references; one pass for every file of a renamed folder. */
   let pendingMoves: PathMove[] = [];
-  const propagateMoves = async (moves: readonly PathMove[]): Promise<void> => {
-    await fileReferences.handleFilesMoved(moves);
-    for (const { from, to } of moves) {
-      if (isScenePath(from) && isScenePath(to)) await moveSceneSnapshots(app, from, to);
-    }
-  };
+  const propagateMoves = (moves: readonly PathMove[]): Promise<void> => fileReferences.handleFilesMoved(moves);
   const flushMoves = (): void => {
     const moves = pendingMoves;
     pendingMoves = [];
@@ -59,12 +54,16 @@ export function registerVaultSync(plugin: Plugin): void {
     deleted.clear();
     deletedMaps.clear();
     await assets.initialize();
+    // The scenes of deleted maps, read before the check drops their records.
+    const scenes = (await assets.getAssets(undefined, 'scene')).filter((scene) => maps.includes(scene.data?.mapPath ?? ''));
     const result = await assets.reconcileWithVault(seen);
     const moved = new Set([...result.fileMoves, ...filesOfMovedFolders(app, result.folderMoves)].map(({ from }) => from));
     for (const map of maps) {
       if (moved.has(map) || app.vault.getFileByPath(map)) continue;
-      await trashSceneSnapshots(app, map);
       await sceneThumbnails.trashThumbnail(map);
+    }
+    for (const scene of scenes) {
+      if (!(await assets.getAssetById(scene.id))) await trashSceneSnapshots(app, scene);
     }
   };
   const scheduleCheck = debounce(() => runInBackground(check(), 'Checking Atlas files against the vault'), SETTLE_MS, true);
