@@ -6,6 +6,8 @@ import { SceneSnapshotService, nextSnapshotName, type SceneSnapshotEntry } from 
 import { snapshotFolderForMap } from '../../../snapshots/sceneSnapshotFolders';
 import { AssetService } from '../../../services/AssetService';
 import { confirmAction } from '../../../ui/confirmDialog';
+import { confirmSnapshotRestore, restoreSnapshotInView } from '../../../snapshots/snapshotRestore';
+import { copyAtlasLink } from '../../../links/atlasLinkText';
 import { SNAPSHOT_THUMBNAIL_SIZE } from '../../../services/MapThumbnailService';
 import { t } from '../../../i18n';
 
@@ -21,6 +23,8 @@ export interface SceneSnapshotsController {
   overwrite: (entry: SceneSnapshotEntry) => Promise<void>;
   rename: (entry: SceneSnapshotEntry, name: string) => Promise<void>;
   remove: (entry: SceneSnapshotEntry) => Promise<void>;
+  /** Copies a link to the snapshot, which opens the scene and offers to restore it. */
+  copyLink: (entry: SceneSnapshotEntry) => Promise<void>;
 }
 
 /**
@@ -75,23 +79,10 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
   }, [entries, folder, run, service, view]);
 
   const restore = useCallback(async (entry: SceneSnapshotEntry): Promise<void> => {
-    if (!view) return;
-    const confirmed = await confirmAction({
-      title: t('snapshots.restoreTitle', { name: entry.snapshot.name }),
-      message: [
-        t('snapshots.restoreBody'),
-        t('snapshots.restoreWarning'),
-      ],
-      confirmLabel: t('common.restore'),
-      destructive: true,
-    });
-    if (!confirmed) return;
+    if (!view || !(await confirmSnapshotRestore(entry))) return;
 
     onRestore();
-    await run(async () => {
-      await view.reloadActiveScene((file) => service.restoreInto(file, entry.snapshot));
-      new Notice(t('snapshots.restored', { name: entry.snapshot.name }));
-    }, t('snapshots.restoreFailed'));
+    await run(() => restoreSnapshotInView(view, service, entry), t('snapshots.restoreFailed'));
   }, [onRestore, run, service, view]);
 
   /** An empty name keeps the old one: every snapshot has a name. */
@@ -133,7 +124,11 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
     await run(() => service.delete(entry), t('snapshots.deleteFailed'));
   }, [run, service]);
 
+  const copyLink = useCallback(async (entry: SceneSnapshotEntry): Promise<void> => {
+    if (mapPath) await copyAtlasLink(app, mapPath, { snapshot: entry.snapshot.name });
+  }, [app, mapPath]);
+
   const thumbnailUrl = useCallback((entry: SceneSnapshotEntry): string | null => service.thumbnailUrl(entry), [service]);
 
-  return { entries, isLoading, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove };
+  return { entries, isLoading, isBusy, thumbnailUrl, save, restore, overwrite, rename, remove, copyLink };
 }

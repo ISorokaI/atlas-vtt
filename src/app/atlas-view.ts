@@ -11,6 +11,7 @@ import { claimWorkspaceLeafFocus } from './utils/activeLeafGuard';
 import { t } from './i18n';
 import { isScenePath } from './utils/sceneFiles';
 import { runInBackground } from './utils/backgroundTask';
+import { restoreLinkedSnapshot } from './links/openAtlasLink';
 
 export const ATLAS_VIEW_TYPE = "atlas-vtt";
 
@@ -164,6 +165,18 @@ export class AtlasView extends FileView {
 
       await this.onOpen();
     }
+  }
+
+  /**
+   * Obsidian passes the `#` part of a link that opened this view here: a link
+   * to one of the scene's snapshots offers to restore it once the scene is open.
+   */
+  setEphemeralState(state: unknown): void {
+    super.setEphemeralState(state);
+    const subpath = isRecord(state) && typeof state.subpath === 'string' ? state.subpath : null;
+    const mapPath = this.file?.path;
+    if (!subpath || !mapPath) return;
+    runInBackground(restoreLinkedSnapshot(this.app, mapPath, subpath), `Opening a link to a snapshot of ${mapPath}`, t('snapshots.restoreFailed'));
   }
 
   getState(): AtlasViewState {

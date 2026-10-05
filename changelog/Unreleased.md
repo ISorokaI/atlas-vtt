@@ -1,6 +1,7 @@
 ## New
 
 - Customize the toolbar from the command palette: drag tools to reorder them, or into the tray above it to hide them. With a contribution by oscar-eriksson
+- Link scenes, snapshots and encounters from your notes. Embed one with `![[Tavern.atlasmap]]` and the note shows its picture, with a button to open it in Atlas or to place an encounter on the open map; hovering a link shows the same card. Type `#` after a scene's name in a link to pick one of its snapshots: opening that link asks whether to restore it. Copy a link from the asset manager's or the snapshots' right-click menu, or use the command Insert link to scene or encounter
 - Atlas follows Obsidian's language. Set Obsidian to Russian under Settings → General → Language and Atlas' menus, dialogs, settings and notices appear in Russian; other languages fall back to English until they are translated. Contributed by ISorokaI
 
 ## Important changes

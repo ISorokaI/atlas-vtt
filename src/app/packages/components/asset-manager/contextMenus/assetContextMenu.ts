@@ -26,6 +26,7 @@ import { tokenSizeSubmenu } from '../../../../react/components/context-menu/toke
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
 import { scenePrefillFromMap } from '../utils/sceneCreation';
+import { copyAssetLink } from '../../../../links/atlasLinkText';
 import { t } from '../../../../i18n';
 
 export interface AssetContextMenuDeps {
@@ -220,6 +221,17 @@ export function buildAssetContextMenuEntries(
     }
   }
 
+
+  // ── Copy link (a single scene or encounter) ───────────────────
+  const { assetService } = deps;
+  if ((asset.type === 'scenes' || asset.type === 'encounters') && selectedAssets.length <= 1 && assetService) {
+    entries.push({
+      type: 'item',
+      label: t('atlasLinks.copyLink'),
+      icon: 'link',
+      onClick: () => runInBackground(copyAssetLink(deps.app, assetService, asset.id), `Copying a link to ${asset.id}`),
+    });
+  }
 
   // ── Move to Folder ────────────────────────────────────────────
   if (deps.folders.filter((f) => f.type === asset.type).length > 0) {

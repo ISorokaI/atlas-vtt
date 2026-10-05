@@ -1,4 +1,5 @@
 import { align } from './align';
+import { atlasLinks } from './atlasLinks';
 import { am } from './am';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
@@ -82,6 +83,7 @@ import { vision } from './vision';
 /** English, the source language: every key exists here, and other languages translate a subset of it. */
 export const en = {
   ...align,
+  ...atlasLinks,
   ...am,
   ...bundle,
   ...cleanup,
