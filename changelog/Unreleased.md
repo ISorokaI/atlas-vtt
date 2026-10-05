@@ -37,3 +37,4 @@
 - With dynamic lighting on, the grid and its cell numbers no longer disappear in the dark: you see them everywhere, your players wherever they see or remember the map. Note pins, the ruler, the selection outline, text handles and the grid alignment marks stay readable in the dark too
 - The brush ring of the fog tool, the drawing eraser and the explored memory brush stays under the pointer when you scroll the map with a trackpad. With a contribution by Lobby444
 - The DM screen fits the map when Obsidian's sidebars are open or the map shares the window with other panes: it no longer runs off the edges, and its statblocks and note stack once the map is narrow
+- With dynamic lighting on, restoring a scene snapshot works again. The map stayed as it was, without an error

@@ -560,7 +560,6 @@ export class AtlasView extends FileView {
     if (!file) return;
 
     const request = ++this.sceneRequests;
-    await this.flushPendingSaves();
     // Only a loaded scene has a camera to keep
     const tabId = this.loadedTabId();
     if (tabId) this.saveViewportState(tabId);
@@ -569,6 +568,10 @@ export class AtlasView extends FileView {
     // running is stopped as well: finishing meanwhile, it would mark the store as loaded
     // with the content from before and queue that for saving.
     this._serviceManager.getMapService().suspendForRewrite();
+    // What is pending reaches the file before the rewrite, including what the unloading scene
+    // saved on its way out (the explored memory): flushed later, by the load, it would land on
+    // the rewritten file and put the old scene back.
+    await this.flushPendingSaves();
     try {
       await rewrite(file);
     } catch (error) {
