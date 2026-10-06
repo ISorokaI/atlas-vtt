@@ -33,7 +33,7 @@ export const senses: Translation = {
   'senses.editor.seesInvisible': 'Видит невидимых существ',
   'senses.editor.whileBlinded': 'Работает при ослеплении',
   'senses.editor.creaturesOnly': 'Только существа',
-  'senses.editor.outlines': 'Показывает контурами',
+  'senses.editor.outlines': 'Показывает очертаниями',
   'senses.kind.sense': 'Отдельное чувство',
   'senses.kind.seeInvisible': 'Позволяет зрению токена видеть невидимых существ',
   'senses.range.required': 'Нужен радиус',
@@ -67,5 +67,5 @@ export const senses: Translation = {
   'senses.describe.invisibleCreatures': 'невидимых существ тоже',
   'senses.describe.invisibleOnes': 'невидимых тоже',
   'senses.describe.whileBlinded': 'Работает при ослеплении.',
-  'senses.describe.outlines': 'Они показываются контурами.',
+  'senses.describe.outlines': 'Они показываются очертаниями.',
 };

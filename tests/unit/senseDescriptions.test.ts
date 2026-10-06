@@ -35,7 +35,7 @@ describe('describeSense', () => {
   it('words the line in the active language', () => {
     setLocale('ru');
     expect(describeSense(sense({ lineOfSight: false }))).toBe('Видит во тьме как в тусклом свете, в оттенках серого, в пределах своего радиуса, сквозь стены.');
-    expect(describeSense(sense({ reveals: 'creatures', range: 'unlimited', precise: false }))).toBe('Чувствует существ. Они показываются контурами.');
+    expect(describeSense(sense({ reveals: 'creatures', range: 'unlimited', precise: false }))).toBe('Чувствует существ. Они показываются очертаниями.');
   });
 
   it('says what a modifier grants', () => {
