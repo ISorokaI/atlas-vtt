@@ -32,6 +32,6 @@ export const initiative: Translation = {
   'initiative.rules.appliesHint': 'Действует для всех сцен коллекции; уже идущий бой продолжается так, как был начат.',
   'initiative.rules.roll': 'Бросок инициативы',
   'initiative.rules.rollError': 'Введите одну группу кубиков, например 1d20 или 1d10.',
-  'initiative.rules.actsFirst': 'Ходит первой',
+  'initiative.rules.actsFirst': 'Ходит первым',
   'initiative.rules.sidesOfTokens': 'Токен с включённым зрением на стороне игроков; любой другой переведите через его карточку в трекере.',
 };
