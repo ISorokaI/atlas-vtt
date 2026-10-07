@@ -1,29 +1,30 @@
-import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
-import { selectSight } from '../../vision/selectSight';
+// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/pixi/lighting/CanvasLightingFallback.ts. Only import paths are adapted.
+import { gmSightSource } from './tokenSightPolicy';
+import { tableSight } from './tableSight';
 import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
-import type { WallSegment } from '../../types/wallTypes';
-import type { MeasurementSettings } from '../../grid/measurementFormat';
-import { unitScaleOf } from '../../lighting/lightingUnits';
-import { sealedWalls } from '../../lighting/sealWalls';
-import { worldTexel } from '../../lighting/lightingConstants';
-import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
-import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
-import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight } from '../../vision/sight';
-import { wallList } from '../../vision/wallList';
-import { seenSpots, type SeenSpot } from '../../vision/perception';
-import type { SightRules } from '../../vision/sightRules';
-import type { MapBounds } from '../../vision/visibility';
-import type { HideableLayer } from '../playerSafeFrame';
-import { destroyTree } from '../utils/destroyTree';
-import type { SceneFrame } from './engine/types';
-import { LIGHTING_Z_INDEX } from './LightingRenderer';
-import { PlayerView } from './PlayerView';
-import { LightReaches } from './lightReaches';
-import { sourcesInDarkness } from '../../vision/magicalDarkness';
-import { activeLights, engineLight } from './lightSources';
-import type { SceneLightingView } from './sceneLightingView';
+import type { ViewAtlasState, ViewAtlasStore } from '../../../src/app/storeFactory';
+import type { WallSegment } from '../../../src/app/types/wallTypes';
+import type { MeasurementSettings } from '../../../src/app/grid/measurementFormat';
+import { unitScaleOf } from '../../../src/app/lighting/lightingUnits';
+import { sealedWalls } from '../../../src/app/lighting/sealWalls';
+import { worldTexel } from '../../../src/app/lighting/lightingConstants';
+import { perceivedLevel, showsMap } from '../../../src/app/gameSystems/senseRules';
+import { SightTokens, heldForSight } from '../../../src/app/lighting/sightOnDrop';
+import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight } from './sight';
+import { wallList } from '../../../src/app/vision/wallList';
+import { seenSpots, type SeenSpot } from './perception';
+import type { SightRules } from '../../../src/app/vision/sightRules';
+import type { MapBounds } from '../../../src/app/vision/visibility';
+import type { HideableLayer } from '../../../src/app/pixi/playerSafeFrame';
+import { destroyTree } from '../../../src/app/pixi/utils/destroyTree';
+import type { SceneFrame } from '../../../src/app/pixi/lighting/engine/types';
+import { LIGHTING_Z_INDEX } from '../../../src/app/pixi/lighting/LightingRenderer';
+import { PlayerView } from '../../../src/app/pixi/lighting/PlayerView';
+import { LightReaches } from '../../../src/app/pixi/lighting/lightReaches';
+import { sourcesInDarkness } from '../../../src/app/vision/magicalDarkness';
+import { activeLights, engineLight } from '../../../src/app/pixi/lighting/lightSources';
+import type { SceneLightingView } from '../../../src/app/pixi/lighting/sceneLightingView';
 
 /** Full ambient light: everything in sight counts as lit. */
 const FULL_DAYLIGHT: AmbientLight = { ambient: 1 };
@@ -116,12 +117,12 @@ export class CanvasLightingFallback implements SceneLightingView {
     const dark = activeLights(state.objects.lights, tokens, state.lighting.ambient).filter((light) => light.emission.darkness).map((light) => engineLight(light, scale));
     // The same list while there is no darkness, so whoever compares it finds it unchanged.
     this.reaches = dark.length > 0 ? this.darknessReaches.sync(dark, walls) : NO_REACHES;
-    const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, GM_SIGHT_POLICY), FULL_DAYLIGHT, this.reaches);
+    const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, gmSightSource), FULL_DAYLIGHT, this.reaches);
     this.cache.retain(new Set(sources.map(source => source.tokenId)));
-    const sight = selectSight(sceneSight(state.lighting, sources, walls, this.cache), tokens, PLAYER_SIGHT_POLICY);
+    const sight = tableSight(sceneSight(state.lighting, sources, walls, this.cache), tokens);
     // The same regions are the same sight: what was worked out from it (who is seen) stays good.
     if (!sameSight(sight, this.sight)) this.sight = sight;
-    const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, state.objects.tokens, scale.cellSize, walls, { conditions: rules?.conditions ?? [], held, policy: PLAYER_SIGHT_POLICY });
+    const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, state.objects.tokens, scale.cellSize, walls, { conditions: rules?.conditions ?? [], held });
     this.drawDarkness(bounds, spots);
     this.deps.onSightChange?.();
   }

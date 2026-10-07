@@ -1,19 +1,20 @@
-import { PLAYER_SIGHT_POLICY, type SightPolicy } from './tokenSightPolicy';
-import { perceivedLevel, showsMap } from '../gameSystems/senseRules';
-import { movedWhileHeld } from '../lighting/sightOnDrop';
-import type { HeldTokens } from '../types/viewUIState';
-import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
-import type { TokenEntity } from '../types';
-import type { ConditionDefinition, ConditionEffect } from '../types/collectionSettingsTypes';
-import type { LightLevel } from '../types/senseTypes';
-import type { Point } from '../types/visionTypes';
-import type { WallSegment } from '../types/wallTypes';
-import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
-import { lightLevelAt } from './lightLevels';
+// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/vision/perception.ts. Only import paths are adapted.
+import { tableSightSource } from './tokenSightPolicy';
+import { perceivedLevel, showsMap } from '../../../src/app/gameSystems/senseRules';
+import { movedWhileHeld } from '../../../src/app/lighting/sightOnDrop';
+import type { HeldTokens } from '../../../src/app/types/viewUIState';
+import { NORMAL_SIGHT } from '../../../src/app/gameSystems/senses/generic';
+import type { TokenEntity } from '../../../src/app/types';
+import type { ConditionDefinition, ConditionEffect } from '../../../src/app/types/collectionSettingsTypes';
+import type { LightLevel } from '../../../src/app/types/senseTypes';
+import type { Point } from '../../../src/app/types/visionTypes';
+import type { WallSegment } from '../../../src/app/types/wallTypes';
+import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/tokenSizing';
+import { lightLevelAt } from '../../../src/app/vision/lightLevels';
 import type { AmbientLight, LightReach, Sight, SightRegion } from './sight';
-import { tokenEffects } from './sightRules';
-import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
-import { coneContains } from './visionCone';
+import { tokenEffects } from '../../../src/app/vision/sightRules';
+import { computeVisibility, pointInPolygon, type Polygon } from '../../../src/app/vision/visibility';
+import { coneContains } from '../../../src/app/vision/visionCone';
 
 /**
  * How the vision tokens perceive something: `seen` by a precise sense, `sensed` only by
@@ -109,8 +110,6 @@ export interface PerceptionOptions {
   conditions?: readonly ConditionDefinition[];
   /** The tokens the pointer holds while sight waits for the drop, with the places they were taken from. */
   held?: HeldTokens;
-  /** Which tokens the picture always shows; unset, the players'. */
-  policy?: SightPolicy;
 }
 
 /** The footprint of a token that is shown where the map around it is not, in world pixels. */
@@ -126,9 +125,9 @@ export interface SeenSpot {
 }
 
 /**
- * The tokens the picture shows where no sense shows the map, so that the picture is dark
+ * The tokens the players see where no sense shows them the map, so that the picture is dark
  * there: each is shown within its own footprint.
- * - A token the policy always shows (the players': a vision token), also one standing in darkness or
+ * - A token with vision: the players always see their party, also one standing in darkness or
  *   blinded. One the pointer has moved beyond the sight that stayed behind is not shown until
  *   the drop (`held`, as in `tokenPerception`).
  * - A token a precise sense that shows no map sees (echolocation).
@@ -143,14 +142,14 @@ export function seenSpots(
   tokens: Record<string, TokenEntity>,
   cellSize: number,
   walls: readonly WallSegment[],
-  { conditions = [], held = {}, policy = PLAYER_SIGHT_POLICY }: PerceptionOptions = {},
+  { conditions = [], held = {} }: PerceptionOptions = {},
 ): SeenSpot[] {
   if (sight.all) return [];
   const withMap: Sight = { all: false, regions: sight.regions.filter(({ sense }) => showsMap(sense)) };
   const seesCreatures = sight.regions.some(({ sense }) => sense.precise && !showsMap(sense));
   const spots: SeenSpot[] = [];
   for (const token of Object.values(tokens)) {
-    const party = policy.alwaysSeen(token);
+    const party = tableSightSource(token);
     if (token.isHidden || (!party && !seesCreatures)) continue;
     const at = { x: token.x, y: token.y };
     const level = lightLevelAt(at, ambient, lights);

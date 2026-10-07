@@ -1,18 +1,19 @@
-import type { TokenEntity } from '../types';
-import type { LightZone, SceneLighting } from '../types/lightingTypes';
-import type { SenseDefinition } from '../types/senseTypes';
-import type { Point } from '../types/visionTypes';
-import type { WallSegment } from '../types/wallTypes';
-import { PLAYER_SIGHT_POLICY, visionOn, type SightPolicy } from './tokenSightPolicy';
-import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
-import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
-import { tokenVisionOn } from '../lighting/sceneLightingOptions';
-import { ambientLevel } from './lightLevels';
-import { GENERIC_SIGHT_RULES, tokenEffects, type SightRules } from './sightRules';
-import { resolveSenses, tokenSenses } from './tokenSenses';
-import { computeVisibility, type MapBounds, type Polygon } from './visibility';
-import { visionCone, type VisionCone } from './visionCone';
-import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
+// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/vision/sight.ts. Only import paths are adapted.
+import type { TokenEntity } from '../../../src/app/types';
+import type { LightZone, SceneLighting } from '../../../src/app/types/lightingTypes';
+import type { SenseDefinition } from '../../../src/app/types/senseTypes';
+import type { Point } from '../../../src/app/types/visionTypes';
+import type { WallSegment } from '../../../src/app/types/wallTypes';
+import { tableSightSource } from './tokenSightPolicy';
+import { NORMAL_SIGHT } from '../../../src/app/gameSystems/senses/generic';
+import { gameUnitsToWorld, type UnitScale } from '../../../src/app/lighting/lightingUnits';
+import { tokenVisionOn } from '../../../src/app/lighting/sceneLightingOptions';
+import { ambientLevel } from '../../../src/app/vision/lightLevels';
+import { GENERIC_SIGHT_RULES, tokenEffects, type SightRules } from '../../../src/app/vision/sightRules';
+import { resolveSenses, tokenSenses } from '../../../src/app/vision/tokenSenses';
+import { computeVisibility, type MapBounds, type Polygon } from '../../../src/app/vision/visibility';
+import { visionCone, type VisionCone } from '../../../src/app/vision/visionCone';
+import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/tokenSizing';
 
 /**
  * The scene's light without its sources: at or above `litThreshold` (unset: 0.25) ambient light,
@@ -109,8 +110,8 @@ export interface LightReach {
 export type LightReachKind = Pick<LightReach, 'darkness' | 'priority' | 'cone'>;
 
 /**
- * The tokens `policy` lets give sight (the players' picture unless another is named), with ranges
- * converted to world pixels; never a token without vision on, whatever the policy says. A blinded token keeps
+ * Eligible tokens with vision on, with ranges converted to world pixels. The local player
+ * picture excludes hidden tokens; GM tooling explicitly supplies its own eligibility rule. A blinded token keeps
  * only its senses that work while blinded; a sense that lets the eyes see invisible things is
  * not a sense of its own. A token whose way of perceiving is not known yet (`TokenSight.pending`)
  * is a source that perceives nothing: it must not see, or record as explored, what its statblock
@@ -121,12 +122,12 @@ export function sightSources(
   scale: UnitScale,
   bounds: MapBounds,
   rules: SightRules = GENERIC_SIGHT_RULES,
-  policy: SightPolicy = PLAYER_SIGHT_POLICY,
+  eligible: (token: TokenEntity) => boolean = tableSightSource,
 ): SightSource[] {
   const unlimited = Math.hypot(bounds.width, bounds.height);
   const sources: SightSource[] = [];
   for (const token of Object.values(tokens)) {
-    if (!visionOn(token) || !policy.givesSight(token)) continue;
+    if (!token.vision?.enabled || !eligible(token)) continue;
     const origin = { x: token.x, y: token.y };
     const how = rules.visionOf?.(token) ?? { senses: tokenSenses(token.vision, rules.definitions), ...(token.vision.range !== undefined && { sightRange: token.vision.range }) };
     if (how.pending) {
