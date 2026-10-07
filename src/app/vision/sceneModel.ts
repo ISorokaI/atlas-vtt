@@ -1,27 +1,28 @@
-// Frozen from 3c23746a6f54b67b442646ea8ff912c914c2447a src/app/pixi/lighting/sceneModel.ts. Only import paths are adapted.
-import type { MeasurementSettings } from '../../../src/app/grid/measurementFormat';
-import { sleeps } from '../../../src/app/lighting/lightActivity';
-import { lightZoneList, withZones } from '../../../src/app/lighting/lightZones';
-import { worldTexel } from '../../../src/app/lighting/lightingConstants';
-import { unitScaleOf } from '../../../src/app/lighting/lightingUnits';
-import { sealedWalls } from '../../../src/app/lighting/sealWalls';
-import { SightTokens, heldForSight } from '../../../src/app/lighting/sightOnDrop';
-import type { HeldTokens } from '../../../src/app/types/viewUIState';
-import type { ViewAtlasState } from '../../../src/app/storeFactory';
-import type { TokenEntity } from '../../../src/app/types';
-import type { SceneLighting } from '../../../src/app/types/lightingTypes';
-import type { WallSegment } from '../../../src/app/types/wallTypes';
-import { exploredShapes, type ExploredShapes } from '../../../src/app/vision/exploredShapes';
-import { quenched, sourcesInDarkness } from '../../../src/app/vision/magicalDarkness';
+import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, type SightPolicy } from './tokenSightPolicy';
+import { selectSight } from './selectSight';
+import type { MeasurementSettings } from '../grid/measurementFormat';
+import { sleeps } from '../lighting/lightActivity';
+import { lightZoneList, withZones } from '../lighting/lightZones';
+import { worldTexel } from '../lighting/lightingConstants';
+import { unitScaleOf } from '../lighting/lightingUnits';
+import { sealedWalls } from '../lighting/sealWalls';
+import { SightTokens, heldForSight } from '../lighting/sightOnDrop';
+import type { HeldTokens } from '../types/viewUIState';
+import type { ViewState } from '../types/viewState';
+import type { TokenEntity } from '../types';
+import type { SceneLighting } from '../types/lightingTypes';
+import type { WallSegment } from '../types/wallTypes';
+import { exploredShapes, type ExploredShapes } from './exploredShapes';
+import { quenched, sourcesInDarkness } from './magicalDarkness';
 import { seenSpots, type SeenSpot } from './perception';
-import type { SightRules } from '../../../src/app/vision/sightRules';
-import { ambientAt } from '../../../src/app/vision/lightLevels';
+import type { SightRules } from './sightRules';
+import { ambientAt } from './lightLevels';
 import { SightCache, sceneSight, sightOptionsChanged, sightSources, type AmbientLight, type LightReach, type Sight } from './sight';
-import type { MapBounds } from '../../../src/app/vision/visibility';
-import { wallList } from '../../../src/app/vision/wallList';
-import type { EngineLight, EngineZone } from '../../../src/app/pixi/lighting/engine/types';
-import { LightReaches } from '../../../src/app/vision/lightReaches';
-import { activeLights, engineLight } from '../../../src/app/vision/lightSources';
+import type { MapBounds } from './visibility';
+import { wallList } from './wallList';
+import type { EngineLight, EngineZone } from '../pixi/lighting/engine/types';
+import { LightReaches } from './lightReaches';
+import { activeLights, engineLight } from './lightSources';
 
 /** What a scene's lighting works out on the CPU, in world pixels: the engine draws it and the rules read it. */
 export interface SceneModel {
@@ -29,7 +30,10 @@ export interface SceneModel {
   walls: readonly WallSegment[];
   lights: EngineLight[];
   reaches: LightReach[];
+  /** The players' sight (`PLAYER_SIGHT_POLICY`): perception, door badges and explored memory read it. */
   sight: Sight;
+  /** The GM's sight (`GM_SIGHT_POLICY`): hidden vision tokens see too, for the GM's shading. */
+  gmSight?: Sight;
   /** What the tokens see now, for explored memory to record; null when nothing is recorded. */
   explored: ExploredShapes | null;
   /** The scene's ambient zones as the engine draws them; the same list while the zones stay. */
@@ -38,14 +42,20 @@ export interface SceneModel {
   ambient: AmbientLight;
 }
 
-type SceneState = Pick<ViewAtlasState, 'objects' | 'lighting' | 'grid' | 'heldTokens'>;
+/** What a scene's lighting is worked out from: the records sight and light read, the scene's lighting, the grid and the tokens the pointer holds. */
+export interface SceneState {
+  objects: Pick<ViewState['objects'], 'tokens' | 'walls' | 'lights' | 'lightZones'>;
+  lighting: ViewState['lighting'];
+  grid: ViewState['grid'];
+  heldTokens: ViewState['heldTokens'];
+}
 
 interface Built {
-  walls: ViewAtlasState['objects']['walls'];
-  lights: ViewAtlasState['objects']['lights'];
-  zones: ViewAtlasState['objects']['lightZones'];
+  walls: ViewState['objects']['walls'];
+  lights: ViewState['objects']['lights'];
+  zones: ViewState['objects']['lightZones'];
   tokens: Record<string, TokenEntity>;
-  grid: ViewAtlasState['grid'];
+  grid: ViewState['grid'];
   lighting: SceneLighting;
   rules: SightRules | undefined;
   model: SceneModel;
@@ -101,17 +111,20 @@ export class SceneModelBuilder {
     const dark = shining.some((light) => light.darkness);
     const lights = shining.flatMap((light, i) => (out[i] ? [] : [dark ? { ...light, area: everyReach[i]!.polygon } : light]));
     const reaches = everyReach.filter((_, i) => !out[i]);
-    const sight = sceneSight(state.lighting, sourcesInDarkness(sightSources(tokens, scale, bounds, rules), ambient, reaches), walls, this.sightCache);
+    const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, GM_SIGHT_POLICY), ambient, reaches);
+    this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
+    const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache);
+    const sight = selectSight(gmSight, tokens, PLAYER_SIGHT_POLICY);
     // Half a cell: the width of a zone's soft edge past its outline.
     const zones = zoneList.map(({ polygon, ambient: level, ambientColor }) => ({ polygon, ambient: level, ...(ambientColor && { ambientColor }), soft: scale.cellSize / 2 }));
-    return { walls, lights, reaches, sight, explored: exploredShapes(sight, ambient, reaches), zones: zones.length > 0 ? zones : NO_ZONES, ambient };
+    return { walls, lights, reaches, sight, gmSight, explored: exploredShapes(sight, ambient, reaches), zones: zones.length > 0 ? zones : NO_ZONES, ambient };
   }
 }
 
 const NO_ZONES: readonly EngineZone[] = [];
 
 /** Whether a light that follows the ambient light wakes or falls asleep between two ambient lights. */
-function awakeLightsChanged(lights: ViewAtlasState['objects']['lights'], before: AmbientLight, after: AmbientLight): boolean {
+function awakeLightsChanged(lights: ViewState['objects']['lights'], before: AmbientLight, after: AmbientLight): boolean {
   if (before.ambient === after.ambient) return false;
   for (const id in lights) {
     const light = lights[id]!;
@@ -121,32 +134,35 @@ function awakeLightsChanged(lights: ViewAtlasState['objects']['lights'], before:
 }
 
 interface SpotInputs {
+  sight: Sight;
   model: SceneModel;
   tokens: Record<string, TokenEntity>;
   held: HeldTokens;
   lighting: SceneLighting;
-  grid: ViewAtlasState['grid'];
+  grid: ViewState['grid'];
   rules: SightRules | undefined;
 }
 
 /**
- * The tokens shown within their footprint where the picture is dark (`seenSpots`). They are
- * read where the store has them, not where a drag began: a party token dragged through the
- * dark is shown along the way, as far as the sight that stayed behind reaches. Worked out only
- * when the model, the tokens, the held tokens, the lighting or the rules change, and the same
- * list is returned while its spots stay the same, so a view that compares lists draws nothing anew.
+ * The tokens shown within their footprint where the picture of `policy` (unset, the players') is
+ * dark (`seenSpots`). They are read where the store has them, not where a drag began: a party token
+ * dragged through the dark is shown along the way, as far as the sight that stayed behind reaches.
+ * Worked out only when the model, the tokens, the held tokens, the lighting or the rules change, and
+ * the same list is returned while its spots stay the same, so a view that compares lists draws nothing anew.
  */
 export class SceneSpots {
   private inputs: SpotInputs | null = null;
   private spots: SeenSpot[] = [];
 
-  update(model: SceneModel, state: SceneState, measurement: () => MeasurementSettings, sightRules?: () => SightRules): SeenSpot[] {
-    const inputs: SpotInputs = { model, tokens: state.objects.tokens, held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
+  constructor(private readonly policy: SightPolicy = PLAYER_SIGHT_POLICY) {}
+
+  update(model: SceneModel, state: SceneState, measurement: () => MeasurementSettings, sightRules?: () => SightRules, sight: Sight = model.sight): SeenSpot[] {
+    const inputs: SpotInputs = { sight, model, tokens: state.objects.tokens, held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
     const last = this.inputs;
     this.inputs = inputs;
     if (last && (Object.keys(inputs) as (keyof SpotInputs)[]).every((key) => last[key] === inputs[key])) return this.spots;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    const spots = seenSpots(model.sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, { conditions: inputs.rules?.conditions ?? [], held: inputs.held });
+    const spots = seenSpots(sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, { conditions: inputs.rules?.conditions ?? [], held: inputs.held, policy: this.policy });
     // The footprints are cut by the walls: with other walls they are other footprints at the same places.
     if (last?.model.walls !== model.walls || !sameSpots(spots, this.spots)) this.spots = spots;
     return this.spots;
