@@ -425,13 +425,10 @@ export function SpellsBlock({ item, monster, app, sourcePath }: BlockProps): Rea
       continue;
     }
 
-    const spell =
-      typeof entry === 'string'
-        ? { spells: entry }
-        : {
-            level: Object.keys(entry as object)[0],
-            spells: stringify(Object.values(entry as object)[0]),
-          };
+    // A statblock is the user's own text: an empty list item is null, and anything else that names no level is no spell line
+    const [level, spells] = typeof entry === 'string' ? [undefined, entry] : Object.entries((entry ?? {}) as object)[0] ?? [];
+    if (spells === undefined) continue;
+    const spell = { level, spells: stringify(spells) };
 
     if (!blocks.length) {
       blocks.push({

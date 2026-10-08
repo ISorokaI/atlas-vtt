@@ -172,6 +172,16 @@ describe('StatblockRenderer', () => {
     expect(container.querySelector('.atlas-sb-spell-level')?.textContent).toContain('1st level');
   });
 
+  it('skips spell entries that are no text and no level list', () => {
+    // An empty list item in a note's frontmatter is read as null
+    const { container } = renderStatblock(
+      layoutOf({ type: 'spells', id: 'sp', properties: ['spells'] }),
+      { name: 'Toad', spells: ['The toad knows:', null, {}, 3, { '1st level': 'magic missile' }] },
+    );
+    const spells = [...container.querySelectorAll('.atlas-sb-spells li')].map((spell) => spell.textContent);
+    expect(spells).toEqual(['1st level: magic missile']);
+  });
+
   it('drops the trailing colon from property labels', () => {
     const { container } = renderStatblock(
       layoutOf({ type: 'property', id: 'p', properties: ['difficulty'], display: 'Difficulty:' }),
