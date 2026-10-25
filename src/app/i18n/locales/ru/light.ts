@@ -12,7 +12,7 @@ export const light: Translation = {
   'light.schedule.dusk': 'В сумерки',
   'light.schedule.night': 'Ночью',
   'light.schedule.below': 'Ниже {percent} % света',
-  'light.flicker': 'Мерцание',
+  'light.flicker': 'Анимация',
   'light.flicker.steady': 'Ровный',
   'light.flicker.torch': 'Факел',
   'light.flicker.candle': 'Свеча',
