@@ -55,4 +55,12 @@ export const settings: Translation = {
   'settings.updates.update': 'Обновить',
   'settings.updates.viewChangelog': 'Открыть список изменений',
   'settings.updates.whatsNew': 'Что нового',
+  'settings.lighting.balanced': 'Сбалансированное',
+  'settings.lighting.balancedHint': 'Спокойнее мерцание, грубее края мягких теней, крупнее свет на больших картах, на самых больших — без отражённого света. Для ноутбуков со встроенной графикой.',
+  'settings.lighting.heading': 'Освещение',
+  'settings.lighting.high': 'Высокое',
+  'settings.lighting.highHint': 'Полная детализация: свет отражается от стен и пола, пламя мерцает.',
+  'settings.lighting.quality': 'Качество освещения',
+  'settings.lighting.saver': 'Экономное',
+  'settings.lighting.saverHint': 'Ровное пламя, без отражённого света, грубые края мягких теней, крупнее свет на больших картах. Карта в покое не перерисовывается, что бережёт батарею.',
 };
