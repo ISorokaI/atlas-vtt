@@ -74,7 +74,7 @@ export const csm: Translation = {
   'csm.loot.noViews': 'Нет представлений',
   'csm.loot.notFound': 'База не найдена',
   'csm.loot.reading': 'Чтение…',
-  'csm.loot.removeBase': 'Удалить базу добычи',
+  'csm.loot.removeBase': 'Удалить базу лута',
   'csm.loot.vaultRoot': 'Корень хранилища',
   'csm.system.actions': 'Действия с пресетом',
   'csm.system.builtIn': 'Встроенный',

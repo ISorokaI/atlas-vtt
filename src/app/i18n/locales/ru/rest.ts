@@ -2,13 +2,13 @@ import type { Translation } from '../../types';
 
 /** A player character's recovery actions beside its statblock, and what taking one says. */
 export const rest: Translation = {
-  'rest.buttons': 'Восстановление: {name}',
+  'rest.buttons': 'Отдых и восстановление: {name}',
   'rest.spendTitle': '{name}: сколько потратить',
   'rest.spendEach': 'по {each}',
   'rest.spendFewer': 'На один {label} меньше',
   'rest.spendMore': 'На один {label} больше',
   'rest.spendCount': '{n} из {max}',
-  'rest.take': 'Отдохнуть',
+  'rest.take': 'Отдых',
   'rest.cancel': 'Отмена',
   'rest.picked': '{n} из {max}',
   'rest.pickMissing': { one: 'Выберите ещё {count}.', few: 'Выберите ещё {count}.', many: 'Выберите ещё {count}.', other: 'Выберите ещё {count}.' },
@@ -38,5 +38,5 @@ export const rest: Translation = {
   'rest.failed': 'Не удалось записать отдых: {problem}',
   'rest.resetLabel': 'Какой отдых возвращает {name} использования',
   'rest.resetNone': 'Никакой',
-  'rest.lostWithTemplate': { one: 'Вместе с ним пропадёт действие восстановления {list}.', few: 'Вместе с ним пропадут действия восстановления {list}.', many: 'Вместе с ним пропадут действия восстановления {list}.', other: 'Вместе с ним пропадут действия восстановления {list}.' },
+  'rest.lostWithTemplate': { one: 'Вместе с ним пропадёт отдых {list}.', few: 'Вместе с ним пропадут виды отдыха {list}.', many: 'Вместе с ним пропадут виды отдыха {list}.', other: 'Вместе с ним пропадут виды отдыха {list}.' },
 };
