@@ -3,6 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Ellipsis } from 'lucide-react';
 import { LIGHT_GLYPH_PATHS, LIGHT_GLYPH_VIEW_BOX } from '../../lighting/lightGlyphs';
 import { asCustomLight, emissionOf, lightPresetChips, lightPresetOf } from '../../lighting/lightPresetChoice';
+import { lightPresetName } from '../../lighting/lightPresetNames';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { useExclusiveDropdown } from '../../packages/components/primitives/useExclusiveDropdown';
 import { renderEntries, type ContextMenuEntry } from '../../react/components/context-menu/AtlasContextMenu';
@@ -50,7 +51,7 @@ export function LightPresetChips({ emission, presets, onChange }: LightPresetChi
     <div className="atlas-light-popover__kinds" role="group" aria-labelledby={labelId} style={style}>
       <span id={labelId} hidden>{t('light.kind')}</span>
       {chips.map((preset) => (
-        <LabelTooltip key={preset.id} label={preset.name}>
+        <LabelTooltip key={preset.id} label={lightPresetName(preset)}>
           <button type="button" className="atlas-light-kind" aria-pressed={preset === current} onClick={() => onChange(emissionOf(preset))}>
             <LightGlyph kind={preset.kind} />
           </button>
@@ -87,13 +88,13 @@ function MoreLights({ more, current, onPick, onCustom }: MoreLightsProps): React
   const chosen = current === null ? { name: t('light.custom'), kind: 'custom' as const } : more.find((preset) => preset === current);
   const entries: ContextMenuEntry[] = [
     ...more.map((preset): ContextMenuEntry => ({
-      type: 'item', label: preset.name, leading: <LightGlyph kind={preset.kind} />, checked: preset === current, onClick: () => onPick(preset),
+      type: 'item', label: lightPresetName(preset), leading: <LightGlyph kind={preset.kind} />, checked: preset === current, onClick: () => onPick(preset),
     })),
     { type: 'item', label: t('light.custom'), leading: <LightGlyph kind="custom" />, checked: current === null, onClick: onCustom },
   ];
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen} modal={false}>
-      <LabelTooltip label={chosen ? t('light.moreLightsChosen', { name: chosen.name }) : t('light.moreLights')}>
+      <LabelTooltip label={chosen ? t('light.moreLightsChosen', { name: lightPresetName(chosen) }) : t('light.moreLights')}>
         <DropdownMenu.Trigger asChild>
           <button ref={setTrigger} type="button" className="atlas-light-kind atlas-light-kind--more" aria-pressed={chosen !== undefined}>
             {chosen ? <LightGlyph kind={chosen.kind} /> : <Ellipsis className="atlas-light-kind__dots" aria-hidden="true" />}
