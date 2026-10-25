@@ -32,8 +32,8 @@ export const statblock: Translation = {
   'statblock.countersNameFirst': 'Сначала назовите счётчики: нажмите на их подпись на карточке.',
   'statblock.trackedNowhere': '{label} хранится у токена персонажа или в его текущей кампании: поставьте персонажа на карту или запустите его кампанию',
   'statblock.players': 'Игроки',
-  'statblock.playersEdit': 'Могут менять',
+  'statblock.playersEdit': 'Можно менять',
   'statblock.playersHidden': 'Скрыто',
-  'statblock.playersRead': 'Видят',
+  'statblock.playersRead': 'Видно',
   'statblock.rollAsBonus': 'Бросать как бонус',
 };

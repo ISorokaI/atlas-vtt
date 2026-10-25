@@ -5,5 +5,5 @@ export const playerInit: Translation = {
   'playerInit.round': 'Раунд {round}',
   'playerInit.conditions': 'Состояния',
   'playerInit.defeated': 'Повержен',
-  'playerInit.delayed': 'Ход отложен',
+  'playerInit.delayed': 'Ждёт',
 };
