@@ -15,4 +15,5 @@ export const map: Translation = {
   'map.loadingNTokens': { one: 'Загрузка {count} токена...', few: 'Загрузка {count} токенов...', many: 'Загрузка {count} токенов...', other: 'Загрузка {count} токена...' },
   'map.finalizing': 'Завершение...',
   'map.openFailed': 'Atlas VTT не смог открыть сцену {name} ({reason}).',
+  'map.imageUnshown': 'Atlas VTT не удалось показать изображение карты {file}. {reason}',
 };
