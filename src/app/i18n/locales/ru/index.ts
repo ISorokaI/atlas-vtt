@@ -31,6 +31,7 @@ import { lpv } from './lpv';
 import { map } from './map';
 import { menu } from './menu';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
@@ -120,6 +121,7 @@ export const ru: Translation = {
   ...map,
   ...menu,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
   ...settings,

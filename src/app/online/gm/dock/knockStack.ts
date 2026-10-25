@@ -6,6 +6,7 @@ import { textButton } from './controls.ts';
 import { DockTooltip } from './dockTooltip.ts';
 import { BAR_GAP, roomAbove, rowOf } from './dockDom.ts';
 import type { RestActions } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /** The cards' width; never wider than the row the control hangs from. */
 const KNOCK_WIDTH = 300;
@@ -41,14 +42,14 @@ export interface StackCard {
 export function knockCards(waiting: readonly WaitingPlayer[], actions: Pick<GateActions, 'admit' | 'decline'>): StackCard[] {
   return waiting.map((player) => ({
     key: knockKey(player.id),
-    label: `${player.name} wants to join`,
+    label: t('online.knock.join', { name: player.name }),
     name: player.name,
-    text: player.full ? ': table full' : ' wants to join',
+    text: player.full ? (t('online.knock.full', { name: '\u0000' }).split('\u0000')[1] ?? '') : (t('online.knock.join', { name: '\u0000' }).split('\u0000')[1] ?? ''),
     armed: player.armed,
     answered: player.answered,
     actions: player.full ? [] : [
-      { text: 'Decline', kind: 'ghost', run: () => actions.decline(player.id) },
-      { text: 'Admit', kind: 'cta', run: () => actions.admit(player.id) },
+      { text: t('online.decline'), kind: 'ghost', run: () => actions.decline(player.id) },
+      { text: t('online.admit'), kind: 'cta', run: () => actions.admit(player.id) },
     ],
   }));
 }
@@ -56,22 +57,22 @@ export function knockCards(waiting: readonly WaitingPlayer[], actions: Pick<Gate
 /** What a rest request's card says behind its line: the actions picked, then what the rest will do. */
 function restAbout(rest: RestCard): string {
   const picks = rest.picks.length === 0 ? [] : [rest.picks.join(', ')];
-  return picks.length === 0 && rest.rules.length === 0 ? 'Nothing to restore' : [...picks, ...rest.rules].join(' · ');
+  return picks.length === 0 && rest.rules.length === 0 ? t('online.knock.nothingToRestore') : [...picks, ...rest.rules].join(' · ');
 }
 
 /** A card per rest a player asks for: Decline and Approve, and behind its line the actions picked and what the rest will do. */
 export function restCards(rests: readonly RestCard[], actions: RestActions): StackCard[] {
   return rests.map((rest) => ({
     key: rest.key,
-    label: `${rest.character} asks for a ${rest.button}`,
+    label: t('online.knock.rest', { name: rest.character, rest: rest.button }),
     name: rest.character,
-    text: ` asks for a ${rest.button}`,
+    text: (t('online.knock.rest', { name: '\u0000', rest: rest.button }).split('\u0000')[1] ?? ''),
     about: restAbout(rest),
     armed: rest.armed,
     answered: rest.answered,
     actions: [
-      { text: 'Decline', kind: 'ghost', run: () => actions.decline(rest.key) },
-      { text: 'Approve', kind: 'cta', run: () => actions.approve(rest.key) },
+      { text: t('online.decline'), kind: 'ghost', run: () => actions.decline(rest.key) },
+      { text: t('online.approve'), kind: 'cta', run: () => actions.approve(rest.key) },
     ],
   }));
 }
@@ -155,7 +156,7 @@ export class KnockStack {
     this.root = root;
     this.container = container;
     this.fallback = fallback;
-    this.el = root.createDiv({ cls: 'atlas-online-knocks', attr: { role: 'region', 'aria-label': 'Players asking the GM', 'aria-live': 'polite' } });
+    this.el = root.createDiv({ cls: 'atlas-online-knocks', attr: { role: 'region', 'aria-label': t('online.knock.region'), 'aria-live': 'polite' } });
     this.el.hidden = true;
     // The cards hang from the control's top edge: when it changes its size, they moved.
     this.resizes = new ResizeObserver(() => this.reflow());

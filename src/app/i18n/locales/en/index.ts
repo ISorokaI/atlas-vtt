@@ -35,6 +35,7 @@ import { map } from './map';
 import { mapFeature } from './mapFeature';
 import { menu } from './menu';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
@@ -140,6 +141,7 @@ export const en = {
   ...mapFeature,
   ...menu,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
   ...settings,
