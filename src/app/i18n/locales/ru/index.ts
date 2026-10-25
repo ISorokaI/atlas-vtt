@@ -58,6 +58,7 @@ import { text } from './text';
 import { audio } from './audio';
 import { drawing } from './drawing';
 import { editToken } from './editToken';
+import { templateEditor } from './templateEditor';
 import { hex } from './hex';
 import { light } from './light';
 import { mapIcon } from './mapIcon';
@@ -177,4 +178,5 @@ export const ru: Translation = {
   ...wall,
   ...sceneLight,
   ...vision,
+  ...templateEditor,
 };

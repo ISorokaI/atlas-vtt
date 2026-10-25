@@ -18,4 +18,6 @@ export const statblock: Translation = {
   'statblock.traitDescription': 'описание черты',
   'statblock.traitName': 'название черты',
   'statblock.valueN': 'значение {n}',
+  'statblock.deletedUndo': 'Удалено: {what}. Нажмите {keys}, чтобы отменить.',
+  'statblock.removedUndo': 'Убрано: {what}. Нажмите {keys}, чтобы отменить.',
 };
