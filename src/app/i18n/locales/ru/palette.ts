@@ -45,4 +45,7 @@ export const palette: Translation = {
   'palette.tour.ownTitle': 'Настройте карту под себя',
   'palette.widgetSettings': 'Настройки виджетов',
   'palette.openPlayerWindow': 'Открыть окно игроков',
+  'palette.panel.levels': 'Уровни сцены',
+  'palette.sceneLevels': 'Уровни сцены',
+  'palette.replaceMapImage': 'Заменить изображение карты',
 };

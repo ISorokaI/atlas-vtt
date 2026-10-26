@@ -32,4 +32,9 @@ export const encounter: Translation = {
   'encounter.builder.save': 'Сохранить стычку',
   'encounter.builder.ratingHint': 'От самого слабого существа до самого сильного',
   'encounter.builder.totalHint': '{name} всех существ вместе',
+  'encounter.builder.countRange': { one: '{range} существо', few: '{range} существа', many: '{range} существ', other: '{range} существа' },
+  'encounter.builder.fewerDice': 'На один кубик меньше: {name}',
+  'encounter.builder.moreDice': 'На один кубик больше: {name}',
+  'encounter.builder.quantityOf': 'Количество: {name}',
+  'encounter.builder.quantityHint': 'Число или кубики, например 2d4; бросаются каждый раз, когда стычку ставят на карту',
 };

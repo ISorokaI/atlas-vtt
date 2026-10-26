@@ -16,4 +16,5 @@ export const command: Translation = {
   'command.toggleLootRoller': 'Показать/скрыть случайные таблицы',
   'command.viewChangelog': 'Открыть список изменений',
   'command.openPlayerWindow': 'Открыть окно игроков',
+  'command.generateDungeon': 'Сгенерировать подземелье',
 };

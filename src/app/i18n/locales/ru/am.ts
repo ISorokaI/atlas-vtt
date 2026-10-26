@@ -186,4 +186,6 @@ export const am: Translation = {
   'am.besidePartial': 'В инициативу добавлено {count} из {expected} участников стычки «{name}» (у некоторых нет изображения)',
   'am.beside': { one: 'В инициативу добавлен {count} участник стычки «{name}»', few: 'В инициативу добавлено {count} участника стычки «{name}»', many: 'В инициативу добавлено {count} участников стычки «{name}»', other: 'В инициативу добавлено {count} участника стычки «{name}»' },
   'am.header.createEncounter': 'Создать стычку',
+  'am.header.generateDungeon': 'Сгенерировать подземелье',
+  'am.card.animated': 'Анимированная карта',
 };
