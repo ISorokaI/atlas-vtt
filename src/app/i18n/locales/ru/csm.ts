@@ -105,4 +105,6 @@ export const csm: Translation = {
   'csm.widgets.timer': 'Таймер',
   'csm.widgets.timerDesc': 'Обратный отсчёт для стычек на время или перерывов',
   'csm.loot.views': { one: '{count} представление', few: '{count} представления', many: '{count} представлений', other: '{count} представления' },
+  'csm.grid.difficultTerrain': 'Труднопроходимая местность стоит вдвое',
+  'csm.grid.difficultTerrainHint': 'Линейка перемещения токена считает каждую клетку или гекс труднопроходимой местности дважды.',
 };
