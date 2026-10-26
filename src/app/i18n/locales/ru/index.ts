@@ -86,6 +86,15 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { vision } from './vision';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
+import { levels } from './levels';
+import { mapFeature } from './mapFeature';
+import { openings } from './openings';
+import { uvtt } from './uvtt';
+import { uvttFloors } from './uvttFloors';
+import { videoMap } from './videoMap';
 
 export const ru: Translation = {
   ...align,
@@ -177,4 +186,13 @@ export const ru: Translation = {
   ...wall,
   ...sceneLight,
   ...vision,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
+  ...levels,
+  ...mapFeature,
+  ...openings,
+  ...uvtt,
+  ...uvttFloors,
+  ...videoMap,
 };
