@@ -38,10 +38,10 @@ export function WriteProblemBar({ problem }: { problem: string }): React.JSX.Ele
 
 /** YAML Obsidian rejects: Atlas never writes into it (§7.2). The note beside shows where. */
 export function UnreadableState({ line }: { line: number | null }): React.JSX.Element {
-  const where = line === null ? '' : ` (line ${line})`;
+  const text = line === null ? t('statblockEditor.propertiesUnreadable') : t('statblockEditor.propertiesUnreadableLine', { line });
   return (
     <div className="atlas-sb-pane-state">
-      <PaneBar text={t('statblockEditor.propertiesUnreadable', { where })} />
+      <PaneBar text={text} />
     </div>
   );
 }

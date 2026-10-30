@@ -60,7 +60,7 @@ export async function openTemplateEditor(app: App, options: OpenTemplateEditorOp
   const unsaved = options.unsaved === true;
   const path = isBuiltInTemplateId(id) || unsaved ? null : options.path ?? TemplateLibrary.forApp(app).get(id)?.path ?? null;
   if (!isBuiltInTemplateId(id) && !unsaved && !path) {
-    showNotice(t('statblockEditor.templateNotFound'));
+    showNotice(t('statblockEditor.templateNotFoundNotice'));
     return null;
   }
   const leaf = options.leaf ?? editorLeafFor(app, id, path) ?? app.workspace.getLeaf('tab');
