@@ -35,4 +35,8 @@ export const dice: Translation = {
   'dice.modifier': 'Модификатор',
   'dice.showRollsToPlayers': 'Показывать мои броски игрокам',
   'dice.showRollsToPlayersHint': 'Ваши броски появляются и в окне игроков.',
+  'dice.volume': 'Громкость кубиков',
+  'dice.volumeHint': 'Насколько громко звучат кубики при броске и приземлении. В крайнем левом положении звук выключен.',
+  'dice.volumeOff': 'Выкл.',
+  'dice.volumePercent': '{percent}%',
 };
