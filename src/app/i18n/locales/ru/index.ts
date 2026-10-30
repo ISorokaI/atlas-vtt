@@ -59,6 +59,13 @@ import { text } from './text';
 import { audio } from './audio';
 import { drawing } from './drawing';
 import { editToken } from './editToken';
+import { templateEditor } from './templateEditor';
+import { tables } from './tables';
+import { campaign } from './campaign';
+import { quest } from './quest';
+import { rest } from './rest';
+import { initRules } from './initRules';
+import { recoveryEditor } from './recoveryEditor';
 import { hex } from './hex';
 import { light } from './light';
 import { mapIcon } from './mapIcon';
@@ -87,6 +94,15 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { vision } from './vision';
+import { dungeon } from './dungeon';
+import { dungeonProp } from './dungeonProp';
+import { dungeonScene } from './dungeonScene';
+import { levels } from './levels';
+import { mapFeature } from './mapFeature';
+import { openings } from './openings';
+import { uvtt } from './uvtt';
+import { uvttFloors } from './uvttFloors';
+import { videoMap } from './videoMap';
 import { online } from './online';
 
 export const ru: Translation = {
@@ -180,5 +196,21 @@ export const ru: Translation = {
   ...wall,
   ...sceneLight,
   ...vision,
+  ...templateEditor,
+  ...tables,
+  ...campaign,
+  ...quest,
+  ...rest,
+  ...initRules,
+  ...recoveryEditor,
+  ...dungeon,
+  ...dungeonProp,
+  ...dungeonScene,
+  ...levels,
+  ...mapFeature,
+  ...openings,
+  ...uvtt,
+  ...uvttFloors,
+  ...videoMap,
   ...online,
 };
