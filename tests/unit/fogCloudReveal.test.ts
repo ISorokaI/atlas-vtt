@@ -151,7 +151,8 @@ describe('cloud reveal', () => {
     const before = { objects: { walls, fog, tokens: { a: token('a', 'cellar', 0), b: token('b', 'hall', 0) } }, levels, viewedLevel: 'cellar' };
     const shown = levelObjects(before);
 
-    playersFog({ ...before, fogHeld: fog });
+    // Held before any edit: the very fog of the level shown
+    expect(playersFog({ ...before, fogHeld: fog })).toBe(shown.fog);
     // A token moved on the other level: nothing on the level shown changed
     const after = levelObjects({ ...before, objects: { ...before.objects, tokens: { ...before.objects.tokens, b: token('b', 'hall', 5) } } });
     expect(after.walls).toBe(shown.walls);

@@ -38,13 +38,14 @@ export function playersFog(state: { fogHeld?: FogRecord | null | undefined; obje
   if (!held) return levelObjects(state).fog;
   const { levels } = state;
   if (!hasLevels(levels)) return held;
-  // Filtered apart from `levelObjects`, whose memory of a level's last result must stay the state's
+  // Filtered apart from `levelObjects`, whose memory of a level's last result must stay the state's;
+  // the level's fog itself while nothing on it was edited, so its coverage is the one worked out already
   const levelId = viewedLevelId(state) ?? '';
   let byLevels = heldOnLevel.get(held);
   if (!byLevels) heldOnLevel.set(held, byLevels = new WeakMap());
   let byLevel = byLevels.get(levels);
   if (!byLevel) byLevels.set(levels, byLevel = new Map());
   let fog = byLevel.get(levelId);
-  if (!fog) byLevel.set(levelId, fog = recordOnViewedLevel(held, state));
+  if (!fog) byLevel.set(levelId, fog = recordOnViewedLevel(held, state, levelObjects(state).fog));
   return fog;
 }
