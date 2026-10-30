@@ -95,6 +95,7 @@ import { openings } from './openings';
 import { uvtt } from './uvtt';
 import { uvttFloors } from './uvttFloors';
 import { videoMap } from './videoMap';
+import { online } from './online';
 
 export const ru: Translation = {
   ...align,
@@ -195,4 +196,5 @@ export const ru: Translation = {
   ...uvtt,
   ...uvttFloors,
   ...videoMap,
+  ...online,
 };
