@@ -30,6 +30,7 @@ import { initiative } from './initiative';
 import { initRules } from './initRules';
 import { loot } from './loot';
 import { tables } from './tables';
+import { templateEditor } from './templateEditor';
 import { lpv } from './lpv';
 import { map } from './map';
 import { mapFeature } from './mapFeature';
@@ -43,6 +44,7 @@ import { snapshots } from './snapshots';
 import { levels } from './levels';
 import { openings } from './openings';
 import { statblock } from './statblock';
+import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
 import { tabs } from './tabs';
 import { timer } from './timer';
@@ -137,6 +139,7 @@ export const en = {
   ...initRules,
   ...loot,
   ...tables,
+  ...templateEditor,
   ...lpv,
   ...map,
   ...mapFeature,
@@ -150,6 +153,7 @@ export const en = {
   ...levels,
   ...openings,
   ...statblock,
+  ...statblockEditor,
   ...switcher,
   ...tabs,
   ...timer,
