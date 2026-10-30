@@ -1,7 +1,8 @@
-import type { AssetRef, DeltaOf, GmMessage, SharedLightingScene } from '../protocol/index.ts';
+import { EXPLORED_INLINE_BYTES, type AssetRef, type DeltaOf, type GmMessage, type SharedLightingScene } from '../protocol/index.ts';
 import type { LightingSource } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
-import { sha256Hex } from './assetServe.ts';
+import { toBase64 } from './assetServe.ts';
+import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
 import { sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
@@ -18,6 +19,8 @@ export interface InputSharePorts extends PacerClock {
   tokenAlias(tokenId: string): string;
   /** Where the GM's lighting reads its rules and measurement, or null while it cannot be read. */
   lightingSource(): LightingSource | null;
+  /** How players are handed an explored memory too large to go inline; without it they get none. */
+  stored?: AssetStoring | undefined;
 }
 
 /** The shortest time between two sends of the scene's inputs, as for the token list. */
@@ -60,7 +63,7 @@ interface LightingKey {
  * The inputs players rebuild the scene's fog and lighting from, sent to all whenever they change
  * (fog and sight as deltas from the last where those are smaller), at most every `INPUT_INTERVAL_MS`: the committed fog of every shared scene and, for a lit
  * one, its walls, zones and senses (`lighting`), its lighting, lights and tokens (`sight`) and the
- * explored memory the GM last saved (`explored`, served by hash).
+ * explored memory the GM last saved (`explored`, inline where it is small, else by the id the store keeps it under).
  */
 export class InputShare {
   private readonly store: SceneStore;
@@ -72,7 +75,8 @@ export class InputShare {
   private readonly lightAliases = new Map<string, string>();
   /** The random ids of the shared scene's fog operations, by their keys in the store. */
   private readonly fogAliases = new Map<string, string>();
-  private mask: { readonly source: string | null; readonly ref: AssetRef | null; readonly bytes: Uint8Array<ArrayBuffer> | null } | null = null;
+  /** The saved explored memory players were sent last (a data URL), with its stored reference where it went by one; null before one was. */
+  private mask: { readonly source: string | null; readonly ref: AssetRef | null } | null = null;
   private readonly pacer: Pacer;
   private readonly exploredPacer: Pacer;
   /** The fog and sight inputs sent: whole for a new scene, a joiner or a player who asks, else as deltas. */
@@ -98,6 +102,7 @@ export class InputShare {
     this.fogOf = undefined;
     this.fogAliases.clear();
     this.lighting = null;
+    this.releaseMask();
     this.mask = null;
     this.pacer.cancel();
     this.exploredPacer.cancel();
@@ -121,11 +126,6 @@ export class InputShare {
   /** A player's fog or sight inputs stopped following on: they get the last ones whole (at most once a second). */
   resync(player: string, scene: string, of: Exclude<DeltaOf, 'tokens'>): void {
     if (scene === this.scene?.id) (of === 'fog' ? this.fog : this.sight).resync(player, scene);
-  }
-
-  /** The bytes of the explored memory players were last sent, by its hash. */
-  exploredBytes(hash: string): Uint8Array<ArrayBuffer> | undefined {
-    return this.mask?.ref?.hash === hash ? this.mask.bytes ?? undefined : undefined;
   }
 
   stop(): void {
@@ -166,15 +166,40 @@ export class InputShare {
     return scene;
   }
 
+  /** The store may no longer keep the explored memory players were sent by its id: it is handed again, or as none. */
+  refreshAssets(): void {
+    if (this.mask === null || this.mask.ref === null) return;
+    this.mask = null;
+    this.update();
+  }
+
+  /**
+   * The explored memory saved last: inline as a PNG where it is at most `EXPLORED_INLINE_BYTES`, else
+   * by the id the store keeps it under (the page fetches it once the upload's progress says it is
+   * stored); none where it is no PNG or the store does not keep it.
+   */
   private async flushExplored(): Promise<void> {
     const scene = this.scene;
     const source = levelExploredMask(this.store.getState());
     if (scene === null || !scene.lit || source === this.mask?.source) return;
     const bytes = maskBytes(source);
-    const ref: AssetRef | null = bytes === null ? null : { hash: await sha256Hex(bytes), size: bytes.length, mime: 'image/png' };
-    if (this.scene !== scene) return;
-    this.mask = { source, ref, bytes };
-    this.publish({ t: 'explored', scene: scene.id, mask: ref });
+    const inline = bytes !== null && bytes.length <= EXPLORED_INLINE_BYTES;
+    const ref = bytes === null || inline ? null : ((await this.ports.stored?.refOf(bytes, 'image/png', ASSET_USES.explored)) ?? null);
+    // A newer memory or another scene came meanwhile: this one is not sent.
+    if (this.scene !== scene || levelExploredMask(this.store.getState()) !== source) {
+      if (ref !== null) this.ports.stored?.release(ref);
+      return;
+    }
+    // The memory it replaces need not go up any more, nor be told of.
+    if (this.mask?.ref?.id !== ref?.id) this.releaseMask();
+    this.mask = { source, ref };
+    this.publish({ t: 'explored', scene: scene.id, ...(inline ? { png: toBase64(bytes) } : ref !== null && { mask: ref }) });
+  }
+
+  /** Lets go of the stored explored memory players were sent last. */
+  private releaseMask(): void {
+    const ref = this.mask?.ref;
+    if (ref !== null && ref !== undefined) this.ports.stored?.release(ref);
   }
 
   /** Sends a message unless it says what the last of its kind said. */
