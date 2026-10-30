@@ -3,6 +3,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { DEFAULT_FOG_STYLE, readFogStyle } from '../../src/app/fog/fogStyle';
 import { playersFog } from '../../src/app/fog/playersFog';
+import { levelObjects } from '../../src/app/levels/levelObjects';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 import type { SceneLevel } from '../../src/app/types/sceneLevelTypes';
@@ -139,5 +140,22 @@ describe('cloud reveal', () => {
     expect(playersFog({ objects, fogHeld: held, levels, viewedLevel: 'hall' })).toBe(hall);
     expect(Object.keys(playersFog({ objects, fogHeld: held, levels, viewedLevel: 'cellar' }))).toEqual(['cellar']);
     expect(Object.keys(playersFog({ objects, fogHeld: null, levels, viewedLevel: 'hall' }))).toEqual(['hall', 'later']);
+  });
+
+  it('leaves the objects of the level shown as they were when the players are shown the held fog', () => {
+    const levels = [{ id: 'cellar' }, { id: 'hall' }] as unknown as SceneLevel[];
+    const op = (level: string): FogOperation => ({ id: level, type: 'rectangle', isErasing: false, x: 0, y: 0, width: 10, height: 10, level }) as FogOperation;
+    const walls = { low: { id: 'low', levels: ['cellar'] }, high: { id: 'high', levels: ['hall'] } };
+    const token = (id: string, level: string, x: number): { id: string; level: string; x: number } => ({ id, level, x });
+    const fog = { cellar: op('cellar'), hall: op('hall') };
+    const before = { objects: { walls, fog, tokens: { a: token('a', 'cellar', 0), b: token('b', 'hall', 0) } }, levels, viewedLevel: 'cellar' };
+    const shown = levelObjects(before);
+
+    playersFog({ ...before, fogHeld: fog });
+    // A token moved on the other level: nothing on the level shown changed
+    const after = levelObjects({ ...before, objects: { ...before.objects, tokens: { ...before.objects.tokens, b: token('b', 'hall', 5) } } });
+    expect(after.walls).toBe(shown.walls);
+    expect(after.tokens).toBe(shown.tokens);
+    expect(after.fog).toBe(shown.fog);
   });
 });

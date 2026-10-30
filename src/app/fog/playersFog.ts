@@ -1,5 +1,5 @@
-import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
-import type { LevelView } from '../levels/sceneLevels';
+import { everyLevelObjects, levelObjects, recordOnViewedLevel } from '../levels/levelObjects';
+import { hasLevels, viewedLevelId, type LevelView, type SceneLevels } from '../levels/sceneLevels';
 import type { FogOperation } from '../types/fogTypes';
 import type { FogStyle } from './fogStyle';
 
@@ -24,8 +24,8 @@ export function heldFog(state: FogHoldState): FogRecord | null {
   return state.fogHeld ?? everyLevelObjects(state).fog;
 }
 
-/** The held fog of every level as objects `levelObjects` reads, one per hold, so its result keeps its identity. */
-const heldObjects = new WeakMap<FogRecord, { fog: FogRecord }>();
+/** The held fog of each level, by hold, levels and level, so a level's result keeps its identity. */
+const heldOnLevel = new WeakMap<FogRecord, WeakMap<NonNullable<SceneLevels>, Map<string, FogRecord>>>();
 
 /**
  * The fog the players see, of the level the view shows (`levelObjects`). Everything that shows
@@ -34,8 +34,17 @@ const heldObjects = new WeakMap<FogRecord, { fog: FogRecord }>();
  * another level while it lasts shows that level's fog from when the tool was taken up.
  */
 export function playersFog(state: { fogHeld?: FogRecord | null | undefined; objects: { fog: FogRecord } } & LevelView): FogRecord {
-  if (!state.fogHeld) return levelObjects(state).fog;
-  let objects = heldObjects.get(state.fogHeld);
-  if (!objects) heldObjects.set(state.fogHeld, objects = { fog: state.fogHeld });
-  return levelObjects({ objects, levels: state.levels, viewedLevel: state.viewedLevel }).fog;
+  const held = state.fogHeld;
+  if (!held) return levelObjects(state).fog;
+  const { levels } = state;
+  if (!hasLevels(levels)) return held;
+  // Filtered apart from `levelObjects`, whose memory of a level's last result must stay the state's
+  const levelId = viewedLevelId(state) ?? '';
+  let byLevels = heldOnLevel.get(held);
+  if (!byLevels) heldOnLevel.set(held, byLevels = new WeakMap());
+  let byLevel = byLevels.get(levels);
+  if (!byLevel) byLevels.set(levels, byLevel = new Map());
+  let fog = byLevel.get(levelId);
+  if (!fog) byLevel.set(levelId, fog = recordOnViewedLevel(held, state));
+  return fog;
 }
