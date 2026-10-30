@@ -1,5 +1,5 @@
 import { TFile, type App } from 'obsidian';
-import { TileDecoderClient } from './TileDecoderClient';
+import { TileDecoderClient, TileOpenError } from './TileDecoderClient';
 import { requiredMainThreadDecode } from './mainThreadDecode';
 
 /**
@@ -20,4 +20,21 @@ export function prebuildMapImage(app: App, file: TFile): void {
 export function prebuildMapImageAt(app: App, path: string): void {
   const file = app.vault.getAbstractFileByPath(path);
   if (file instanceof TFile) prebuildMapImage(app, file);
+}
+
+/**
+ * Builds the pyramid of the map image at `path` where the cache lacks it (joining the build an open map
+ * started), resolving once the build has ended: the image's hash, whether its pyramid is complete
+ * now and how many of its tiles are stored. Null for a file that is not there, one built on this thread (an SVG, a video's poster: its
+ * pyramid is no copy of its bytes) and one too large or undecodable; rejects where the worker failed.
+ */
+export async function buildMapPyramid(app: App, path: string): Promise<{ hash: string; complete: boolean; stored: number } | null> {
+  const file = app.vault.getAbstractFileByPath(path);
+  if (!(file instanceof TFile) || requiredMainThreadDecode(file) !== undefined) return null;
+  try {
+    return await TileDecoderClient.forApp(app).ensurePyramid(() => app.vault.readBinary(file), { path: file.path, size: file.stat.size, mtime: file.stat.mtime });
+  } catch (error) {
+    if (error instanceof TileOpenError) return null;
+    throw error;
+  }
 }
