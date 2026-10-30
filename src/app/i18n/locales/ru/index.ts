@@ -92,6 +92,7 @@ import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
 import { vision } from './vision';
+import { online } from './online';
 
 export const ru: Translation = {
   ...align,
@@ -189,4 +190,5 @@ export const ru: Translation = {
   ...rest,
   ...initRules,
   ...recoveryEditor,
+  ...online,
 };
