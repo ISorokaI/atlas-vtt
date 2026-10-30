@@ -148,8 +148,15 @@ export class FogCloudLayer {
   ): void {
     // Clouds in both states never blink while the old ones fade out and the new ones fade in: the fog
     // both cover, baked from its own shape, so its edges are the very edges of either state
-    const both = before.length > 0 && after.length > 0 ? safely(() => subtractShapes(before, subtractShapes(before, after))) : null;
+    const both = before.length > 0 && after.length > 0 ? safely(() => subtractShapes(before, subtractShapes(before, after))) : [];
     const stable = both && both.length > 0 ? safely(() => bakeCloudFog(both, bounds, color)) : null;
+    // Fog that both states cover must stay covered while the old clouds fade out and the new ones
+    // fade in: where it cannot be drawn, the clouds change at once
+    if (!both || (both.length > 0 && !stable)) {
+      if (previous) destroyBakedFog(previous);
+      requestRender(this.app);
+      return;
+    }
     if (stable) this.stable = createBakedFog(stable, bounds);
     this.fading = previous;
     // The states are drawn into a group of their own, each pixel the densest of them: two soft
