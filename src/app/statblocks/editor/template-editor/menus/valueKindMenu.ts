@@ -41,6 +41,6 @@ export function valueKindMenu({ session, block, field, editable, openOptions }: 
     item('pick-several', t('templateEditor.pickSeveral'), () => edit({ several: field.several ? undefined : true }), { checked: field.several === true, disabled: !editable }),
     item('each-with-number', t('templateEditor.eachWithNumber'), () => edit({ numbered: field.numbered ? undefined : true }), { checked: field.numbered === true, disabled: !editable }),
     SEPARATOR,
-    item('edit-choices', 'Choices…', () => openOptions(CHOICES_FOCUS_KEY), { icon: 'list' }),
+    item('edit-choices', t('templateEditor.choicesMenu'), () => openOptions(CHOICES_FOCUS_KEY), { icon: 'list' }),
   ];
 }

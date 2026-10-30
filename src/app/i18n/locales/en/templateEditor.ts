@@ -41,6 +41,7 @@ export const templateEditor = {
   'templateEditor.choiceReads': 'A statblock reads “{example}”.',
   'templateEditor.choices': 'Choices',
   'templateEditor.choicesExample': 'Small, Medium, Large',
+  'templateEditor.choicesMenu': 'Choices…',
   'templateEditor.chooseProperty': 'Choose a property',
   'templateEditor.commonParts': 'Common parts',
   'templateEditor.conflict.changed': 'This template was changed somewhere else while you were editing it.',

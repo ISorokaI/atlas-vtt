@@ -41,6 +41,7 @@ export const templateEditor: Translation = {
   'templateEditor.choiceReads': 'В статблоке будет: «{example}».',
   'templateEditor.choices': 'Варианты',
   'templateEditor.choicesExample': 'Маленький, Средний, Большой',
+  'templateEditor.choicesMenu': 'Варианты…',
   'templateEditor.chooseProperty': 'Выберите свойство',
   'templateEditor.commonParts': 'Частые части',
   'templateEditor.conflict.changed': 'Этот шаблон изменили в другом месте, пока вы его редактировали.',
