@@ -1,4 +1,5 @@
 import { sha256Hex } from '../assetServe.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import { AskedAnswer } from './askedAnswer.ts';
 import { MapImages, type FileStat, type MapImage, type MapImageProblem } from './mapImages.ts';
@@ -18,13 +19,16 @@ export interface WorldMapPorts {
   source(): Promise<WorldMapTree | null>;
   /** A map that was being looked up or read is known now. */
   read(): void;
+  /** How players are handed images the store keeps for them. */
+  readonly stored?: AssetStoring | undefined;
 }
 
 /** What the GM is told when the world map's image cannot be sent to players. */
 export const WORLD_MAP_PROBLEM_TEXT: Readonly<Record<MapImageProblem, string>> = {
   missing: 'Atlas Online cannot send the world map: its image file is missing.',
-  'too-large': 'Atlas Online cannot send the world map: its image is larger than 64 MB.',
+  'too-large': 'Atlas Online cannot send the world map: its image is larger than 95 MB.',
   unreadable: 'Atlas Online cannot send the world map: its image is not a PNG, JPEG, WebP, GIF or AVIF that players can open.',
+  unstored: 'Atlas Online cannot send the world map: its image could not be stored online.',
 };
 
 /** The tree Atlas answered, with the id players know each of its maps by. */
@@ -55,7 +59,7 @@ export class WorldMaps {
 
   constructor(ports: WorldMapPorts) {
     this.tree = new AskedAnswer(async () => named(await ports.source()), null, () => ports.read());
-    this.images = new MapImages({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), read: () => ports.read() });
+    this.images = new MapImages({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), stored: ports.stored, read: () => ports.read() });
   }
 
   /** The world map: null for none, undefined while it is being looked up or read (`read` hears when it has been). */
@@ -83,6 +87,11 @@ export class WorldMaps {
     const asked = this.tree.get();
     const root = asked?.tree.levels.find((level) => level.key === asked.tree.root);
     return root === undefined ? null : this.images.problemOf(root.image);
+  }
+
+  /** Reads every image again: the store may no longer keep one players were sent. */
+  forgetImages(): void {
+    this.images.clear();
   }
 
   /** Asks again which maps are shown: the campaign, its world map, a scene's pins or a map's artwork may be another now. A file already read is not read again. */
