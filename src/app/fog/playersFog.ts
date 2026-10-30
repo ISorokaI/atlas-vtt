@@ -42,9 +42,9 @@ export function playersFog(state: { fogHeld?: FogRecord | null | undefined; obje
   // the level's fog itself while nothing on it was edited, so its coverage is the one worked out already
   const levelId = viewedLevelId(state) ?? '';
   let byLevels = heldOnLevel.get(held);
-  if (!byLevels) heldOnLevel.set(held, byLevels = new WeakMap());
+  if (!byLevels) heldOnLevel.set(held, byLevels = new WeakMap<NonNullable<SceneLevels>, Map<string, FogRecord>>());
   let byLevel = byLevels.get(levels);
-  if (!byLevel) byLevels.set(levels, byLevel = new Map());
+  if (!byLevel) byLevels.set(levels, byLevel = new Map<string, FogRecord>());
   let fog = byLevel.get(levelId);
   if (!fog) byLevel.set(levelId, fog = recordOnViewedLevel(held, state, levelObjects(state).fog));
   return fog;
