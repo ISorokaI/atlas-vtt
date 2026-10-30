@@ -168,6 +168,11 @@ export const online: Translation = {
   'online.update': 'Обновить',
   'online.updateAfter': 'Обновите Atlas после этой сессии',
   'online.worldMap.missing': 'Atlas Online не может отправить карту мира: файла изображения нет.',
-  'online.worldMap.tooLarge': 'Atlas Online не может отправить карту мира: изображение больше 64 МБ.',
+  'online.worldMap.tooLarge': 'Atlas Online не может отправить карту мира: изображение больше 95 МБ.',
   'online.worldMap.unreadable': 'Atlas Online не может отправить карту мира: изображение не в формате PNG, JPEG, WebP, GIF или AVIF, который могут открыть игроки.',
+  'online.worldMap.unstored': 'Atlas Online не может отправить карту мира: изображение не удалось сохранить онлайн.',
+  'online.assetsRestricted': 'Этой учётной записи сейчас нельзя делиться файлами с игроками.',
+  'online.assetsMapTooLarge': 'Эта карта слишком велика, чтобы показать её игрокам.',
+  'online.mapUnreadable': 'Изображение карты этой сцены нельзя передать игрокам.',
+  'online.assetsFailed': 'Не удалось передать файл игрокам.',
 };

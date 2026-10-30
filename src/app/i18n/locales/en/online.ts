@@ -168,6 +168,11 @@ export const online = {
   'online.update': 'Update',
   'online.updateAfter': 'Update Atlas after this session',
   'online.worldMap.missing': 'Atlas Online cannot send the world map: its image file is missing.',
-  'online.worldMap.tooLarge': 'Atlas Online cannot send the world map: its image is larger than 64 MB.',
+  'online.worldMap.tooLarge': 'Atlas Online cannot send the world map: its image is larger than 95 MB.',
   'online.worldMap.unreadable': 'Atlas Online cannot send the world map: its image is not a PNG, JPEG, WebP, GIF or AVIF that players can open.',
+  'online.worldMap.unstored': 'Atlas Online cannot send the world map: its image could not be stored online.',
+  'online.assetsRestricted': 'This account cannot share files with players right now.',
+  'online.assetsMapTooLarge': 'This map is too large to share with players.',
+  'online.mapUnreadable': 'This scene\'s map image cannot be sent to players.',
+  'online.assetsFailed': 'A file could not be shared with players.',
 } as const satisfies Record<string, Message>;

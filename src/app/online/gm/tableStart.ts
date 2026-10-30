@@ -9,6 +9,7 @@ import { RELAY_ORIGIN } from './servers.ts';
 import { endStrayTable } from './strayTable.ts';
 import type { TableCampaigns } from './tableCampaigns.ts';
 import { t } from '../../i18n';
+import type { TableAssets } from './assets/tableAssets.ts';
 
 /** The GM's account as starting a table needs it. */
 export interface HostAccount {
@@ -18,6 +19,8 @@ export interface HostAccount {
   signedOutByServer(): void;
   /** Asks the relay again what the account may host. */
   refresh(force: boolean): Promise<void>;
+  /** What a table needs to keep assets in the store for players; without it players are handed none. */
+  readonly assets?: Pick<TableAssets, 'salt' | 'settled'>;
 }
 
 export const NO_ACCOUNT: HostAccount = { token: () => null, signedOutByServer: () => undefined, refresh: () => Promise.resolve() };
