@@ -72,7 +72,9 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
   const eventBus = suppliedBus ?? view?.serviceManager?.getEventBus();
   const display = useDiceDisplay(app ?? undefined);
   const volume = useDiceVolume(app ?? undefined);
-  // At volume 0 the dice stay silent; nothing is decoded or scheduled for them
+  // At volume 0 the dice stay silent; nothing is decoded or scheduled for them. A roll keeps the
+  // silence it was thrown with: the stage throws again when its `muted` changes, and the master
+  // gain (`setDiceVolume`) quiets a roll in flight.
   const muted = windowMuted || volume === 0;
   const look = useDiceLook(app ?? undefined);
   const { toasts, addToast, dismissToast, dismissAllToasts } = useDiceToasts();
@@ -91,7 +93,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
         return;
       }
       if (!muted && !options.muted) warmDiceSounds();
-      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), ...(options.muted && { muted: true as const }) }));
+      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), ...((options.muted || volume === 0) && { muted: true as const }) }));
     };
     return (subscribe ?? busRolls(eventBus))(show);
   }, [subscribe, eventBus, addToast, prepare, display, muted, volume, cardSounds, stageDoc]);
@@ -142,7 +144,7 @@ export function DiceRollDisplay({ container, prepare, muted: windowMuted = false
           </defs>
         </svg>
       )}
-      <DiceRollStack rolls={rolls} muted={muted} onClose={close} onDone={dismiss} useAvatar={useDiceAvatar} />
+      <DiceRollStack rolls={rolls} muted={windowMuted} onClose={close} onDone={dismiss} useAvatar={useDiceAvatar} />
       {toasts.map((toast) => (
         <DiceToast key={toast.id} result={toast.result} presentation={toast.sourcePresentation} phase={toast.phase} onDismiss={() => dismissToast(toast.id)} useAvatar={useDiceAvatar} />
       ))}
