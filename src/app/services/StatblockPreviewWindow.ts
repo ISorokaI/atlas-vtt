@@ -34,12 +34,6 @@ export interface OutsideNote {
 export type FollowVitals = (show: (vitals: TokenVitals | null) => void) => () => void;
 
 /**
- * Floating CMD+hover preview window for token statblocks: of a token placed on
- * a map, which its map's preview manager tracks, or of a token in a list (the
- * library, a collection being exported or imported). A map's preview can be
- * pinned, so it stays open, and moved by its controls, as note previews can.
- */
-/**
  * The part of the card's header that shows: the header scrolls with the statblock, and the part
  * scrolled out of the card, or the whole of it, must not be kept in view. Null where none shows.
  */
@@ -51,6 +45,12 @@ function shownHeader(element: HTMLElement): ViewFrame | null {
   return visiblePart(header.getBoundingClientRect(), clips);
 }
 
+/**
+ * Floating CMD+hover preview window for token statblocks: of a token placed on
+ * a map, which its map's preview manager tracks, or of a token in a list (the
+ * library, a collection being exported or imported). A map's preview can be
+ * pinned, so it stays open, and moved by its controls, as note previews can.
+ */
 export class StatblockPreviewWindow {
   public notePath: string;
   public element: HTMLElement | null = null;
