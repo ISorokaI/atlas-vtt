@@ -175,8 +175,10 @@ function nameRow(parent: HTMLElement, prompt: NamePrompt, close: () => void, inR
 function codeRows(layer: HTMLElement, player: AddedPlayer, close: () => void): void {
   const block = layer.createDiv({ cls: 'atlas-online-prompt atlas-online-prompt--code', attr: { role: 'group', 'aria-label': t('online.newPlayerCode') } });
   const label = block.createDiv({ cls: 'atlas-online-group-label' });
+  const [before = '', after = ''] = t('online.joinsWith', { name: '{name}' }).split('{name}');
+  label.appendText(before);
   label.createEl('bdi', { text: player.name });
-  label.appendText((t('online.joinsWith', { name: '\u0000' }).split('\u0000')[1] ?? ''));
+  label.appendText(after);
   const shown = shownJoinCode(player.code);
   copyRow(block, { icon: 'key-round', text: t('online.codeShown', { code: shown }), copied: t('online.codeCopied'), focusKey: 'prompt-copy' }, () => copyText(layer, shown)).addClass('atlas-online-code-row');
   const done = textButton(block, t('online.done'), close, 'cta');

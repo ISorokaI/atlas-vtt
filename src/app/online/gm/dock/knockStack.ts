@@ -30,6 +30,8 @@ export interface StackCard {
   readonly key: string;
   /** What the card says, for screen readers. */
   readonly label: string;
+  /** The card's words before the name and after it. */
+  readonly before: string;
   readonly name: string;
   readonly text: string;
   readonly about?: string;
@@ -38,13 +40,22 @@ export interface StackCard {
   readonly actions: readonly StackAction[];
 }
 
+/** Stands for the name in a card's sentence, so the sentence can be cut where a language puts the name. */
+const NAME_MARK = '\u0000';
+
+/** The words of a card's sentence before and after the name, which the card draws apart from them. */
+function aroundName(sentence: (name: string) => string): { before: string; text: string } {
+  const [before = '', text = ''] = sentence(NAME_MARK).split(NAME_MARK);
+  return { before, text };
+}
+
 /** A card per newcomer who waits: Decline and Admit, or for a moment that the table was full. */
 export function knockCards(waiting: readonly WaitingPlayer[], actions: Pick<GateActions, 'admit' | 'decline'>): StackCard[] {
   return waiting.map((player) => ({
     key: knockKey(player.id),
     label: t('online.knock.join', { name: player.name }),
     name: player.name,
-    text: player.full ? (t('online.knock.full', { name: '\u0000' }).split('\u0000')[1] ?? '') : (t('online.knock.join', { name: '\u0000' }).split('\u0000')[1] ?? ''),
+    ...aroundName((name) => t(player.full ? 'online.knock.full' : 'online.knock.join', { name })),
     armed: player.armed,
     answered: player.answered,
     actions: player.full ? [] : [
@@ -66,7 +77,7 @@ export function restCards(rests: readonly RestCard[], actions: RestActions): Sta
     key: rest.key,
     label: t('online.knock.rest', { name: rest.character, rest: rest.button }),
     name: rest.character,
-    text: (t('online.knock.rest', { name: '\u0000', rest: rest.button }).split('\u0000')[1] ?? ''),
+    ...aroundName((name) => t('online.knock.rest', { name, rest: rest.button })),
     about: restAbout(rest),
     armed: rest.armed,
     answered: rest.answered,
@@ -99,7 +110,7 @@ function answerButton(row: HTMLElement, card: StackCard, index: number, action: 
 }
 
 /**
- * The cards, one line each: the name, the words after it, the answers. The name is someone's own
+ * The cards, one line each: the name with the words around it, the answers. The name is someone's own
  * text: one line in a box of its own, cut with an ellipsis, its direction kept to itself, so it can
  * neither reorder the card's words nor move its buttons. A card with more behind its line makes the
  * line a focusable part of its own that shows it as a tooltip (`about`). Returns the tooltips made.
@@ -109,6 +120,7 @@ export function renderCards(parent: HTMLElement, cards: readonly StackCard[], to
   for (const card of cards) {
     const row = parent.createDiv({ cls: 'atlas-online-knock', attr: { role: 'group', 'aria-label': card.label } });
     const text = row.createSpan({ cls: 'atlas-online-knock__text' });
+    if (card.before !== '') text.createSpan({ cls: 'atlas-online-knock__rest', text: card.before });
     text.createEl('bdi', { cls: 'atlas-online-knock__name', text: card.name });
     text.createSpan({ cls: 'atlas-online-knock__rest', text: card.text });
     if (card.about !== undefined) {
